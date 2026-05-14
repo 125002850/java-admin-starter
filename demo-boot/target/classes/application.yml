@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: java-demo
+  profiles:
+    active: dev
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    level: "%5p [traceId:%X{traceId:-}]"
