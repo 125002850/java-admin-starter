@@ -6,15 +6,43 @@
 
 ```
 java-demo/
-├── pom.xml                    # 根 POM，依赖版本与模块聚合
-├── README.md
-├── docs/
-│   └── create.md              # 项目搭建规范与执行计划
-├── demo-boot/                 # 启动模块（装配、配置、启动）
-├── demo-core/                 # 全局共享基础设施（薄核心，不承载业务语义）
-├── demo-system/               # 账号、权限、租户、审计等系统底座
-├── demo-mdm/                  # 主数据基础能力
-└── demo-{biz}/                # 业务模块（有真实需求时再创建）
+├── pom.xml                                          # 根 POM：依赖版本管理与模块聚合
+├── README.md                                        # 项目说明文档
+├── AGENTS.md                                        # AI 辅助开发配置
+│
+├── docs/                                            # 项目文档
+│
+├── demo-boot/                                       # 启动模块：Spring Boot 装配、配置、启动入口
+│   ├── pom.xml                                      #   模块 POM，声明自身依赖
+│   └── src/
+│       ├── main/
+│       │   ├── java/com/demo/boot/
+│       │   │   └── DemoBootApplication.java         #     Spring Boot 启动类，扫描所有模块
+│       │   └── resources/
+│       │       ├── application.yml                  #     通用配置（跨环境共享）
+│       │       ├── application-dev.yml              #     dev 环境配置（开发用）
+│       │       └── application-test.yml             #     test 环境配置（测试用）
+│       └── test/
+│           └── java/com/demo/boot/
+│               └── DemoBootApplicationTests.java    #     启动模块集成测试
+│
+├── demo-core/                                       # 全局共享基础设施（薄核心，不承载业务语义）
+│   ├── pom.xml                                      #   模块 POM
+│   └── src/
+│       ├── main/java/com/demo/core/
+│       │   └── web/                                 #   Web 层通用组件
+│       │       ├── R.java                           #     统一响应体 {code, msg, data}
+│       │       ├── PageReqDTO.java                  #     分页请求基类
+│       │       └── PageResult.java                  #     分页响应体
+│       └── test/java/com/demo/core/
+│           └── web/
+│               └── RTests.java                      #   R 响应体单元测试
+│
+├── demo-system/                                     # 系统底座模块：账号、权限、租户、审计
+│   └── pom.xml                                      #   模块 POM（业务代码待实现）
+│
+└── demo-mdm/                                        # 主数据模块：字典、组织等基础数据
+    └── pom.xml                                      #   模块 POM（业务代码待实现）
 ```
 
 ### 模块职责
