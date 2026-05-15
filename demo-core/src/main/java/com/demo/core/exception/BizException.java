@@ -2,14 +2,19 @@ package com.demo.core.exception;
 
 public class BizException extends RuntimeException {
 
-    private final int code;
+    private final ErrorCode errorCode;
 
-    public BizException(int code, String message) {
-        super(message);
-        this.code = code;
+    public BizException(ErrorCode errorCode) {
+        super(errorCode.message());
+        this.errorCode = errorCode;
     }
 
-    public int getCode() {
-        return code;
+    public BizException(ErrorCode errorCode, String msg) {
+        super(msg);
+        this.errorCode = errorCode;
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
     }
 }

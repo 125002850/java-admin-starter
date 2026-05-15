@@ -26,7 +26,7 @@ class ValidationIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.code").value(1000001))
                 .andExpect(jsonPath("$.msg").value("参数校验失败"));
     }
 
@@ -34,8 +34,16 @@ class ValidationIntegrationTests {
     void bizExceptionShouldReturnWrappedError() throws Exception {
         mockMvc.perform(post("/api/test/echo/fail"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(409))
+                .andExpect(jsonPath("$.code").value(9000001))
                 .andExpect(jsonPath("$.msg").value("业务失败"));
+    }
+
+    @Test
+    void unexpectedExceptionShouldReturnCommonInternalError() throws Exception {
+        mockMvc.perform(post("/api/test/echo/panic"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1000002))
+                .andExpect(jsonPath("$.msg").value("系统内部错误"));
     }
 
     @Test
@@ -43,7 +51,7 @@ class ValidationIntegrationTests {
         mockMvc.perform(post("/api/test/echo/method")
                         .param("content", ""))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.code").value(1000001))
                 .andExpect(jsonPath("$.msg").value("参数校验失败"));
     }
 
@@ -85,7 +93,7 @@ class ValidationIntegrationTests {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.code").value(1000001))
                 .andExpect(jsonPath("$.msg").value("参数校验失败"));
     }
 }

@@ -3,6 +3,7 @@ package com.demo.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.demo.core.exception.BizException;
 import com.demo.core.tenant.TenantContext;
+import com.demo.system.enums.AuthErrorCode;
 import com.demo.system.infra.entity.SysUserEntity;
 import com.demo.system.infra.mapper.SysUserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,11 +32,11 @@ public class AuthService {
                             .last("limit 2")
             );
             if (users.size() > 1) {
-                throw new BizException(500, "用户名重复，请联系管理员处理");
+                throw new BizException(AuthErrorCode.USERNAME_DUPLICATED);
             }
             SysUserEntity user = users.isEmpty() ? null : users.get(0);
             if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
-                throw new BizException(401, "用户名或密码错误");
+                throw new BizException(AuthErrorCode.USERNAME_OR_PASSWORD_INVALID);
             }
             return user;
         } finally {
