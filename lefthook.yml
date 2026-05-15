@@ -1,0 +1,5 @@
+pre-commit:
+  jobs:
+    - name: protect-versioned-migrations
+      runner: bash
+      run: scripts/check-migrations.sh
