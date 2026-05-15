@@ -91,11 +91,11 @@ class AuthFlowTests {
 
     @Test
     void login_should_honor_tenant_scope() throws Exception {
-        mockMvc.perform(post("/api/system/auth/login")
+                mockMvc.perform(post("/api/system/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content("{\"tenantId\":200,\"username\":\"admin\",\"password\":\"admin123\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.code").value(2001001))
                 .andExpect(jsonPath("$.msg").value("用户名或密码错误"));
     }
 
@@ -116,11 +116,11 @@ class AuthFlowTests {
     void login_should_fail_explicitly_when_duplicate_username_exists_in_same_tenant() throws Exception {
         insertUser(3L, 100L, "admin", "another-pass");
 
-        mockMvc.perform(post("/api/system/auth/login")
+                mockMvc.perform(post("/api/system/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content("{\"tenantId\":100,\"username\":\"admin\",\"password\":\"admin123\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.code").value(2001002))
                 .andExpect(jsonPath("$.msg").value("用户名重复，请联系管理员处理"));
     }
 

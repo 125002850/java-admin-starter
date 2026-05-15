@@ -2,6 +2,11 @@
 
 模块化单体架构的 Java 后端项目，基于 Spring Boot 3.x + MyBatis-Plus + MySQL 8。
 
+## 当前完成状态
+
+- boot/core/system/mdm 底座已完成
+- 首个业务模块待单独规划
+
 ## 项目结构
 
 ```
@@ -13,36 +18,44 @@ java-demo/
 ├── docs/                                            # 项目文档
 │
 ├── demo-boot/                                       # 启动模块：Spring Boot 装配、配置、启动入口
-│   ├── pom.xml                                      #   模块 POM，声明自身依赖
 │   └── src/
 │       ├── main/
 │       │   ├── java/com/demo/boot/
-│       │   │   └── DemoBootApplication.java         #     Spring Boot 启动类，扫描所有模块
+│       │   │   └── DemoBootApplication.java         #     启动类，扫描所有模块
 │       │   └── resources/
-│       │       ├── application.yml                  #     通用配置（跨环境共享）
-│       │       ├── application-dev.yml              #     dev 环境配置（开发用）
-│       │       └── application-test.yml             #     test 环境配置（测试用）
+│       │       ├── application.yml                  #     通用配置
+│       │       ├── application-dev.yml              #     dev 环境
+│       │       └── application-test.yml             #     test 环境
 │       └── test/
-│           └── java/com/demo/boot/
-│               └── DemoBootApplicationTests.java    #     启动模块集成测试
 │
 ├── demo-core/                                       # 全局共享基础设施（薄核心，不承载业务语义）
-│   ├── pom.xml                                      #   模块 POM
-│   └── src/
-│       ├── main/java/com/demo/core/
-│       │   └── web/                                 #   Web 层通用组件
-│       │       ├── R.java                           #     统一响应体 {code, msg, data}
-│       │       ├── PageReqDTO.java                  #     分页请求基类
-│       │       └── PageResult.java                  #     分页响应体
-│       └── test/java/com/demo/core/
-│           └── web/
-│               └── RTests.java                      #   R 响应体单元测试
+│   └── src/main/java/com/demo/core/
+│       ├── web/                                     #   R<T>、PageReqDTO、PageResult
+│       ├── exception/                               #   错误码、BizException、全局异常处理
+│       ├── validation/                              #   Bean Validation 集成
+│       ├── jackson/                                 #   Jackson 全局配置
+│       ├── trace/                                   #   TraceId 过滤器与 MDC
+│       ├── tenant/                                  #   TenantContext、非租户表忽略清单
+│       └── mybatis/                                 #   MyBatis-Plus 配置、自动填充
 │
-├── demo-system/                                     # 系统底座模块：账号、权限、租户、审计
-│   └── pom.xml                                      #   模块 POM（业务代码待实现）
+├── demo-system/                                     # 系统底座：账号、权限、租户、审计
+│   └── src/main/java/com/demo/system/
+│       ├── controller/                              #   登录接口 + DTO
+│       ├── app/                                     #   AuthAppService（事务边界）
+│       ├── service/                                 #   认证领域服务
+│       ├── infra/
+│       │   ├── entity/                              #   数据库实体
+│       │   └── mapper/                              #   MyBatis Mapper
+│       └── security/                                #   密码编码器配置
 │
 └── demo-mdm/                                        # 主数据模块：字典、组织等基础数据
-    └── pom.xml                                      #   模块 POM（业务代码待实现）
+    └── src/main/java/com/demo/mdm/
+        ├── controller/                              #   字典接口 + DTO
+        ├── app/                                     #   DictAppService（事务边界）
+        ├── service/                                 #   字典领域服务
+        └── infra/
+            ├── entity/                              #   数据库实体
+            └── mapper/                              #   MyBatis Mapper
 ```
 
 ### 模块职责
@@ -114,6 +127,14 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - 分页：`PageReqDTO` 和 `PageResult<T>`。
 - 全局异常统一转换为标准 `R<T>` 响应。
 - 日期格式：`yyyy-MM-dd HH:mm:ss` 和 `yyyy-MM-dd`。
+
+### 错误码规范
+
+- 成功响应固定为 `code = 200`、`msg = ok`。
+- 默认失败响应使用 `CommonErrorCode.FAILED(500, "操作失败")`。
+- 参数错误、未登录、无权限、资源不存在、限流使用公共 HTTP 语义码：`400 / 401 / 403 / 404 / 429`。
+- 模块私有业务码使用独立号段，例如 `demo-system` 当前使用 `2001xxx`。
+- `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
 
 ### 数据规范
 
