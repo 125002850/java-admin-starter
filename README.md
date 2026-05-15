@@ -167,6 +167,26 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 mvn flyway:migrate
 ```
 
+### 数据库迁移约束
+
+- 版本化迁移文件统一放在 `demo-boot/src/main/resources/db/migration/`，命名必须匹配 `V*__*.sql`，例如 `V2__add_user_table.sql`。
+- 新增版本化迁移不得复用已有版本号；例如仓库里已有 `V1__init_platform_tables.sql` 时，下一条必须新增为 `V2__*.sql` 或更高版本。
+- 当前仓库采用更严格策略：提交阶段只允许新增符合 `V*__*.sql` 规则的版本化迁移文件，禁止修改、删除、重命名已存在的 `V*.sql`。
+- 迁移脚本一旦进入历史，应通过新增下一版本脚本演进，例如 `V2__add_xxx.sql`，不要回改 `V1__*.sql`。
+- `sys_tenant_global` 这类平台级全局表必须保持非租户表语义；`sys_user` 这类业务表必须保留 `tenant_id`。
+
+### Lefthook 启用
+
+```bash
+# 本地安装 Lefthook CLI 后执行
+lefthook install
+
+# 可手动验证 pre-commit 规则
+lefthook run pre-commit
+```
+
+当前仓库的 `pre-commit` 会执行 [scripts/check-migrations.sh](/Users/youdingte/studys/java-demo/scripts/check-migrations.sh:1)，拦截对历史版本化 migration 的修改。
+
 ## 不提前做的事
 
 - 微服务拆分、MQ、分布式事务

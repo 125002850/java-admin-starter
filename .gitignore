@@ -1,27 +1,47 @@
 # Maven
 target/
+
+# Compiled
 *.class
+
+# Package Files
 *.jar
 *.war
+*.ear
 
-# IDE
+# Logs
+logs/
+*.log
+
+# Spring Boot
+**/application-local.yml
+*.pid
+*.pid.lock
+
+# Coverage
+coverage/
+jacoco.exec
+
+# IDE - IntelliJ
 .idea/
 *.iml
+out/
+
+# IDE - Eclipse
 .project
 .classpath
 .settings/
-.vscode/
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-logs/
-
-# Environment
+# Env
 .env
 .env.local
 .env.*.local
-application-local.yml
