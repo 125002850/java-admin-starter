@@ -14,6 +14,13 @@ public class R<T> {
         return result;
     }
 
+    public static <T> R<T> fail(int code, String msg) {
+        R<T> result = new R<>();
+        result.code = code;
+        result.msg = msg;
+        return result;
+    }
+
     public int getCode() {
         return code;
     }
