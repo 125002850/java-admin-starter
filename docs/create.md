@@ -201,7 +201,8 @@ com.demo.core
 错误码约定从第一天就固定：
 
 - 成功响应使用 `code = 200`。
-- 公共错误码放在 `demo-core.exception`，使用稳定码段，例如 `1000xxx`。
+- 默认失败响应使用 `CommonErrorCode.FAILED(500, "操作失败")`。
+- 公共错误码放在 `demo-core.exception`，使用稳定通用码，例如 `400 / 401 / 403 / 404 / 429 / 500`。
 - 业务模块错误码放在模块内 `enums`，例如认证 `2001xxx`、主数据 `3001xxx`。
 - 业务异常优先通过 `ErrorCode` + `BizException` 抛出，不在 service / app 中散落裸数字。
 - 未捕获系统异常统一映射到公共内部错误码，不向前端暴露堆栈语义。

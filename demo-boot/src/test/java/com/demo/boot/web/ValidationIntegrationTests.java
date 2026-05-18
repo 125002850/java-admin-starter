@@ -25,9 +25,9 @@ class ValidationIntegrationTests {
         mockMvc.perform(post("/api/test/echo/submit")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000001))
-                .andExpect(jsonPath("$.msg").value("参数校验失败"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("content不能为空"));
     }
 
     @Test
@@ -41,18 +41,18 @@ class ValidationIntegrationTests {
     @Test
     void unexpectedExceptionShouldReturnCommonInternalError() throws Exception {
         mockMvc.perform(post("/api/test/echo/panic"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000002))
-                .andExpect(jsonPath("$.msg").value("系统内部错误"));
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("操作失败"));
     }
 
     @Test
     void invalidMethodParameterShouldReturnWrappedError() throws Exception {
         mockMvc.perform(post("/api/test/echo/method")
                         .param("content", ""))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000001))
-                .andExpect(jsonPath("$.msg").value("参数校验失败"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("content不能为空"));
     }
 
     @Test
@@ -92,8 +92,8 @@ class ValidationIntegrationTests {
                                   "time": "2026-05-14T10:20:30"
                                 }
                                 """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000001))
-                .andExpect(jsonPath("$.msg").value("参数校验失败"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("参数错误"));
     }
 }

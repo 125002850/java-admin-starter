@@ -8,20 +8,20 @@ public enum AuthErrorCode implements ErrorCode {
     USERNAME_DUPLICATED(2001002, "用户名重复，请联系管理员处理");
 
     private final int code;
-    private final String message;
+    private final String msg;
 
-    AuthErrorCode(int code, String message) {
+    AuthErrorCode(int code, String msg) {
         this.code = code;
-        this.message = message;
+        this.msg = msg;
     }
 
     @Override
-    public int code() {
+    public int getCode() {
         return code;
     }
 
     @Override
-    public String message() {
-        return message;
+    public String getMsg() {
+        return msg;
     }
 }

@@ -67,21 +67,21 @@ class TestValidationController {
         BIZ_FAILURE(9000001, "业务失败");
 
         private final int code;
-        private final String message;
+        private final String msg;
 
-        TestErrorCode(int code, String message) {
+        TestErrorCode(int code, String msg) {
             this.code = code;
-            this.message = message;
+            this.msg = msg;
         }
 
         @Override
-        public int code() {
+        public int getCode() {
             return code;
         }
 
         @Override
-        public String message() {
-            return message;
+        public String getMsg() {
+            return msg;
         }
     }
 }

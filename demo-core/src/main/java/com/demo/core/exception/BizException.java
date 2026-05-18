@@ -5,7 +5,7 @@ public class BizException extends RuntimeException {
     private final ErrorCode errorCode;
 
     public BizException(ErrorCode errorCode) {
-        super(errorCode.message());
+        super(errorCode.getMsg());
         this.errorCode = errorCode;
     }
 
