@@ -7,11 +7,17 @@ import com.demo.core.mybatis.MybatisPlusConfig;
 import com.demo.core.tenant.TenantContext;
 import com.demo.core.tenant.TenantFilter;
 import com.demo.system.app.AuthAppService;
+import com.demo.system.app.TenantAppService;
+import com.demo.system.app.UserAppService;
 import com.demo.system.controller.AuthController;
+import com.demo.system.controller.TenantController;
+import com.demo.system.controller.UserController;
 import com.demo.system.infra.entity.SysUserEntity;
 import com.demo.system.infra.mapper.SysUserMapper;
 import com.demo.system.security.PasswordConfig;
 import com.demo.system.service.AuthService;
+import com.demo.system.service.TenantService;
+import com.demo.system.service.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -398,6 +404,12 @@ class UserManagementTests {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({
+            UserController.class,
+            UserAppService.class,
+            UserService.class,
+            TenantController.class,
+            TenantAppService.class,
+            TenantService.class,
             AuthController.class,
             AuthAppService.class,
             AuthService.class,

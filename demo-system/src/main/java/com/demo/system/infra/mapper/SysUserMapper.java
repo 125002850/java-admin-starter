@@ -14,7 +14,7 @@ public interface SysUserMapper extends BaseMapper<SysUserEntity> {
 
     @InterceptorIgnore(tenantLine = "true")
     @Select("""
-            select id, tenant_id, username, password, create_time, update_time, create_by, update_by, deleted
+            select id, tenant_id, username, password, status, display_name, mobile, email, create_time, update_time, create_by, update_by, deleted
             from sys_user
             where tenant_id = #{tenantId}
               and username = #{username}
