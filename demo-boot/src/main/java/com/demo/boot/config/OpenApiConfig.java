@@ -37,4 +37,22 @@ public class OpenApiConfig {
             .pathsToMatch("/api/mdm/dict/**")
             .build();
     }
+
+    @Bean
+    public GroupedOpenApi systemTenantApi() {
+        return GroupedOpenApi.builder()
+            .group("system-tenant")
+            .packagesToScan("com.demo.system.controller")
+            .pathsToMatch("/api/system/tenant/**")
+            .build();
+    }
+
+    @Bean
+    public GroupedOpenApi systemUserApi() {
+        return GroupedOpenApi.builder()
+            .group("system-user")
+            .packagesToScan("com.demo.system.controller")
+            .pathsToMatch("/api/system/user/**")
+            .build();
+    }
 }
