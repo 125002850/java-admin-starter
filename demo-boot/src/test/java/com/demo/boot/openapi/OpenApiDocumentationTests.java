@@ -35,7 +35,13 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("/api/mdm/dict/item/create")))
             .andExpect(content().string(containsString("/api/mdm/dict/global/types/list")))
             .andExpect(content().string(containsString("/api/mdm/dict/global/type/update")))
-            .andExpect(content().string(containsString("/api/mdm/dict/global/item/update")));
+            .andExpect(content().string(containsString("/api/mdm/dict/global/item/update")))
+            .andExpect(content().string(containsString("/api/system/tenant/create")))
+            .andExpect(content().string(containsString("/api/system/user/create")))
+            .andExpect(content().string(containsString("/api/system/user/status/update")))
+            .andExpect(content().string(containsString("/api/system/user/password/update")))
+            .andExpect(content().string(containsString("/api/system/user/profile/update")))
+            .andExpect(content().string(containsString("/api/system/user/delete")));
     }
 
     @Test
@@ -72,5 +78,21 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("\"keyword\"")))
             .andExpect(content().string(containsString("/api/mdm/dict/items/by-type")))
             .andExpect(content().string(not(containsString("/api/system/auth/login"))));
+    }
+
+    @Test
+    void groupedOpenApiJsonShouldIncludeSystemTenantGroup() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/system-tenant"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("/api/system/tenant/create")))
+            .andExpect(content().string(not(containsString("/api/system/user/create"))));
+    }
+
+    @Test
+    void groupedOpenApiJsonShouldIncludeSystemUserGroup() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/system-user"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("/api/system/user/create")))
+            .andExpect(content().string(not(containsString("/api/system/tenant/create"))));
     }
 }
