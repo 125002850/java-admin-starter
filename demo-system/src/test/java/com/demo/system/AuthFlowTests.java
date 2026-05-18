@@ -61,6 +61,10 @@ class AuthFlowTests {
                 + "tenant_id bigint not null,"
                 + "username varchar(64) not null,"
                 + "password varchar(255) not null,"
+                + "status tinyint not null default 1,"
+                + "display_name varchar(64) null,"
+                + "mobile varchar(32) null,"
+                + "email varchar(128) null,"
                 + "create_time timestamp not null default current_timestamp,"
                 + "update_time timestamp not null default current_timestamp,"
                 + "create_by bigint null,"
@@ -122,6 +126,19 @@ class AuthFlowTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(2001002))
                 .andExpect(jsonPath("$.msg").value("用户名重复，请联系管理员处理"));
+    }
+
+    @Test
+    void login_should_fail_when_user_is_disabled() throws Exception {
+        insertUser(3L, 100L, "disabled-user", "disabled123");
+        jdbcTemplate.update("update sys_user set status = 0 where id = ?", 3L);
+
+                mockMvc.perform(post("/api/system/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"tenantId\":100,\"username\":\"disabled-user\",\"password\":\"disabled123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(2001003))
+                .andExpect(jsonPath("$.msg").value("用户已被禁用"));
     }
 
     private void insertUser(Long id, Long tenantId, String username, String rawPassword) {

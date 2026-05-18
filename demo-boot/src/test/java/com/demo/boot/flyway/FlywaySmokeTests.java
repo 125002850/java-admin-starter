@@ -38,6 +38,7 @@ class FlywaySmokeTests {
         assertThat(hasSuccessfulMigration("2")).isTrue();
         assertThat(hasSuccessfulMigration("3")).isTrue();
         assertThat(hasSuccessfulMigration("4")).isTrue();
+        assertThat(hasSuccessfulMigration("5")).isTrue();
 
         assertThat(tableColumns("sys_tenant_global"))
             .containsAll(AUDIT_COLUMNS)
@@ -61,7 +62,11 @@ class FlywaySmokeTests {
 
         assertThat(tableColumns("sys_user"))
             .containsAll(AUDIT_COLUMNS)
-            .contains("tenant_id");
+            .contains("tenant_id")
+            .contains("status")
+            .contains("display_name")
+            .contains("mobile")
+            .contains("email");
     }
 
     @Test
@@ -88,6 +93,19 @@ class FlywaySmokeTests {
         assertThatThrownBy(() -> insertTenantDictItem(402L, 100L, "user_status_schema", "ENABLED", "重复启用"))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("failed to insert tenant dict item");
+    }
+
+    @Test
+    void flywayMigrationShouldApplyUniqueConstraintsForTenantAndUserTables() {
+        insertTenantGlobal(901L, "unique-tenant");
+        assertThatThrownBy(() -> insertTenantGlobal(902L, "unique-tenant"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("failed to insert tenant global");
+
+        insertSysUser(1001L, 100L, "user1", "{noop}pass");
+        assertThatThrownBy(() -> insertSysUser(1002L, 100L, "user1", "{noop}pass"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("failed to insert sys user");
     }
 
     @Test
