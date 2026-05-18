@@ -15,6 +15,10 @@ public final class R<T> {
         this.data = data;
     }
 
+    public static R<Void> ok() {
+        return new R<>(CommonErrorCode.SUCCESS.getCode(), CommonErrorCode.SUCCESS.getMsg(), null);
+    }
+
     public static <T> R<T> ok(T data) {
         return new R<>(CommonErrorCode.SUCCESS.getCode(), CommonErrorCode.SUCCESS.getMsg(), data);
     }

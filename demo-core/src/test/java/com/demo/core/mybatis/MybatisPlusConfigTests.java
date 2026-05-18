@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
+import com.demo.core.tenant.MissingTenantContextException;
 import com.demo.core.tenant.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ class MybatisPlusConfigTests {
         TenantLineHandler tenantLineHandler = config.tenantLineHandler();
 
         assertThatThrownBy(tenantLineHandler::getTenantId)
-            .isInstanceOf(IllegalStateException.class)
+            .isInstanceOf(MissingTenantContextException.class)
             .hasMessage("Missing tenant context for tenant-isolated query");
     }
 

@@ -19,7 +19,7 @@ class TenantContextTests {
     void should_require_tenant_context_explicitly() {
         TenantContext.clear();
         assertThatThrownBy(TenantContext::requireTenantId)
-            .isInstanceOf(IllegalStateException.class)
+            .isInstanceOf(MissingTenantContextException.class)
             .hasMessage("Missing tenant context for tenant-isolated query");
     }
 }

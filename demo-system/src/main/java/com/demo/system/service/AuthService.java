@@ -1,8 +1,6 @@
 package com.demo.system.service;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.demo.core.exception.BizException;
-import com.demo.core.tenant.TenantContext;
 import com.demo.system.enums.AuthErrorCode;
 import com.demo.system.infra.entity.SysUserEntity;
 import com.demo.system.infra.mapper.SysUserMapper;
@@ -23,24 +21,14 @@ public class AuthService {
     }
 
     public SysUserEntity authenticate(Long tenantId, String username, String password) {
-        TenantContext.setTenantId(tenantId);
-        try {
-            List<SysUserEntity> users = sysUserMapper.selectList(
-                    Wrappers.<SysUserEntity>lambdaQuery()
-                            .eq(SysUserEntity::getTenantId, tenantId)
-                            .eq(SysUserEntity::getUsername, username)
-                            .last("limit 2")
-            );
-            if (users.size() > 1) {
-                throw new BizException(AuthErrorCode.USERNAME_DUPLICATED);
-            }
-            SysUserEntity user = users.isEmpty() ? null : users.get(0);
-            if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
-                throw new BizException(AuthErrorCode.USERNAME_OR_PASSWORD_INVALID);
-            }
-            return user;
-        } finally {
-            TenantContext.clear();
+        List<SysUserEntity> users = sysUserMapper.selectForLogin(tenantId, username);
+        if (users.size() > 1) {
+            throw new BizException(AuthErrorCode.USERNAME_DUPLICATED);
         }
+        SysUserEntity user = users.isEmpty() ? null : users.get(0);
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+            throw new BizException(AuthErrorCode.USERNAME_OR_PASSWORD_INVALID);
+        }
+        return user;
     }
 }

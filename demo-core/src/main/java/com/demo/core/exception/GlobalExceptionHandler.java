@@ -1,5 +1,6 @@
 package com.demo.core.exception;
 
+import com.demo.core.tenant.MissingTenantContextException;
 import com.demo.core.web.R;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -62,6 +63,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .badRequest()
             .body(R.fail(CommonErrorCode.PARAM_ERROR));
+    }
+
+    @ExceptionHandler(MissingTenantContextException.class)
+    public ResponseEntity<R<Void>> handleMissingTenantContext(MissingTenantContextException ex) {
+        return ResponseEntity
+            .badRequest()
+            .body(R.fail(CommonErrorCode.PARAM_ERROR, "缺少X-Tenant-Id"));
     }
 
     @ExceptionHandler(Exception.class)

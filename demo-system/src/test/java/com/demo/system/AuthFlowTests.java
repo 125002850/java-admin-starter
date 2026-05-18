@@ -1,6 +1,8 @@
 package com.demo.system;
 
 import com.demo.core.exception.GlobalExceptionHandler;
+import com.demo.core.mybatis.CommonMetaObjectHandler;
+import com.demo.core.mybatis.MybatisPlusConfig;
 import com.demo.core.tenant.TenantContext;
 import com.demo.system.app.AuthAppService;
 import com.demo.system.controller.AuthController;
@@ -20,8 +22,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -61,8 +61,8 @@ class AuthFlowTests {
                 + "tenant_id bigint not null,"
                 + "username varchar(64) not null,"
                 + "password varchar(255) not null,"
-                + "create_time timestamp not null,"
-                + "update_time timestamp not null,"
+                + "create_time timestamp not null default current_timestamp,"
+                + "update_time timestamp not null default current_timestamp,"
                 + "create_by bigint null,"
                 + "update_by bigint null,"
                 + "deleted bigint not null default 0"
@@ -130,8 +130,6 @@ class AuthFlowTests {
         entity.setTenantId(tenantId);
         entity.setUsername(username);
         entity.setPassword(passwordEncoder.encode(rawPassword));
-        entity.setCreateTime(LocalDateTime.now());
-        entity.setUpdateTime(LocalDateTime.now());
         entity.setDeleted(0L);
         sysUserMapper.insert(entity);
     }
@@ -143,7 +141,9 @@ class AuthFlowTests {
             AuthAppService.class,
             AuthService.class,
             PasswordConfig.class,
-            GlobalExceptionHandler.class
+            GlobalExceptionHandler.class,
+            MybatisPlusConfig.class,
+            CommonMetaObjectHandler.class
     })
     static class TestApplication {
     }
