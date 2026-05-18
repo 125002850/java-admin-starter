@@ -2,6 +2,7 @@ package com.demo.system.app;
 
 import com.demo.system.controller.dto.UserRegisterReqDTO;
 import com.demo.system.controller.dto.UserRegisterRspDTO;
+import com.demo.system.controller.dto.UserStatusUpdateReqDTO;
 import com.demo.system.infra.entity.SysUserEntity;
 import com.demo.system.service.UserService;
 import org.springframework.stereotype.Service;
@@ -26,5 +27,10 @@ public class UserAppService {
                 reqDTO.getEmail()
         );
         return new UserRegisterRspDTO(entity.getId());
+    }
+
+    @Transactional
+    public void updateStatus(UserStatusUpdateReqDTO reqDTO) {
+        userService.updateStatus(reqDTO.getId(), reqDTO.getEnabled());
     }
 }

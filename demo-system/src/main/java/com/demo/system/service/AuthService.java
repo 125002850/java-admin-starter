@@ -2,6 +2,7 @@ package com.demo.system.service;
 
 import com.demo.core.exception.BizException;
 import com.demo.system.enums.AuthErrorCode;
+import com.demo.system.enums.UserStatusEnum;
 import com.demo.system.infra.entity.SysUserEntity;
 import com.demo.system.infra.mapper.SysUserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,7 +27,13 @@ public class AuthService {
             throw new BizException(AuthErrorCode.USERNAME_DUPLICATED);
         }
         SysUserEntity user = users.isEmpty() ? null : users.get(0);
-        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+        if (user == null) {
+            throw new BizException(AuthErrorCode.USERNAME_OR_PASSWORD_INVALID);
+        }
+        if (user.getStatus() != null && user.getStatus() == UserStatusEnum.DISABLED.getValue()) {
+            throw new BizException(AuthErrorCode.USER_DISABLED);
+        }
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BizException(AuthErrorCode.USERNAME_OR_PASSWORD_INVALID);
         }
         return user;
