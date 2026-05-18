@@ -188,6 +188,8 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 - `http://127.0.0.1:8080/doc.html`
 - `http://127.0.0.1:8080/v3/api-docs`
 - `http://127.0.0.1:8080/v3/api-docs/system-auth`
+- `http://127.0.0.1:8080/v3/api-docs/system-tenant`
+- `http://127.0.0.1:8080/v3/api-docs/system-user`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-dict`
 
 ## 数据库初始化
