@@ -1,5 +1,8 @@
 package com.demo.system.app;
 
+import com.demo.system.controller.dto.UserDeleteReqDTO;
+import com.demo.system.controller.dto.UserPasswordUpdateReqDTO;
+import com.demo.system.controller.dto.UserProfileUpdateReqDTO;
 import com.demo.system.controller.dto.UserRegisterReqDTO;
 import com.demo.system.controller.dto.UserRegisterRspDTO;
 import com.demo.system.controller.dto.UserStatusUpdateReqDTO;
@@ -32,5 +35,20 @@ public class UserAppService {
     @Transactional
     public void updateStatus(UserStatusUpdateReqDTO reqDTO) {
         userService.updateStatus(reqDTO.getId(), reqDTO.getEnabled());
+    }
+
+    @Transactional
+    public void updatePassword(UserPasswordUpdateReqDTO reqDTO) {
+        userService.updatePassword(reqDTO.getId(), reqDTO.getPassword());
+    }
+
+    @Transactional
+    public void updateProfile(UserProfileUpdateReqDTO reqDTO) {
+        userService.updateProfile(reqDTO.getId(), reqDTO.getDisplayName(), reqDTO.getMobile(), reqDTO.getEmail());
+    }
+
+    @Transactional
+    public void delete(UserDeleteReqDTO reqDTO) {
+        userService.delete(reqDTO.getId());
     }
 }

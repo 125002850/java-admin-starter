@@ -57,6 +57,31 @@ public class UserService {
         sysUserMapper.updateById(entity);
     }
 
+    public void updatePassword(Long id, String newPassword) {
+        Long tenantId = TenantContext.requireTenantId();
+        SysUserEntity entity = getByTenantAndId(tenantId, id);
+        entity.setPassword(passwordEncoder.encode(newPassword));
+        sysUserMapper.updateById(entity);
+    }
+
+    public void updateProfile(Long id, String displayName, String mobile, String email) {
+        Long tenantId = TenantContext.requireTenantId();
+        SysUserEntity entity = getByTenantAndId(tenantId, id);
+        entity.setDisplayName(displayName);
+        entity.setMobile(mobile);
+        entity.setEmail(email);
+        sysUserMapper.updateById(entity);
+    }
+
+    public void delete(Long id) {
+        Long tenantId = TenantContext.requireTenantId();
+        getByTenantAndId(tenantId, id);
+        SysUserEntity entity = new SysUserEntity();
+        entity.setId(id);
+        entity.setDeleted(1L);
+        sysUserMapper.updateById(entity);
+    }
+
     public SysUserEntity getByTenantAndId(Long tenantId, Long id) {
         SysUserEntity entity = sysUserMapper.selectOne(
                 Wrappers.<SysUserEntity>lambdaQuery()
