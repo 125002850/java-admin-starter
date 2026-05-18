@@ -18,20 +18,20 @@ public enum CommonErrorCode implements ErrorCode {
 
 
     private final int code;
-    private final String message;
+    private final String msg;
 
-    CommonErrorCode(int code, String message) {
+    CommonErrorCode(int code, String msg) {
         this.code = code;
-        this.message = message;
+        this.msg = msg;
     }
 
     @Override
-    public int code() {
+    public int getCode() {
         return code;
     }
 
     @Override
-    public String message() {
-        return message;
+    public String getMsg() {
+        return msg;
     }
 }

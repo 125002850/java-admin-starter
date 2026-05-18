@@ -1,24 +1,30 @@
 package com.demo.core.web;
 
-public class R<T> {
+import com.demo.core.exception.CommonErrorCode;
+import com.demo.core.exception.ErrorCode;
 
-    private int code;
-    private String msg;
-    private T data;
+public final class R<T> {
 
-    public static <T> R<T> ok(T data) {
-        R<T> result = new R<>();
-        result.code = 200;
-        result.msg = "ok";
-        result.data = data;
-        return result;
+    private final int code;
+    private final String msg;
+    private final T data;
+
+    private R(int code, String msg, T data) {
+        this.code = code;
+        this.msg = msg;
+        this.data = data;
     }
 
-    public static <T> R<T> fail(int code, String msg) {
-        R<T> result = new R<>();
-        result.code = code;
-        result.msg = msg;
-        return result;
+    public static <T> R<T> ok(T data) {
+        return new R<>(CommonErrorCode.SUCCESS.getCode(), CommonErrorCode.SUCCESS.getMsg(), data);
+    }
+
+    public static <T> R<T> fail(ErrorCode errorCode) {
+        return new R<>(errorCode.getCode(), errorCode.getMsg(), null);
+    }
+
+    public static <T> R<T> fail(ErrorCode errorCode, String msg) {
+        return new R<>(errorCode.getCode(), msg, null);
     }
 
     public int getCode() {

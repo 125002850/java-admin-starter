@@ -2,7 +2,7 @@ package com.demo.core.exception;
 
 public interface ErrorCode {
 
-    int code();
+    int getCode();
 
-    String message();
+    String getMsg();
 }
