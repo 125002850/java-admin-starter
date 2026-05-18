@@ -3,7 +3,6 @@ package com.demo.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.demo.core.exception.BizException;
 import com.demo.core.tenant.TenantContext;
-import com.demo.system.enums.TenantErrorCode;
 import com.demo.system.enums.UserErrorCode;
 import com.demo.system.enums.UserStatusEnum;
 import com.demo.system.infra.entity.SysUserEntity;
@@ -28,9 +27,7 @@ public class UserService {
     public SysUserEntity create(String username, String password, String displayName, String mobile, String email) {
         Long tenantId = TenantContext.requireTenantId();
 
-        if (!tenantService.exists(tenantId)) {
-            throw new BizException(TenantErrorCode.TENANT_NOT_FOUND);
-        }
+        tenantService.ensureTenantExistsAndLock(tenantId);
 
         SysUserEntity entity = new SysUserEntity();
         entity.setTenantId(tenantId);

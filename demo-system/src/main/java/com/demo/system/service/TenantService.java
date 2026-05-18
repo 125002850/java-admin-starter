@@ -43,7 +43,7 @@ public class TenantService {
     }
 
     public void delete(Long id) {
-        getById(id);
+        lockById(id);
         long userCount = sysUserMapper.countByTenantId(id);
         if (userCount > 0) {
             throw new BizException(TenantErrorCode.TENANT_HAS_USERS);
@@ -62,11 +62,33 @@ public class TenantService {
         return count != null && count > 0;
     }
 
+    public void ensureTenantExistsAndLock(Long tenantId) {
+        SysTenantGlobalEntity entity = sysTenantGlobalMapper.selectOne(
+                Wrappers.<SysTenantGlobalEntity>lambdaQuery()
+                        .eq(SysTenantGlobalEntity::getId, tenantId)
+                        .last("for update")
+        );
+        if (entity == null) {
+            throw new BizException(TenantErrorCode.TENANT_NOT_FOUND);
+        }
+    }
+
     private SysTenantGlobalEntity getById(Long id) {
         SysTenantGlobalEntity entity = sysTenantGlobalMapper.selectById(id);
         if (entity == null) {
             throw new BizException(TenantErrorCode.TENANT_NOT_FOUND);
         }
         return entity;
+    }
+
+    private void lockById(Long id) {
+        SysTenantGlobalEntity entity = sysTenantGlobalMapper.selectOne(
+                Wrappers.<SysTenantGlobalEntity>lambdaQuery()
+                        .eq(SysTenantGlobalEntity::getId, id)
+                        .last("for update")
+        );
+        if (entity == null) {
+            throw new BizException(TenantErrorCode.TENANT_NOT_FOUND);
+        }
     }
 }
