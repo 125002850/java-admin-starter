@@ -124,6 +124,8 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - 所有接口统一使用 `POST`。
 - URL 格式：`/api/{模块名}/{资源名}/{动作}`。
 - 请求对象：`XxxReqDTO`，响应对象：`XxxRspDTO`，禁止复用数据库实体。
+- Controller 必须补齐 OpenAPI 文档注解：类上使用 `@Tag`，方法上使用 `@Operation`，保证接口分组、摘要、说明完整。
+- `ReqDTO` / `RspDTO` 必须补齐 `@Schema` 注解，为关键字段提供含义说明和示例值。
 - 分页：`PageReqDTO` 和 `PageResult<T>`。
 - 全局异常统一转换为标准 `R<T>` 响应。
 - 日期格式：`yyyy-MM-dd HH:mm:ss` 和 `yyyy-MM-dd`。
@@ -179,6 +181,13 @@ Controller → AppService → Domain/Service → Infra/Mapper
 cd demo-boot
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+启动后可访问接口文档：
+
+- `http://127.0.0.1:8080/doc.html`
+- `http://127.0.0.1:8080/v3/api-docs`
+- `http://127.0.0.1:8080/v3/api-docs/system-auth`
+- `http://127.0.0.1:8080/v3/api-docs/mdm-dict`
 
 ## 数据库初始化
 

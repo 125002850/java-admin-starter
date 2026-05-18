@@ -566,10 +566,10 @@ git commit -m "test: add api response body contract guards"
 
 **Files:**
 - Modify: `README.md`
-- Modify: `docs/create.md`
+- Historical reference: `docs/create.md`（已废弃并删除）
 - Modify: `AGENTS.md`
 
-- [ ] **Step 1: 统一 README / docs/create / AGENTS 口径**
+- [ ] **Step 1: 统一 README / AGENTS 口径，并标注历史文档状态**
 
 `README.md` 的“错误码规范”改成与 spec 一致：
 
@@ -583,12 +583,7 @@ git commit -m "test: add api response body contract guards"
 - `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
 ```
 
-`docs/create.md` 对应章节移除 `1000xxx` 示例，改成：
-
-```md
-- 公共错误码使用稳定通用码，例如 `200 / 400 / 401 / 403 / 404 / 429 / 500`。
-- 业务模块错误码放在模块内 `enums`，例如认证 `2001xxx`、主数据 `3001xxx`。
-```
+原计划要求同步更新 `docs/create.md` 的错误码示例；该文档现已废弃并删除，现行规范以 `README.md` 和 `AGENTS.md` 为准。
 
 `AGENTS.md` 增加一条仓库约束：
 
@@ -610,6 +605,6 @@ Expected: PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-git add README.md docs/create.md AGENTS.md
+git add README.md AGENTS.md
 git commit -m "docs: sync api response body rules"
 ```
