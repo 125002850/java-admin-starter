@@ -50,6 +50,13 @@ public class UserService {
         return entity;
     }
 
+    public void updateStatus(Long id, boolean enabled) {
+        Long tenantId = TenantContext.requireTenantId();
+        SysUserEntity entity = getByTenantAndId(tenantId, id);
+        entity.setStatus(UserStatusEnum.fromEnabled(enabled).getValue());
+        sysUserMapper.updateById(entity);
+    }
+
     public SysUserEntity getByTenantAndId(Long tenantId, Long id) {
         SysUserEntity entity = sysUserMapper.selectOne(
                 Wrappers.<SysUserEntity>lambdaQuery()
