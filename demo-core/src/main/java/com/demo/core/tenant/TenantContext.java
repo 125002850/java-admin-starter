@@ -18,7 +18,7 @@ public final class TenantContext {
     public static Long requireTenantId() {
         Long tenantId = TENANT_HOLDER.get();
         if (tenantId == null) {
-            throw new IllegalStateException("Missing tenant context for tenant-isolated query");
+            throw new MissingTenantContextException();
         }
         return tenantId;
     }

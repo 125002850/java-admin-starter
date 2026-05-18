@@ -9,6 +9,15 @@ import com.demo.core.exception.CommonErrorCode;
 class RTests {
 
     @Test
+    void ok_without_data_should_wrap_success_and_null_payload() {
+        R<Void> result = R.ok();
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getMsg()).isEqualTo("ok");
+        assertThat(result.getData()).isNull();
+    }
+
+    @Test
     void ok_should_wrap_data_with_code_200() {
         R<String> result = R.ok("value");
 

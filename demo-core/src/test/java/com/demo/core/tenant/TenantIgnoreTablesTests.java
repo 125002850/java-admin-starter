@@ -8,10 +8,11 @@ class TenantIgnoreTablesTests {
 
     @Test
     void should_mark_platform_tables_as_ignored() {
-        assertThat(TenantIgnoreTables.contains("sys_tenant")).isTrue();
         assertThat(TenantIgnoreTables.contains("sys_tenant_global")).isTrue();
         assertThat(TenantIgnoreTables.contains("sys_dict_type_global")).isTrue();
+        assertThat(TenantIgnoreTables.contains("sys_dict_item_global")).isTrue();
         assertThat(TenantIgnoreTables.contains("SYS_TENANT_GLOBAL")).isTrue();
+        assertThat(TenantIgnoreTables.contains("sys_tenant")).isFalse();
         assertThat(TenantIgnoreTables.contains("sys_user")).isFalse();
         assertThat(TenantIgnoreTables.contains(" ")).isFalse();
     }

@@ -141,11 +141,12 @@ Controller → AppService → Domain/Service → Infra/Mapper
 ### 数据规范
 
 - 所有业务表必须包含：`create_time`、`update_time`、`create_by`、`update_by`、`deleted`。
-- `create_time` / `update_time` 由数据库自动维护。
+- `create_time` / `update_time` 禁止在业务 `service` 中手工赋值；建表时应提供 `default current_timestamp`，并由 MyBatis-Plus `MetaObjectHandler` 统一兜底填充。
 - `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充。
 - 逻辑删除字段统一为 `deleted`。
 - 所有业务数据表必须包含 `tenant_id`，多租户隔离通过 `TenantLineInnerInterceptor` 统一实现。
 - 平台级全局表如不参与租户隔离，必须显式标注为"非租户表"并加入 `TenantLineHandler` 忽略清单，禁止只靠人工约定绕过。
+- 当前仓库在完整登录态落地前，`X-Tenant-Id` 仅作为兼容输入来源；租户归属应统一经 `TenantResolver` 收口，后续接入认证后必须改为由认证上下文注入，禁止业务层自行信任客户端透传租户标识。
 
 ### 对象模型
 
@@ -203,6 +204,9 @@ mvn flyway:migrate
 - 新增版本化迁移不得复用已有版本号；例如仓库里已有 `V1__init_platform_tables.sql` 时，下一条必须新增为 `V2__*.sql` 或更高版本。
 - 当前仓库采用更严格策略：提交阶段只允许新增符合 `V*__*.sql` 规则的版本化迁移文件，禁止修改、删除、重命名已存在的 `V*.sql`。
 - 迁移脚本一旦进入历史，应通过新增下一版本脚本演进，例如 `V2__add_xxx.sql`，不要回改 `V1__*.sql`。
+- Flyway migration 的 SQL 方言必须以真实目标库 **MySQL 8** 为准，不能只以 H2 可执行为准；H2 通过不代表 MySQL 8 兼容。
+- 涉及列默认值、时间字段、`alter table` 之类 DDL 时，必须优先使用 MySQL 8 语法。例如修改默认值应写成 `alter table ... modify column ... default ...`，不要写 H2 可过但 MySQL 8 会失败的 `alter column ... set default ...`。
+- 一旦 migration 在本地或测试库执行失败，Flyway 会在 `flyway_schema_history` 留下 `success = false` 记录，后续启动会被 `validate` 阶段直接拦截；修复 SQL 后需要先 `repair` 或清理失败记录，再重新执行迁移。
 - `sys_tenant_global` 这类平台级全局表必须保持非租户表语义；`sys_user` 这类业务表必须保留 `tenant_id`。
 
 ### Lefthook 启用
@@ -235,6 +239,7 @@ lefthook run pre-commit
 - `mvn compile`
 
 如果改动涉及数据库迁移，需要验证 Flyway 脚本可执行。
+至少保证一套真实 MySQL 8 环境验证通过，不能只跑 H2 测试后就提交。
 
 ## 禁止行为
 
