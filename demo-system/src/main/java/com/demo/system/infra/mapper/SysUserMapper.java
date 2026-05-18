@@ -22,4 +22,13 @@ public interface SysUserMapper extends BaseMapper<SysUserEntity> {
             limit 2
             """)
     List<SysUserEntity> selectForLogin(@Param("tenantId") Long tenantId, @Param("username") String username);
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("""
+            select count(*)
+            from sys_user
+            where tenant_id = #{tenantId}
+              and deleted = 0
+            """)
+    long countByTenantId(@Param("tenantId") Long tenantId);
 }
