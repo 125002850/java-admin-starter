@@ -2,7 +2,7 @@
 
 > **For Claude:** Use `${SUPERPOWERS_SKILLS_ROOT}/skills/collaboration/executing-plans/SKILL.md` to implement this plan task-by-task.
 
-**Goal:** 基于 `docs/create.md` 搭建一个可启动、可测试、可迁移数据库、具备多租户基础设施的 Java 模块化单体底座，完成 `demo-boot`、`demo-core`、`demo-system`、`demo-mdm` 四个模块的最小可用实现。
+**Goal:** 基于当时的建模规范文档（原 `docs/create.md`，现已废弃）搭建一个可启动、可测试、可迁移数据库、具备多租户基础设施的 Java 模块化单体底座，完成 `demo-boot`、`demo-core`、`demo-system`、`demo-mdm` 四个模块的最小可用实现。
 
 **Architecture:** 工程采用 Maven 多模块单体架构，业务链路固定为 `Controller -> AppService -> Domain/Service -> Infra/Mapper`。`demo-core` 仅承载跨模块稳定复用的基础设施，包括统一响应、异常、校验、TraceId、日志、租户、MyBatis-Plus、密码编码器和测试支撑；业务能力放在 `demo-system` 和 `demo-mdm` 中。默认所有业务数据表必须包含 `tenant_id`，平台级全局表必须显式标记为非租户表，并纳入 `TenantLineHandler` 忽略清单。
 
@@ -831,7 +831,7 @@ git commit -m "feat: add minimal mdm dictionary module"
 
 **Files:**
 - Modify: `README.md`
-- Modify: `docs/create.md`
+- Historical reference: `docs/create.md`（已废弃并删除）
 - Create: `docs/plans/2026-05-14-first-business-module-TODO.md`
 
 **Step 1: 写最终验证清单文件**
@@ -875,12 +875,12 @@ Expected: PASS
 - 首个业务模块待单独规划
 ```
 
-在 `docs/create.md` 增加一句执行状态说明，例如“基础底座已实现完成，首个业务模块待确认名称后进入下一份计划”。
+原计划要求在 `docs/create.md` 增加一句执行状态说明。该文档现已废弃并删除，当前项目状态以 `README.md` 为准。
 
 **Step 5: Commit**
 
 ```bash
-git add README.md docs/create.md docs/plans/2026-05-14-first-business-module-TODO.md
+git add README.md docs/plans/2026-05-14-first-business-module-TODO.md
 git commit -m "docs: record bootstrap completion and next planning gate"
 ```
 

@@ -14,6 +14,7 @@
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <flyway.version>10.15.0</flyway.version>
         <knife4j.version>4.5.0</knife4j.version>
+        <swagger.annotations.version>2.2.19</swagger.annotations.version>
     </properties>
 
     <modules>
