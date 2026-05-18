@@ -3,9 +3,12 @@ package com.demo.system;
 import com.demo.core.exception.GlobalExceptionHandler;
 import com.demo.core.mybatis.CommonMetaObjectHandler;
 import com.demo.core.mybatis.MybatisPlusConfig;
+import com.demo.system.app.TenantAppService;
+import com.demo.system.controller.TenantController;
 import com.demo.system.infra.entity.SysUserEntity;
 import com.demo.system.infra.mapper.SysUserMapper;
 import com.demo.system.security.PasswordConfig;
+import com.demo.system.service.TenantService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -206,6 +209,9 @@ class TenantManagementTests {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({
+            TenantController.class,
+            TenantAppService.class,
+            TenantService.class,
             CommonMetaObjectHandler.class,
             MybatisPlusConfig.class,
             PasswordConfig.class,
