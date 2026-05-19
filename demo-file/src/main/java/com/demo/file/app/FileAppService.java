@@ -7,10 +7,10 @@ import com.demo.file.controller.dto.FetchTempUrlReqDTO;
 import com.demo.file.controller.dto.FetchTempUrlRspDTO;
 import com.demo.file.controller.dto.StoredFileRspDTO;
 import com.demo.file.controller.dto.UploadFileReqDTO;
+import com.demo.file.service.DirectUploadCredential;
 import com.demo.file.service.FileService;
 import com.demo.file.service.StoredFile;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -42,20 +42,16 @@ public class FileAppService {
     }
 
     public FetchDirectUploadCredentialRspDTO fetchDirectUploadCredential(FetchDirectUploadCredentialReqDTO reqDTO) {
-        String objectKey = resolveObjectKey(reqDTO.getObjectKey());
-        return new FetchDirectUploadCredentialRspDTO(
-                "stub",
-                "stub-credential",
-                objectKey,
-                "/local-files/" + objectKey,
-                "http://localhost/upload"
+        DirectUploadCredential directUploadCredential = fileService.fetchDirectUploadCredential(
+                reqDTO.getBizPath(),
+                reqDTO.getObjectKey()
         );
-    }
-
-    private String resolveObjectKey(String objectKey) {
-        if (StringUtils.hasText(objectKey)) {
-            return objectKey;
-        }
-        return "task-1/placeholder-object";
+        return new FetchDirectUploadCredentialRspDTO(
+                directUploadCredential.getProvider(),
+                directUploadCredential.getCredential(),
+                directUploadCredential.getObjectKey(),
+                directUploadCredential.getOriginUrl(),
+                directUploadCredential.getUploadHost()
+        );
     }
 }

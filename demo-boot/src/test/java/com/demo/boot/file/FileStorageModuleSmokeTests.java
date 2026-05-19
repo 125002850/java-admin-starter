@@ -227,6 +227,16 @@ class FileStorageModuleSmokeTests {
                 .andExpect(jsonPath("$.msg").value("业务路径格式非法"));
     }
 
+    @Test
+    void fetchDirectUploadCredential_should_reject_when_local_provider_does_not_support_it() throws Exception {
+        mockMvc.perform(post("/api/file/storage/direct-upload/credential/fetch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bizPath\":\"avatar/user\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(3002008))
+                .andExpect(jsonPath("$.msg").value("当前存储类型不支持直传凭证"));
+    }
+
     private static Path createStorageRoot() {
         try {
             return Files.createTempDirectory("java-demo-file-smoke-tests");
