@@ -3,6 +3,7 @@ package com.demo.file.service;
 import com.demo.core.exception.BizException;
 import com.demo.file.config.FileStorageProperties;
 import com.demo.file.enums.FileErrorCode;
+import com.demo.file.infra.provider.DirectUploadCapable;
 import com.demo.file.infra.provider.FileStorageProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -67,6 +68,17 @@ public class FileService {
         } catch (Exception ex) {
             throw new BizException(FileErrorCode.TEMP_URL_GENERATE_FAILED);
         }
+    }
+
+    public DirectUploadCredential fetchDirectUploadCredential(String bizPath, String objectKey) {
+        if (!(fileStorageProvider instanceof DirectUploadCapable directUploadCapable)) {
+            throw new BizException(FileErrorCode.DIRECT_UPLOAD_NOT_SUPPORTED);
+        }
+        String normalizedBizPath = normalizeBizPath(bizPath);
+        String resolvedObjectKey = StringUtils.hasText(objectKey)
+                ? normalizeObjectKey(objectKey)
+                : generateObjectKey(normalizedBizPath, null);
+        return directUploadCapable.fetchDirectUploadCredential(resolvedObjectKey);
     }
 
     private String generateObjectKey(String bizPath, String originalFilename) {
