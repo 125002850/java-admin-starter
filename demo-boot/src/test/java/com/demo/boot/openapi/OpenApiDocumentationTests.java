@@ -8,6 +8,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -57,5 +58,29 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("\"pageNo\"")))
             .andExpect(content().string(containsString("\"pageSize\"")))
             .andExpect(content().string(containsString("\"keyword\"")));
+    }
+
+    @Test
+    void deletedSystemGroupsShouldNotBeAccessible() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/system-auth"))
+                .andExpect(status().is5xxServerError());
+        mockMvc.perform(get("/v3/api-docs/system-tenant"))
+                .andExpect(status().is5xxServerError());
+        mockMvc.perform(get("/v3/api-docs/system-user"))
+                .andExpect(status().is5xxServerError());
+    }
+
+    @Test
+    void openApiJsonShouldNotExposeNonGlobalDictPaths() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("/api/mdm/dict/types/list"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/type/create"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/type/update"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/type/delete"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/items/by-type"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/item/create"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/item/update"))))
+                .andExpect(content().string(not(containsString("/api/mdm/dict/item/delete"))));
     }
 }
