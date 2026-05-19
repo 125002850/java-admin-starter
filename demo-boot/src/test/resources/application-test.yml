@@ -6,3 +6,12 @@ spring:
     password:
   flyway:
     enabled: true
+
+demo:
+  file:
+    storage:
+      type: local
+      zone-id: Asia/Shanghai
+      local:
+        root-dir: ${java.io.tmpdir}/java-demo/test-uploads
+        base-url: /local-files

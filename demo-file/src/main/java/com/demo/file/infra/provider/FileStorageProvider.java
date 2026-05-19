@@ -1,0 +1,16 @@
+package com.demo.file.infra.provider;
+
+import com.demo.file.service.StoredFile;
+
+import java.io.InputStream;
+
+public interface FileStorageProvider {
+
+    StoredFile upload(InputStream inputStream, String objectKey, String contentType, long size, String fileName);
+
+    void delete(String objectKey);
+
+    String buildOriginUrl(String objectKey);
+
+    String buildTempUrl(String objectKey);
+}
