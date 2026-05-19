@@ -21,38 +21,11 @@ public class OpenApiConfig {
     }
 
     @Bean
-    public GroupedOpenApi systemAuthApi() {
-        return GroupedOpenApi.builder()
-            .group("system-auth")
-            .packagesToScan("com.demo.system.controller")
-            .pathsToMatch("/api/system/auth/**")
-            .build();
-    }
-
-    @Bean
     public GroupedOpenApi mdmDictApi() {
         return GroupedOpenApi.builder()
             .group("mdm-dict")
             .packagesToScan("com.demo.mdm.controller")
             .pathsToMatch("/api/mdm/dict/**")
-            .build();
-    }
-
-    @Bean
-    public GroupedOpenApi systemTenantApi() {
-        return GroupedOpenApi.builder()
-            .group("system-tenant")
-            .packagesToScan("com.demo.system.controller")
-            .pathsToMatch("/api/system/tenant/**")
-            .build();
-    }
-
-    @Bean
-    public GroupedOpenApi systemUserApi() {
-        return GroupedOpenApi.builder()
-            .group("system-user")
-            .packagesToScan("com.demo.system.controller")
-            .pathsToMatch("/api/system/user/**")
             .build();
     }
 }

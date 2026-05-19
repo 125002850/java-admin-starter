@@ -4,7 +4,7 @@
 
 ## 当前完成状态
 
-- boot/core/system/mdm 底座已完成
+- boot/core/mdm 底座已完成（system 模块已移除，鉴权与租户由网关 SSO 承接）
 - 首个业务模块待单独规划
 
 ## 项目结构
@@ -35,22 +35,12 @@ java-demo/
 │       ├── validation/                              #   Bean Validation 集成
 │       ├── jackson/                                 #   Jackson 全局配置
 │       ├── trace/                                   #   TraceId 过滤器与 MDC
-│       ├── tenant/                                  #   TenantContext、非租户表忽略清单
-│       └── mybatis/                                 #   MyBatis-Plus 配置、自动填充
+│       ├── operator/                                #   网关操作人上下文与过滤器
+│       └── mybatis/                                 #   MyBatis-Plus 配置、审计字段自动填充
 │
-├── demo-system/                                     # 系统底座：账号、权限、租户、审计
-│   └── src/main/java/com/demo/system/
-│       ├── controller/                              #   登录接口 + DTO
-│       ├── app/                                     #   AuthAppService（事务边界）
-│       ├── service/                                 #   认证领域服务
-│       ├── infra/
-│       │   ├── entity/                              #   数据库实体
-│       │   └── mapper/                              #   MyBatis Mapper
-│       └── security/                                #   密码编码器配置
-│
-└── demo-mdm/                                        # 主数据模块：字典、组织等基础数据
+└── demo-mdm/                                        # 主数据模块：全局字典
     └── src/main/java/com/demo/mdm/
-        ├── controller/                              #   字典接口 + DTO
+        ├── controller/                              #   全局字典接口 + DTO
         ├── app/                                     #   DictAppService（事务边界）
         ├── service/                                 #   字典领域服务
         └── infra/
@@ -63,9 +53,8 @@ java-demo/
 | 模块 | 职责 | 约束 |
 |------|------|------|
 | `demo-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
-| `demo-core` | `R<T>`、异常处理、分页、租户/用户上下文、MyBatis-Plus 配置、日志等 | 只放全局通用基础设施，不放业务语义 |
-| `demo-system` | 租户、用户、角色、权限、登录鉴权 | 先做最小闭环 |
-| `demo-mdm` | 字典、组织等主数据 | 只建当前业务真实需要的主数据 |
+| `demo-core` | `R<T>`、异常处理、分页、网关操作人上下文、MyBatis-Plus 配置、日志等 | 只放全局通用基础设施，不放业务语义 |
+| `demo-mdm` | 全局字典主数据 | 只保留全局字典，不区分租户 |
 | `demo-{biz}` | 具体业务 | 有需求时创建，严格按分层链路落地 |
 
 ### 业务模块内部目录
@@ -95,7 +84,7 @@ com.demo.{module}
 | JSON | Jackson（Spring Boot 默认） | — |
 | 连接池 | HikariCP（Spring Boot 默认） | — |
 | 测试 | JUnit 5 + Spring Boot Test | — |
-| 密码哈希 | BCrypt / Argon2 | 禁止明文或可逆存储 |
+| 鉴权 | 网关 SSO 透传 `X-User-Id` | 本仓库不做登录/Token 校验 |
 
 所有依赖版本统一锁定，禁止使用 `LATEST`、`RELEASE` 或动态范围。
 
@@ -142,11 +131,9 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 - 所有业务表必须包含：`create_time`、`update_time`、`create_by`、`update_by`、`deleted`。
 - `create_time` / `update_time` 禁止在业务 `service` 中手工赋值；建表时应提供 `default current_timestamp`，并由 MyBatis-Plus `MetaObjectHandler` 统一兜底填充。
-- `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充。
+- `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充，优先从网关操作人上下文（`OperatorContext`）读取 `X-User-Id`，缺失时回退 `0L`。
 - 逻辑删除字段统一为 `deleted`。
-- 所有业务数据表必须包含 `tenant_id`，多租户隔离通过 `TenantLineInnerInterceptor` 统一实现。
-- 平台级全局表如不参与租户隔离，必须显式标注为"非租户表"并加入 `TenantLineHandler` 忽略清单，禁止只靠人工约定绕过。
-- 当前仓库在完整登录态落地前，`X-Tenant-Id` 仅作为兼容输入来源；租户归属应统一经 `TenantResolver` 收口，后续接入认证后必须改为由认证上下文注入，禁止业务层自行信任客户端透传租户标识。
+- 本仓库不再要求业务表包含 `tenant_id`，不再校验 `X-Tenant-Id` 请求头。多租户隔离由网关 SSO 和基础设施层承接。
 
 ### 对象模型
 
@@ -187,9 +174,6 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 - `http://127.0.0.1:8080/doc.html`
 - `http://127.0.0.1:8080/v3/api-docs`
-- `http://127.0.0.1:8080/v3/api-docs/system-auth`
-- `http://127.0.0.1:8080/v3/api-docs/system-tenant`
-- `http://127.0.0.1:8080/v3/api-docs/system-user`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-dict`
 
 ## 数据库初始化
@@ -210,7 +194,7 @@ mvn flyway:migrate
 - 涉及列默认值、时间字段、`alter table` 之类 DDL 时，必须优先使用 MySQL 8 语法。例如修改默认值应写成 `alter table ... modify column ... default ...`，不要写 H2 可过但 MySQL 8 会失败的 `alter column ... set default ...`。
 - 一旦 migration 在本地或测试库执行失败，Flyway 会在 `flyway_schema_history` 留下 `success = false` 记录，后续启动会被 `validate` 阶段直接拦截；修复 SQL 后需要先 `repair` 或清理失败记录，再重新执行迁移。
 - 对逻辑删除表新增唯一约束时，必须先明确约束作用范围；如果唯一索引列中不包含 `deleted`，那它约束的是整张表，包含已逻辑删除行，迁移前查重也必须按同样语义检查，不能只筛 `deleted = 0`。
-- `sys_tenant_global` 这类平台级全局表必须保持非租户表语义；`sys_user` 这类业务表必须保留 `tenant_id`。
+- 本仓库不再使用租户模型；平台级表由网关 SSO 和基础设施层管理。
 
 ### Lefthook 启用
 
