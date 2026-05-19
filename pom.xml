@@ -20,7 +20,6 @@
     <modules>
         <module>demo-boot</module>
         <module>demo-core</module>
-        <module>demo-system</module>
         <module>demo-mdm</module>
     </modules>
 </project>

@@ -8,7 +8,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,20 +27,13 @@ class OpenApiDocumentationTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.openapi").exists())
             .andExpect(jsonPath("$.info.title").value("java-demo API 文档"))
-            .andExpect(content().string(containsString("/api/system/auth/login")))
             .andExpect(content().string(containsString("/api/mdm/dict/items/by-type")))
             .andExpect(content().string(containsString("/api/mdm/dict/types/list")))
             .andExpect(content().string(containsString("/api/mdm/dict/type/create")))
             .andExpect(content().string(containsString("/api/mdm/dict/item/create")))
             .andExpect(content().string(containsString("/api/mdm/dict/global/types/list")))
             .andExpect(content().string(containsString("/api/mdm/dict/global/type/update")))
-            .andExpect(content().string(containsString("/api/mdm/dict/global/item/update")))
-            .andExpect(content().string(containsString("/api/system/tenant/create")))
-            .andExpect(content().string(containsString("/api/system/user/create")))
-            .andExpect(content().string(containsString("/api/system/user/status/update")))
-            .andExpect(content().string(containsString("/api/system/user/password/update")))
-            .andExpect(content().string(containsString("/api/system/user/profile/update")))
-            .andExpect(content().string(containsString("/api/system/user/delete")));
+            .andExpect(content().string(containsString("/api/mdm/dict/global/item/update")));
     }
 
     @Test
@@ -52,13 +44,6 @@ class OpenApiDocumentationTests {
 
     @Test
     void groupedOpenApiJsonShouldSplitEndpointsByModule() throws Exception {
-        mockMvc.perform(get("/v3/api-docs/system-auth"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.tags[0].name").value("系统认证"))
-            .andExpect(jsonPath("$.paths['/api/system/auth/login'].post.summary").value("租户用户登录"))
-            .andExpect(content().string(containsString("/api/system/auth/login")))
-            .andExpect(content().string(not(containsString("/api/mdm/dict/items/by-type"))));
-
         mockMvc.perform(get("/v3/api-docs/mdm-dict"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.paths['/api/mdm/dict/items/by-type'].post.summary").value("按字典类型查询字典项"))
@@ -76,23 +61,6 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("\"pageNo\"")))
             .andExpect(content().string(containsString("\"pageSize\"")))
             .andExpect(content().string(containsString("\"keyword\"")))
-            .andExpect(content().string(containsString("/api/mdm/dict/items/by-type")))
-            .andExpect(content().string(not(containsString("/api/system/auth/login"))));
-    }
-
-    @Test
-    void groupedOpenApiJsonShouldIncludeSystemTenantGroup() throws Exception {
-        mockMvc.perform(get("/v3/api-docs/system-tenant"))
-            .andExpect(status().isOk())
-            .andExpect(content().string(containsString("/api/system/tenant/create")))
-            .andExpect(content().string(not(containsString("/api/system/user/create"))));
-    }
-
-    @Test
-    void groupedOpenApiJsonShouldIncludeSystemUserGroup() throws Exception {
-        mockMvc.perform(get("/v3/api-docs/system-user"))
-            .andExpect(status().isOk())
-            .andExpect(content().string(containsString("/api/system/user/create")))
-            .andExpect(content().string(not(containsString("/api/system/tenant/create"))));
+            .andExpect(content().string(containsString("/api/mdm/dict/items/by-type")));
     }
 }
