@@ -81,6 +81,38 @@ class ModuleBoundaryTests {
     }
 
     @Test
+    void demo_file_must_not_depend_on_demo_boot() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.file..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.boot..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_file_must_not_depend_on_demo_mdm() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.file..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.mdm..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_core_must_not_depend_on_demo_file() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.core..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.file..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_mdm_must_not_depend_on_demo_file() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.mdm..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.file..");
+        rule.check(allClasses);
+    }
+
+    @Test
     void no_controller_must_expose_api_system_paths() {
         ArchRule rule = noClasses()
                 .should(haveRequestMappingStartingWith("/api/system"));
@@ -91,6 +123,13 @@ class ModuleBoundaryTests {
     void no_controller_must_expose_non_global_dict_paths() {
         ArchRule rule = noClasses()
                 .should(haveNonGlobalDictRequestMapping());
+        rule.check(allClasses);
+    }
+
+    @Test
+    void no_controller_must_expose_vendor_qiniu_paths() {
+        ArchRule rule = noClasses()
+                .should(haveRequestMappingStartingWith("/api/framework/qiniu"));
         rule.check(allClasses);
     }
 

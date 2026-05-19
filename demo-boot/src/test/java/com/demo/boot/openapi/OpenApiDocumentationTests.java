@@ -35,7 +35,11 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("/api/mdm/dict/global/item/create")))
             .andExpect(content().string(containsString("/api/mdm/dict/global/item/update")))
             .andExpect(content().string(containsString("/api/mdm/dict/global/item/delete")))
-            .andExpect(content().string(containsString("/api/mdm/dict/global/items/by-type")));
+            .andExpect(content().string(containsString("/api/mdm/dict/global/items/by-type")))
+            .andExpect(content().string(containsString("/api/file/storage/object/upload")))
+            .andExpect(content().string(containsString("/api/file/storage/object/delete")))
+            .andExpect(content().string(containsString("/api/file/storage/object/temp-url/fetch")))
+            .andExpect(content().string(containsString("/api/file/storage/direct-upload/credential/fetch")));
     }
 
     @Test
@@ -58,6 +62,13 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("\"pageNo\"")))
             .andExpect(content().string(containsString("\"pageSize\"")))
             .andExpect(content().string(containsString("\"keyword\"")));
+
+        mockMvc.perform(get("/v3/api-docs/file-storage"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.tags[0]").value("文件存储"))
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/delete'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/temp-url/fetch'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/file/storage/direct-upload/credential/fetch'].post").exists());
     }
 
     @Test
@@ -81,6 +92,7 @@ class OpenApiDocumentationTests {
                 .andExpect(content().string(not(containsString("/api/mdm/dict/items/by-type"))))
                 .andExpect(content().string(not(containsString("/api/mdm/dict/item/create"))))
                 .andExpect(content().string(not(containsString("/api/mdm/dict/item/update"))))
-                .andExpect(content().string(not(containsString("/api/mdm/dict/item/delete"))));
+                .andExpect(content().string(not(containsString("/api/mdm/dict/item/delete"))))
+                .andExpect(content().string(not(containsString("/api/framework/qiniu/"))));
     }
 }
