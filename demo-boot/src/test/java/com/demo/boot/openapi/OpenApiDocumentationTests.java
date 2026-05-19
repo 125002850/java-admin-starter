@@ -68,7 +68,8 @@ class OpenApiDocumentationTests {
             .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.tags[0]").value("文件存储"))
             .andExpect(jsonPath("$.paths['/api/file/storage/object/delete'].post").exists())
             .andExpect(jsonPath("$.paths['/api/file/storage/object/temp-url/fetch'].post").exists())
-            .andExpect(jsonPath("$.paths['/api/file/storage/direct-upload/credential/fetch'].post").exists());
+            .andExpect(jsonPath("$.paths['/api/file/storage/direct-upload/credential/fetch'].post").exists())
+            .andExpect(content().string(containsString("\"file\":{\"type\":\"string\",\"format\":\"binary\"}")));
     }
 
     @Test
