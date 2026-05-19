@@ -1,15 +1,17 @@
-package com.demo.core.tenant;
+package com.demo.core.operator;
 
+import com.demo.core.exception.CommonErrorCode;
+import com.demo.core.web.R;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import com.demo.core.exception.CommonErrorCode;
-import com.demo.core.web.R;
-import org.springframework.http.MediaType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -18,13 +20,15 @@ import java.io.IOException;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
-public class TenantFilter extends OncePerRequestFilter {
+public class GatewayOperatorFilter extends OncePerRequestFilter {
 
-    private final TenantResolver tenantResolver;
+    private static final Logger log = LoggerFactory.getLogger(GatewayOperatorFilter.class);
+    private static final String HEADER_USER_ID = "X-User-Id";
+    private static final String HEADER_USER_NAME = "X-User-Name";
+
     private final ObjectMapper objectMapper;
 
-    public TenantFilter(TenantResolver tenantResolver, ObjectMapper objectMapper) {
-        this.tenantResolver = tenantResolver;
+    public GatewayOperatorFilter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
@@ -32,16 +36,25 @@ public class TenantFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        try {
-            tenantResolver.resolve(request).ifPresent(TenantContext::setTenantId);
-        } catch (InvalidTenantHeaderException exception) {
-            writeErrorResponse(response, exception.getMessage());
-            return;
+        String userIdHeader = request.getHeader(HEADER_USER_ID);
+        String userNameHeader = request.getHeader(HEADER_USER_NAME);
+
+        if (userIdHeader != null) {
+            Long userId;
+            try {
+                userId = Long.valueOf(userIdHeader);
+            } catch (NumberFormatException exception) {
+                log.warn("Invalid X-User-Id header: {}", userIdHeader);
+                writeErrorResponse(response, "X-User-Id 值非法: " + userIdHeader);
+                return;
+            }
+            OperatorContext.set(userId, userNameHeader);
         }
+
         try {
             filterChain.doFilter(request, response);
         } finally {
-            TenantContext.clear();
+            OperatorContext.clear();
         }
     }
 
