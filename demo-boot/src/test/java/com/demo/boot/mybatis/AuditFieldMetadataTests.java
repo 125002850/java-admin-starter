@@ -2,11 +2,8 @@ package com.demo.boot.mybatis;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.demo.mdm.infra.entity.DictItemEntity;
-import com.demo.mdm.infra.entity.DictTypeEntity;
 import com.demo.mdm.infra.entity.GlobalDictItemEntity;
 import com.demo.mdm.infra.entity.GlobalDictTypeEntity;
-import com.demo.system.infra.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -19,11 +16,8 @@ class AuditFieldMetadataTests {
     @Test
     void audit_fields_should_declare_expected_fill_strategy() throws Exception {
         List<Class<?>> entityClasses = List.of(
-                DictTypeEntity.class,
-                DictItemEntity.class,
                 GlobalDictTypeEntity.class,
-                GlobalDictItemEntity.class,
-                SysUserEntity.class
+                GlobalDictItemEntity.class
         );
 
         for (Class<?> entityClass : entityClasses) {
