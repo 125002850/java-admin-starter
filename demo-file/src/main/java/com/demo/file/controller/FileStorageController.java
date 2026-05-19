@@ -1,0 +1,65 @@
+package com.demo.file.controller;
+
+import com.demo.core.web.R;
+import com.demo.file.app.FileAppService;
+import com.demo.file.controller.dto.DeleteFileReqDTO;
+import com.demo.file.controller.dto.FetchDirectUploadCredentialReqDTO;
+import com.demo.file.controller.dto.FetchDirectUploadCredentialRspDTO;
+import com.demo.file.controller.dto.FetchTempUrlReqDTO;
+import com.demo.file.controller.dto.FetchTempUrlRspDTO;
+import com.demo.file.controller.dto.StoredFileRspDTO;
+import com.demo.file.controller.dto.UploadFileReqDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+@Validated
+@RestController
+@Tag(name = "文件存储", description = "文件上传、删除、临时访问地址与直传凭证相关接口")
+@RequestMapping("/api/file/storage")
+public class FileStorageController {
+
+    private final FileAppService fileAppService;
+
+    public FileStorageController(FileAppService fileAppService) {
+        this.fileAppService = fileAppService;
+    }
+
+    @Operation(summary = "上传文件对象", description = "上传文件到当前启用的文件存储 provider")
+    @PostMapping(value = "/object/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<StoredFileRspDTO> upload(
+            @RequestPart("file") MultipartFile file,
+            @Valid @RequestPart("request") UploadFileReqDTO reqDTO
+    ) {
+        return R.ok(fileAppService.upload(file, reqDTO));
+    }
+
+    @Operation(summary = "删除文件对象", description = "根据对象键删除文件")
+    @PostMapping("/object/delete")
+    public R<Void> delete(@Valid @RequestBody DeleteFileReqDTO reqDTO) {
+        fileAppService.delete(reqDTO);
+        return R.ok();
+    }
+
+    @Operation(summary = "获取文件临时访问地址", description = "根据对象键获取临时访问地址")
+    @PostMapping("/object/temp-url/fetch")
+    public R<FetchTempUrlRspDTO> fetchTempUrl(@Valid @RequestBody FetchTempUrlReqDTO reqDTO) {
+        return R.ok(fileAppService.fetchTempUrl(reqDTO));
+    }
+
+    @Operation(summary = "获取直传凭证", description = "获取客户端直传所需的凭证与对象信息")
+    @PostMapping("/direct-upload/credential/fetch")
+    public R<FetchDirectUploadCredentialRspDTO> fetchDirectUploadCredential(
+            @Valid @RequestBody FetchDirectUploadCredentialReqDTO reqDTO
+    ) {
+        return R.ok(fileAppService.fetchDirectUploadCredential(reqDTO));
+    }
+}

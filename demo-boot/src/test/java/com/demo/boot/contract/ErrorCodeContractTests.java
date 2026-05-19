@@ -98,6 +98,7 @@ class ErrorCodeContractTests {
         List<Path> sourceRoots = List.of(
                 repoRoot.resolve("demo-core/src/main/java"),
                 repoRoot.resolve("demo-mdm/src/main/java"),
+                repoRoot.resolve("demo-file/src/main/java"),
                 repoRoot.resolve("demo-boot/src/main/java"));
         List<Path> sources = new ArrayList<>();
 

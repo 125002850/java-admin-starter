@@ -28,4 +28,13 @@ public class OpenApiConfig {
             .pathsToMatch("/api/mdm/dict/**")
             .build();
     }
+
+    @Bean
+    public GroupedOpenApi fileStorageApi() {
+        return GroupedOpenApi.builder()
+            .group("file-storage")
+            .packagesToScan("com.demo.file.controller")
+            .pathsToMatch("/api/file/storage/**")
+            .build();
+    }
 }
