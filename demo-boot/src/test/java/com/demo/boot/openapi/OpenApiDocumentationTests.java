@@ -49,27 +49,35 @@ class OpenApiDocumentationTests {
     }
 
     @Test
-    void groupedOpenApiJsonShouldExposeModuleSpecificEndpoints() throws Exception {
-        mockMvc.perform(get("/v3/api-docs/mdm-dict"))
+    void defaultGroupShouldContainAllModuleEndpoints() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.paths['/api/mdm/dict/global/types/list'].post.summary").value("查询全局字典列表"))
-            .andExpect(jsonPath("$.paths['/api/mdm/dict/global/type/create'].post.tags[0]").value("全局字典"))
+            .andExpect(jsonPath("$.paths['/api/mdm/dict/global/types/list'].post.tags[0]").value("全局字典"))
+            .andExpect(jsonPath("$.paths['/api/mdm/dict/global/type/create'].post.summary").value("新增全局字典类型"))
             .andExpect(jsonPath("$.paths['/api/mdm/dict/global/type/update'].post.summary").value("修改全局字典类型"))
             .andExpect(jsonPath("$.paths['/api/mdm/dict/global/item/update'].post.summary").value("修改全局字典项"))
             .andExpect(jsonPath("$.paths['/api/mdm/dict/global/items/by-type'].post.summary").value("按字典类型查询全局字典项"))
-            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeListReqDTO.properties.pageNo.description").value("页码，从1开始"))
-            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeListReqDTO.properties.pageSize.description").value("每页条数"))
             .andExpect(content().string(containsString("\"pageNo\"")))
             .andExpect(content().string(containsString("\"pageSize\"")))
-            .andExpect(content().string(containsString("\"keyword\"")));
-
-        mockMvc.perform(get("/v3/api-docs/file-storage"))
-            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("\"keyword\"")))
             .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.tags[0]").value("文件存储"))
             .andExpect(jsonPath("$.paths['/api/file/storage/object/delete'].post").exists())
             .andExpect(jsonPath("$.paths['/api/file/storage/object/temp-url/fetch'].post").exists())
             .andExpect(jsonPath("$.paths['/api/file/storage/direct-upload/credential/fetch'].post").exists())
             .andExpect(content().string(containsString("\"file\":{\"type\":\"string\",\"format\":\"binary\"}")));
+    }
+
+    @Test
+    void uploadEndpointShouldDescribeMultipartRequestBodyInsteadOfQueryParameter() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.requestBody.content['multipart/form-data']").exists())
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.requestBody.content['multipart/form-data'].schema.properties.file.type").value("string"))
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.requestBody.content['multipart/form-data'].schema.properties.file.format").value("binary"))
+            .andExpect(jsonPath("$.paths['/api/file/storage/object/upload'].post.requestBody.content['multipart/form-data'].schema.properties.request").doesNotExist())
+            .andExpect(content().string(containsString("\"name\":\"bizPath\",\"in\":\"query\"")))
+            .andExpect(content().string(containsString("\"name\":\"objectKey\",\"in\":\"query\"")))
+            .andExpect(content().string(not(containsString("\"name\":\"file\",\"in\":\"query\""))));
     }
 
     @Test

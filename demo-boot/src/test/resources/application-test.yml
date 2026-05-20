@@ -7,7 +7,7 @@ spring:
   flyway:
     enabled: true
 
-demo:
+platform:
   file:
     storage:
       type: local

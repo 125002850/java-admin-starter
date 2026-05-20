@@ -11,7 +11,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.mock.web.MockPart;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -43,10 +42,10 @@ class FileStorageModuleSmokeTests {
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("demo.file.storage.type", () -> "local");
-        registry.add("demo.file.storage.zone-id", () -> "Asia/Shanghai");
-        registry.add("demo.file.storage.local.root-dir", () -> STORAGE_ROOT.toString());
-        registry.add("demo.file.storage.local.base-url", () -> "/local-files");
+        registry.add("platform.file.storage.type", () -> "local");
+        registry.add("platform.file.storage.zone-id", () -> "Asia/Shanghai");
+        registry.add("platform.file.storage.local.root-dir", () -> STORAGE_ROOT.toString());
+        registry.add("platform.file.storage.local.base-url", () -> "/local-files");
     }
 
     @BeforeEach
@@ -90,15 +89,10 @@ class FileStorageModuleSmokeTests {
                 MediaType.TEXT_PLAIN_VALUE,
                 "hello local storage".getBytes()
         );
-        MockPart requestPart = new MockPart(
-                "request",
-                "{\"bizPath\":\"avatar/user\"}".getBytes()
-        );
-        requestPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String content = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
-                        .part(requestPart))
+                        .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andReturn()
@@ -123,15 +117,10 @@ class FileStorageModuleSmokeTests {
                 MediaType.TEXT_PLAIN_VALUE,
                 "fetch temp".getBytes()
         );
-        MockPart requestPart = new MockPart(
-                "request",
-                "{\"bizPath\":\"avatar/user\"}".getBytes()
-        );
-        requestPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String uploadResponse = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
-                        .part(requestPart))
+                        .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -156,15 +145,10 @@ class FileStorageModuleSmokeTests {
                 MediaType.TEXT_PLAIN_VALUE,
                 "delete me".getBytes()
         );
-        MockPart requestPart = new MockPart(
-                "request",
-                "{\"bizPath\":\"avatar/user\"}".getBytes()
-        );
-        requestPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String uploadResponse = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
-                        .part(requestPart))
+                        .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -191,15 +175,10 @@ class FileStorageModuleSmokeTests {
                 MediaType.TEXT_PLAIN_VALUE,
                 new byte[0]
         );
-        MockPart requestPart = new MockPart(
-                "request",
-                "{\"bizPath\":\"avatar/user\"}".getBytes()
-        );
-        requestPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
-                        .part(requestPart))
+                        .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(3002001))
                 .andExpect(jsonPath("$.msg").value("上传文件不能为空"));
@@ -213,15 +192,10 @@ class FileStorageModuleSmokeTests {
                 MediaType.TEXT_PLAIN_VALUE,
                 "illegal biz path".getBytes()
         );
-        MockPart requestPart = new MockPart(
-                "request",
-                "{\"bizPath\":\"avatar//user\"}".getBytes()
-        );
-        requestPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
-                        .part(requestPart))
+                        .param("bizPath", "avatar//user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(3002002))
                 .andExpect(jsonPath("$.msg").value("业务路径格式非法"));

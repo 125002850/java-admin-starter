@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "demo.file.storage")
+@ConfigurationProperties(prefix = "platform.file.storage")
 public class FileStorageProperties {
 
     private String type = "local";

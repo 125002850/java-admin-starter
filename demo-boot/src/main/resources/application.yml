@@ -13,11 +13,24 @@ management:
 knife4j:
   enable: true
 
-demo:
+platform:
   file:
     storage:
-      type: local
-      zone-id: Asia/Shanghai
+      type: ${FILE_STORAGE_TYPE:local}
+      zone-id: ${FILE_STORAGE_ZONE_ID:Asia/Shanghai}
       local:
         root-dir: ${java.io.tmpdir}/java-demo/uploads
         base-url: /local-files
+      qiniu:
+        access-key: ${FILE_STORAGE_QINIU_ACCESS_KEY:}
+        secret-key: ${FILE_STORAGE_QINIU_SECRET_KEY:}
+        bucket-name: ${FILE_STORAGE_QINIU_BUCKET_NAME:}
+        base-url: ${FILE_STORAGE_QINIU_BASE_URL:}
+        upload-host: ${FILE_STORAGE_QINIU_UPLOAD_HOST:https://upload.qiniup.com}
+        private-bucket: ${FILE_STORAGE_QINIU_PRIVATE_BUCKET:true}
+        upload-token-expire-seconds: ${FILE_STORAGE_QINIU_UPLOAD_TOKEN_EXPIRE_SECONDS:600}
+        download-url-expire-seconds: ${FILE_STORAGE_QINIU_DOWNLOAD_URL_EXPIRE_SECONDS:1200}
+        region: ${FILE_STORAGE_QINIU_REGION:huadong}
+        connect-timeout: ${FILE_STORAGE_QINIU_CONNECT_TIMEOUT:10}
+        read-timeout: ${FILE_STORAGE_QINIU_READ_TIMEOUT:30}
+        write-timeout: ${FILE_STORAGE_QINIU_WRITE_TIMEOUT:0}
