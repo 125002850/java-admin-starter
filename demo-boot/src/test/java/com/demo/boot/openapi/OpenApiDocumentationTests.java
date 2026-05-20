@@ -49,7 +49,7 @@ class OpenApiDocumentationTests {
     }
 
     @Test
-    void groupedOpenApiJsonShouldSplitEndpointsByModule() throws Exception {
+    void groupedOpenApiJsonShouldExposeModuleSpecificEndpoints() throws Exception {
         mockMvc.perform(get("/v3/api-docs/mdm-dict"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.paths['/api/mdm/dict/global/types/list'].post.summary").value("查询全局字典列表"))

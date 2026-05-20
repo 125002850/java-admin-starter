@@ -4,8 +4,10 @@
 
 ## 当前完成状态
 
+- 当前工作分支：`feature/sso`
 - boot/core/mdm 底座已完成（system 模块已移除，鉴权与租户由网关 SSO 承接）
-- 首个业务模块待单独规划
+- 本地开发固定使用仓库根目录 `compose.yaml` 启动 MySQL，`dev` profile 连接 `127.0.0.1:3307/java_demo_sso`
+- `demo-file` 文件存储模块已落地，当前支持 `local` / `qiniu` 两种 provider，通过配置切换
 
 ## 项目结构
 
@@ -14,6 +16,7 @@ java-demo/
 ├── pom.xml                                          # 根 POM：依赖版本管理与模块聚合
 ├── README.md                                        # 项目说明文档
 ├── AGENTS.md                                        # AI 辅助开发配置
+├── compose.yaml                                     # 当前分支本地开发 MySQL 编排
 │
 ├── docs/                                            # 项目文档
 │
@@ -38,6 +41,15 @@ java-demo/
 │       ├── operator/                                #   网关操作人上下文与过滤器
 │       └── mybatis/                                 #   MyBatis-Plus 配置、审计字段自动填充
 │
+├── demo-file/                                       # 文件存储模块：对象上传、删除、临时地址、直传凭证
+│   └── src/main/java/com/demo/file/
+│       ├── controller/                              #   文件存储接口 + DTO
+│       ├── app/                                     #   FileAppService（事务边界）
+│       ├── service/                                 #   文件存储服务、对象键规则、provider 编排
+│       ├── config/                                  #   文件存储配置与本地静态资源映射
+│       └── infra/
+│           └── provider/                            #   local/qiniu provider 适配
+│
 └── demo-mdm/                                        # 主数据模块：全局字典
     └── src/main/java/com/demo/mdm/
         ├── controller/                              #   全局字典接口 + DTO
@@ -54,8 +66,9 @@ java-demo/
 |------|------|------|
 | `demo-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `demo-core` | `R<T>`、异常处理、分页、网关操作人上下文、MyBatis-Plus 配置、日志等 | 只放全局通用基础设施，不放业务语义 |
+| `demo-file` | 文件存储能力：对象上传、删除、临时访问地址、直传凭证 | 当前不落库；provider 通过配置切换；业务侧禁止直接依赖厂商 SDK |
 | `demo-mdm` | 全局字典主数据 | 只保留全局字典，不区分租户 |
-| `demo-{biz}` | 具体业务 | 有需求时创建，严格按分层链路落地 |
+| `demo-{biz}` | 其余具体业务 | 有需求时创建，严格按分层链路落地 |
 
 ### 业务模块内部目录
 
@@ -83,7 +96,7 @@ com.demo.{module}
 | 接口文档 | OpenAPI 3 + Knife4j | 锁定明确版本 |
 | JSON | Jackson（Spring Boot 默认） | — |
 | 连接池 | HikariCP（Spring Boot 默认） | — |
-| 测试 | JUnit 5 + Spring Boot Test | — |
+| 测试 | JUnit 5 + Spring Boot Test + ArchUnit | — |
 | 鉴权 | 网关 SSO 透传 `X-User-Id` | 本仓库不做登录/Token 校验 |
 
 所有依赖版本统一锁定，禁止使用 `LATEST`、`RELEASE` 或动态范围。
@@ -124,7 +137,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - 成功响应固定为 `code = 200`、`msg = ok`。
 - 默认失败响应使用 `CommonErrorCode.FAILED(500, "操作失败")`。
 - 参数错误、未登录、无权限、资源不存在、限流使用公共 HTTP 语义码：`400 / 401 / 403 / 404 / 429`。
-- 模块私有业务码使用独立号段，例如 `demo-system` 当前使用 `2001xxx`。
+- 模块私有业务码使用独立号段，例如 `demo-mdm` 当前使用 `3001xxx`。
 - `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
 
 ### 数据规范
@@ -149,7 +162,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 ### 扩展能力（按需引入）
 
-- **文件存储**：先做本地实现，有需要再补 MinIO，通过配置切换。
+- **文件存储**：当前已落地 `demo-file`，默认本地实现，支持通过配置切换到七牛；后续如有需要再补 MinIO。
 - **翻译引擎**：ID 转名称走翻译机制，不在 SQL 中写大量 `LEFT JOIN`。
 - **导出**：使用独立 `ExportDTO`，不污染接口响应对象。
 - **状态枚举**：影响后端逻辑分支用 `Enum`，仅用于展示/筛选用 `Dict`。
@@ -162,31 +175,80 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - 日志中必须输出 `traceId`。
 - 健康检查端点可访问。
 
+### 网关-SSO 边界摘要
+
+- 网关到应用的可信链路负责完成登录、Token/JWT 校验、权限判断；本仓库只消费透传 header，不实现本地登录态。
+- 生产环境写操作的操作人信息来自 `X-User-Id`；`X-User-Name` 仅用于日志/排障。
+- 本仓库不接收 `X-Tenant-Id`、`X-User-Roles`、`X-User-Permissions`、`Authorization`、`Cookie`。
+- 开发/测试环境无网关时允许缺失 `X-User-Id`，审计字段 `create_by` / `update_by` 回退为 `0L`；如需模拟操作人，可手工加 `X-User-Id: 1`。
+
+详细契约见 [2026-05-19-gateway-sso-boundary.md](/Users/youdingte/studys/java-demo/docs/architecture/2026-05-19-gateway-sso-boundary.md:1)。
+
+### 文件存储模块摘要
+
+- 模块路径：`demo-file`，对外统一暴露 `/api/file/storage/**`，不复用任何厂商控制器或返回模型。
+- 当前接口：
+  - `/api/file/storage/object/upload`
+  - `/api/file/storage/object/delete`
+  - `/api/file/storage/object/temp-url/fetch`
+  - `/api/file/storage/direct-upload/credential/fetch`
+- provider 切换：`demo.file.storage.type=local|qiniu`。
+- `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-demo/uploads`，避免临时目录被系统清理。
+- `qiniu` 模式只在 `demo-file` 的 provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
+- 当前阶段不新增数据库表、不新增 Flyway migration；对象元信息只存在于对象存储，不做数据库持久化。
+- 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `DEMO_FILE_QINIU_*` 配置。
+
 ## 启动方式
 
 ```bash
-# 以 dev profile 启动
+# 1. 启动当前分支的 MySQL
+docker compose up -d
+
+# 2. 以 dev profile 启动应用
 cd demo-boot
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+当前分支数据库固定映射如下：
+
+| 项目 | 值 |
+|------|----|
+| Compose 项目标识 | `java-demo-feature-sso` |
+| MySQL 端口 | `3307` |
+| 数据库名 | `java_demo_sso` |
+| 用户名 | `root` |
+| 密码 | `root` |
 
 启动后可访问接口文档：
 
 - `http://127.0.0.1:8080/doc.html`
 - `http://127.0.0.1:8080/v3/api-docs`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-dict`
+- `http://127.0.0.1:8080/v3/api-docs/file-storage`
 
 ## 数据库初始化
 
 ```bash
-# Flyway 自动迁移，启动时执行
-# 或手动执行
+# Flyway 自动迁移，应用启动时执行
+# 如需单独执行迁移，可在启动模块下运行：
+cd demo-boot
 mvn flyway:migrate
 ```
 
+常用数据库命令：
+
+```bash
+docker compose ps
+docker compose logs -f mysql
+docker compose down
+docker compose down -v
+```
+
+`down -v` 会删除当前分支对应的 MySQL 数据卷，只适合在确认要清空本地开发数据时使用。更多说明见 [2026-05-19-branch-database.md](/Users/youdingte/studys/java-demo/docs/dev/2026-05-19-branch-database.md:1)。
+
 ### 数据库迁移约束
 
-- 版本化迁移文件统一放在 `demo-boot/src/main/resources/db/migration/`，命名必须匹配 `V*__*.sql`，例如 `V2__add_user_table.sql`。
+- 版本化迁移文件统一放在 `demo-boot/src/main/resources/db/migration/`，命名必须匹配 `V*__*.sql`，例如 `V7__add_xxx.sql`。
 - 新增版本化迁移不得复用已有版本号；例如仓库里已有 `V1__init_platform_tables.sql` 时，下一条必须新增为 `V2__*.sql` 或更高版本。
 - 当前仓库采用更严格策略：提交阶段只允许新增符合 `V*__*.sql` 规则的版本化迁移文件，禁止修改、删除、重命名已存在的 `V*.sql`。
 - 迁移脚本一旦进入历史，应通过新增下一版本脚本演进，例如 `V2__add_xxx.sql`，不要回改 `V1__*.sql`。
@@ -194,7 +256,7 @@ mvn flyway:migrate
 - 涉及列默认值、时间字段、`alter table` 之类 DDL 时，必须优先使用 MySQL 8 语法。例如修改默认值应写成 `alter table ... modify column ... default ...`，不要写 H2 可过但 MySQL 8 会失败的 `alter column ... set default ...`。
 - 一旦 migration 在本地或测试库执行失败，Flyway 会在 `flyway_schema_history` 留下 `success = false` 记录，后续启动会被 `validate` 阶段直接拦截；修复 SQL 后需要先 `repair` 或清理失败记录，再重新执行迁移。
 - 对逻辑删除表新增唯一约束时，必须先明确约束作用范围；如果唯一索引列中不包含 `deleted`，那它约束的是整张表，包含已逻辑删除行，迁移前查重也必须按同样语义检查，不能只筛 `deleted = 0`。
-- 本仓库不再使用租户模型；平台级表由网关 SSO 和基础设施层管理。
+- 当前分支历史迁移已演进到 `V6__remove_tenant_auth_tables.sql`，租户/用户/本地鉴权表已从应用侧移除。
 
 ### Lefthook 启用
 
@@ -222,11 +284,13 @@ lefthook run pre-commit
 
 每次修改后至少执行：
 
+- `mvn clean test`
 - `mvn test`
 - `mvn compile`
 
 如果改动涉及数据库迁移，需要验证 Flyway 脚本可执行。
 至少保证一套真实 MySQL 8 环境验证通过，不能只跑 H2 测试后就提交。
+跨模块收缩或删除性改造，必须额外在 clean checkout / detached worktree 中复验，避免被脏工作区或增量编译结果误导。
 
 ## 禁止行为
 
