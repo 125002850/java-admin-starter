@@ -11,9 +11,11 @@ spring:
       connection-timeout: 60000
       connection-test-query: SELECT 1
 
-demo:
+platform:
   file:
     storage:
+      type: ${FILE_STORAGE_TYPE:local}
+      zone-id: ${FILE_STORAGE_ZONE_ID:Asia/Shanghai}
       local:
         root-dir: ${user.home}/.java-demo/uploads
         base-url: /local-files

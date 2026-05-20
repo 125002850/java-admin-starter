@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 @Component
-@ConditionalOnProperty(prefix = "demo.file.storage", name = "type", havingValue = "local", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "local", matchIfMissing = true)
 public class LocalFileStorageProvider implements FileStorageProvider {
 
     private static final Pattern OBJECT_KEY_SEGMENT_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");

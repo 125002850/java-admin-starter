@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Path;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "demo.file.storage", name = "type", havingValue = "local", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "local", matchIfMissing = true)
 public class LocalFileStorageWebConfig implements WebMvcConfigurer {
 
     private final FileStorageProperties fileStorageProperties;

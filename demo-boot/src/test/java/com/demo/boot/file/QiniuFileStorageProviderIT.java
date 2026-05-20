@@ -10,7 +10,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.mock.web.MockPart;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -40,15 +39,10 @@ class QiniuFileStorageProviderIT {
                 MediaType.TEXT_PLAIN_VALUE,
                 "qiniu integration".getBytes()
         );
-        MockPart requestPart = new MockPart(
-                "request",
-                "{\"bizPath\":\"integration/qiniu\"}".getBytes()
-        );
-        requestPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String content = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
-                        .part(requestPart))
+                        .param("bizPath", "integration/qiniu"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andReturn()

@@ -192,11 +192,11 @@ Controller → AppService → Domain/Service → Infra/Mapper
   - `/api/file/storage/object/delete`
   - `/api/file/storage/object/temp-url/fetch`
   - `/api/file/storage/direct-upload/credential/fetch`
-- provider 切换：`demo.file.storage.type=local|qiniu`。
+- provider 切换：`platform.file.storage.type=local|qiniu`。
 - `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-demo/uploads`，避免临时目录被系统清理。
 - `qiniu` 模式只在 `demo-file` 的 provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
 - 当前阶段不新增数据库表、不新增 Flyway migration；对象元信息只存在于对象存储，不做数据库持久化。
-- 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `DEMO_FILE_QINIU_*` 配置。
+- 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `FILE_STORAGE_QINIU_*` 配置。
 
 ## 启动方式
 

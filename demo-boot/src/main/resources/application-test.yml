@@ -4,6 +4,12 @@ spring:
     username: root
     password: root
 
+platform:
+  file:
+    storage:
+      type: ${FILE_STORAGE_TYPE:local}
+      zone-id: ${FILE_STORAGE_ZONE_ID:Asia/Shanghai}
+
 logging:
   level:
     root: WARN

@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 import java.io.InputStream;
 
 @Component
-@ConditionalOnProperty(prefix = "demo.file.storage", name = "type", havingValue = "qiniu")
+@ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "qiniu")
 public class DefaultQiniuOperations implements QiniuOperations {
 
     private final Auth auth;

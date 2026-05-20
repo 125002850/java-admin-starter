@@ -1,5 +1,15 @@
 package com.demo.file.controller;
 
+import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.demo.core.web.R;
 import com.demo.file.app.FileAppService;
 import com.demo.file.controller.dto.DeleteFileReqDTO;
@@ -9,17 +19,12 @@ import com.demo.file.controller.dto.FetchTempUrlReqDTO;
 import com.demo.file.controller.dto.FetchTempUrlRspDTO;
 import com.demo.file.controller.dto.StoredFileRspDTO;
 import com.demo.file.controller.dto.UploadFileReqDTO;
+
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.MediaType;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 @Validated
 @RestController
@@ -36,9 +41,16 @@ public class FileStorageController {
     @Operation(summary = "上传文件对象", description = "上传文件到当前启用的文件存储 provider")
     @PostMapping(value = "/object/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public R<StoredFileRspDTO> upload(
+            @Schema(type = "string", format = "binary")
             @RequestPart("file") MultipartFile file,
-            @Valid @RequestPart("request") UploadFileReqDTO reqDTO
+            @Parameter(description = "业务路径", example = "avatar/user", required = true)
+            @RequestParam("bizPath") String bizPath,
+            @Parameter(description = "对象键，可选", example = "avatar/user/custom-key.png")
+            @RequestParam(value = "objectKey", required = false) String objectKey
     ) {
+        UploadFileReqDTO reqDTO = new UploadFileReqDTO();
+        reqDTO.setBizPath(bizPath);
+        reqDTO.setObjectKey(objectKey);
         return R.ok(fileAppService.upload(file, reqDTO));
     }
 

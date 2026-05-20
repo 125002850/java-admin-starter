@@ -1,5 +1,11 @@
 package com.demo.file.infra.provider.qiniu;
 
+import java.io.InputStream;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
 import com.demo.core.exception.BizException;
 import com.demo.file.config.FileStorageProperties;
 import com.demo.file.enums.FileErrorCode;
@@ -7,14 +13,9 @@ import com.demo.file.infra.provider.DirectUploadCapable;
 import com.demo.file.infra.provider.FileStorageProvider;
 import com.demo.file.service.DirectUploadCredential;
 import com.demo.file.service.StoredFile;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-
-import java.io.InputStream;
 
 @Component
-@ConditionalOnProperty(prefix = "demo.file.storage", name = "type", havingValue = "qiniu")
+@ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "qiniu")
 public class QiniuFileStorageProvider implements FileStorageProvider, DirectUploadCapable {
 
     private static final String PROVIDER = "qiniu";
