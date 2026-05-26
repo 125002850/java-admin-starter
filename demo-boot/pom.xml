@@ -38,7 +38,7 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>demo-file</artifactId>
+            <artifactId>demo-system</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

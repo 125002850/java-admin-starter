@@ -21,7 +21,7 @@
     <modules>
         <module>demo-boot</module>
         <module>demo-core</module>
-        <module>demo-file</module>
+        <module>demo-system</module>
         <module>demo-mdm</module>
     </modules>
 </project>

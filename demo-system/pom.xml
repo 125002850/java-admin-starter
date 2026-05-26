@@ -9,7 +9,7 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>demo-file</artifactId>
+    <artifactId>demo-system</artifactId>
 
     <packaging>jar</packaging>
 
