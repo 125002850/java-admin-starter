@@ -1,6 +1,8 @@
 # 文件存储模块（本地优先 + 七牛适配） Implementation Plan
 
 > **For Claude:** Use `${SUPERPOWERS_SKILLS_ROOT}/skills/collaboration/executing-plans/SKILL.md` to implement this plan task-by-task.
+>
+> **注：** 仓库后续已将模块目录与 Maven `artifactId` 从 `demo-file` 调整为 `demo-system`，当前实现代码位于 `demo-system/src/main/java/com/demo/file`；下文保留当时的命名，便于追溯实施过程。
 
 **Goal:** 为当前仓库新增一个不泄漏厂商语义、支持 `local` 与 `qiniu` 切换的文件存储模块，首期交付服务端上传、删除、临时访问地址和直传凭证四类能力。
 

@@ -5,59 +5,90 @@
 ## 当前完成状态
 
 - 当前工作分支：`feature/sso`
-- boot/core/mdm 底座已完成（system 模块已移除，鉴权与租户由网关 SSO 承接）
+- boot/core/mdm 底座已完成（原登录/租户 system 业务模块已移除，鉴权与租户由网关 SSO 承接）
 - 本地开发固定使用仓库根目录 `compose.yaml` 启动 MySQL，`dev` profile 连接 `127.0.0.1:3307/java_demo_sso`
-- `demo-file` 文件存储模块已落地，当前支持 `local` / `qiniu` 两种 provider，通过配置切换
+- `demo-system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` 两种 provider，通过配置切换
 
 ## 项目结构
 
 ```
 java-demo/
-├── pom.xml                                          # 根 POM：依赖版本管理与模块聚合
+├── pom.xml                                          # 根 POM：依赖版本管理与 4 个模块聚合
 ├── README.md                                        # 项目说明文档
 ├── AGENTS.md                                        # AI 辅助开发配置
+├── CLAUDE.md                                        # 另一套 AI 协作约束
+├── lefthook.yml                                     # Git Hook 配置
 ├── compose.yaml                                     # 当前分支本地开发 MySQL 编排
+├── scripts/
+│   └── check-migrations.sh                          # Flyway migration 约束检查脚本
 │
 ├── docs/                                            # 项目文档
+│   ├── architecture/                                # 架构决策与边界说明
+│   ├── dev/                                         # 开发环境与分支协作文档
+│   ├── plans/                                       # 实施方案、阶段性计划
+│   ├── reviews/                                     # 代码审查与问题记录
+│   └── api-response-body-model.md                   # 统一响应模型说明
 │
 ├── demo-boot/                                       # 启动模块：Spring Boot 装配、配置、启动入口
 │   └── src/
 │       ├── main/
 │       │   ├── java/com/demo/boot/
-│       │   │   └── DemoBootApplication.java         #     启动类，扫描所有模块
+│       │   │   ├── DemoBootApplication.java         #     启动类，扫描所有模块
+│       │   │   └── config/                          #     OpenAPI 等启动层配置
 │       │   └── resources/
 │       │       ├── application.yml                  #     通用配置
 │       │       ├── application-dev.yml              #     dev 环境
-│       │       └── application-test.yml             #     test 环境
+│       │       ├── application-test.yml             #     test 环境
+│       │       ├── logback-spring.xml               #     日志配置
+│       │       └── db/migration/                    #     Flyway SQL 迁移脚本
 │       └── test/
+│           ├── java/com/demo/boot/archunit/         #     分层/模块边界测试
+│           ├── java/com/demo/boot/contract/         #     错误码契约测试
+│           ├── java/com/demo/boot/file/             #     文件模块集成测试
+│           ├── java/com/demo/boot/flyway/           #     迁移冒烟测试
+│           ├── java/com/demo/boot/mybatis/          #     审计字段与 MyBatis 配置测试
+│           ├── java/com/demo/boot/openapi/          #     OpenAPI 文档测试
+│           ├── java/com/demo/boot/trace/            #     traceId 相关测试
+│           ├── java/com/demo/boot/web/              #     Web/Validation 集成测试
+│           └── resources/                           #     测试 profile 与 Mockito 配置
 │
 ├── demo-core/                                       # 全局共享基础设施（薄核心，不承载业务语义）
-│   └── src/main/java/com/demo/core/
-│       ├── web/                                     #   R<T>、PageReqDTO、PageResult
-│       ├── exception/                               #   错误码、BizException、全局异常处理
-│       ├── validation/                              #   Bean Validation 集成
-│       ├── jackson/                                 #   Jackson 全局配置
-│       ├── trace/                                   #   TraceId 过滤器与 MDC
-│       ├── operator/                                #   网关操作人上下文与过滤器
-│       └── mybatis/                                 #   MyBatis-Plus 配置、审计字段自动填充
+│   └── src/
+│       ├── main/java/com/demo/core/
+│       │   ├── web/                                 #     R<T>、PageReqDTO、PageResult
+│       │   ├── exception/                           #     错误码、BizException、全局异常处理
+│       │   ├── validation/                          #     Bean Validation 集成
+│       │   ├── jackson/                             #     Jackson 全局配置
+│       │   ├── trace/                               #     TraceId 过滤器与 MDC
+│       │   ├── operator/                            #     网关操作人上下文与过滤器
+│       │   └── mybatis/                             #     MyBatis-Plus 配置、审计字段自动填充
+│       └── test/java/com/demo/core/                 #     核心基础设施单元测试
 │
-├── demo-file/                                       # 文件存储模块：对象上传、删除、临时地址、直传凭证
-│   └── src/main/java/com/demo/file/
-│       ├── controller/                              #   文件存储接口 + DTO
-│       ├── app/                                     #   FileAppService（事务边界）
-│       ├── service/                                 #   文件存储服务、对象键规则、provider 编排
-│       ├── config/                                  #   文件存储配置与本地静态资源映射
-│       └── infra/
-│           └── provider/                            #   local/qiniu provider 适配
+├── demo-system/                                     # 系统集成模块：当前承载 file，后续可扩展 sms/email/pay 等三方能力
+│   └── src/
+│       ├── main/java/com/demo/
+│       │   └── file/
+│       │       ├── controller/                      #     文件存储接口
+│       │       │   └── dto/                         #     请求/响应 DTO
+│       │       ├── app/                             #     FileAppService（事务边界）
+│       │       ├── service/                         #     文件存储服务、对象键规则、provider 编排
+│       │       ├── config/                          #     文件存储配置与本地静态资源映射
+│       │       ├── enums/                           #     文件模块错误码等枚举
+│       │       └── infra/provider/                  #     local/qiniu provider 适配
+│       └── test/java/com/demo/file/                 #     provider 级单元测试
 │
 └── demo-mdm/                                        # 主数据模块：全局字典
-    └── src/main/java/com/demo/mdm/
-        ├── controller/                              #   全局字典接口 + DTO
-        ├── app/                                     #   DictAppService（事务边界）
-        ├── service/                                 #   字典领域服务
-        └── infra/
-            ├── entity/                              #   数据库实体
-            └── mapper/                              #   MyBatis Mapper
+    └── src/
+        ├── main/java/com/demo/mdm/
+        │   ├── controller/                          #     全局字典接口
+        │   │   └── dto/                             #     请求/响应 DTO
+        │   ├── app/                                 #     DictAppService（事务边界）
+        │   ├── service/                             #     字典领域服务
+        │   ├── enums/                               #     字典模块错误码枚举
+        │   └── infra/
+        │       ├── entity/                          #     数据库实体
+        │       └── mapper/                          #     MyBatis Mapper
+        └── test/                                    #     模块冒烟测试与 Mockito 配置
 ```
 
 ### 模块职责
@@ -66,7 +97,7 @@ java-demo/
 |------|------|------|
 | `demo-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `demo-core` | `R<T>`、异常处理、分页、网关操作人上下文、MyBatis-Plus 配置、日志等 | 只放全局通用基础设施，不放业务语义 |
-| `demo-file` | 文件存储能力：对象上传、删除、临时访问地址、直传凭证 | 当前不落库；provider 通过配置切换；业务侧禁止直接依赖厂商 SDK |
+| `demo-system` | 系统集成能力，当前承载 `file` 子模块；后续可扩展 `sms`、`email`、`pay` 等第三方服务适配 | 当前 `file` 不落库；provider 通过配置切换；业务侧禁止直接依赖厂商 SDK |
 | `demo-mdm` | 全局字典主数据 | 只保留全局字典，不区分租户 |
 | `demo-{biz}` | 其余具体业务 | 有需求时创建，严格按分层链路落地 |
 
@@ -74,15 +105,22 @@ java-demo/
 
 ```
 com.demo.{module}
-├── controller          # 输入输出、DTO 适配
+├── controller          # 输入输出适配
+│   └── dto             # ReqDTO / RspDTO
 ├── app                 # AppService，事务边界与流程编排
 ├── service             # 领域服务 / 核心业务规则
+├── config              # 模块私有配置（按需创建）
 ├── infra
-│   └── mapper          # 数据库访问，Mapper 统一归 infra
+│   ├── entity          # 持久化实体（按需创建）
+│   ├── mapper          # 数据库访问，Mapper 统一归 infra
+│   └── provider        # 三方能力适配（按需创建）
 └── enums               # 模块私有枚举（按需创建）
 ```
 
-以下目录只在需要时创建：`service/query`、`provider`、`openapi`、`convert`。
+补充说明：
+
+- `src/test/java` 与 `src/test/resources` 默认随模块创建，用于模块级单测、冒烟测试和测试专用配置。
+- 以下目录只在需要时创建：`service/query`、`openapi`、`convert`。
 
 ## 技术栈
 
@@ -162,7 +200,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 ### 扩展能力（按需引入）
 
-- **文件存储**：当前已落地 `demo-file`，默认本地实现，支持通过配置切换到七牛；后续如有需要再补 MinIO。
+- **文件存储**：当前已落地 `demo-system` 下的 `file` 子模块，默认本地实现，支持通过配置切换到七牛；后续如有需要再补 MinIO。
 - **翻译引擎**：ID 转名称走翻译机制，不在 SQL 中写大量 `LEFT JOIN`。
 - **导出**：使用独立 `ExportDTO`，不污染接口响应对象。
 - **状态枚举**：影响后端逻辑分支用 `Enum`，仅用于展示/筛选用 `Dict`。
@@ -186,7 +224,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 ### 文件存储模块摘要
 
-- 模块路径：`demo-file`，对外统一暴露 `/api/file/storage/**`，不复用任何厂商控制器或返回模型。
+- 模块路径：`demo-system`，当前文件能力代码位于 `demo-system/src/main/java/com/demo/file`，后续 `sms`、`email`、`pay` 等第三方服务可作为同级包继续落在该模块下；对外统一暴露 `/api/file/storage/**`，不复用任何厂商控制器或返回模型。
 - 当前接口：
   - `/api/file/storage/object/upload`
   - `/api/file/storage/object/delete`
@@ -194,7 +232,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
   - `/api/file/storage/direct-upload/credential/fetch`
 - provider 切换：`platform.file.storage.type=local|qiniu`。
 - `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-demo/uploads`，避免临时目录被系统清理。
-- `qiniu` 模式只在 `demo-file` 的 provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
+- `qiniu` 模式只在 `demo-system` 的 `file` provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
 - 当前阶段不新增数据库表、不新增 Flyway migration；对象元信息只存在于对象存储，不做数据库持久化。
 - 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `FILE_STORAGE_QINIU_*` 配置。
 

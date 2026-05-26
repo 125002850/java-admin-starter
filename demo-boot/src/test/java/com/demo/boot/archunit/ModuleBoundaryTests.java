@@ -81,7 +81,7 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_file_must_not_depend_on_demo_boot() {
+    void demo_system_file_package_must_not_depend_on_demo_boot() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.file..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.boot..");
@@ -89,7 +89,7 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_file_must_not_depend_on_demo_mdm() {
+    void demo_system_file_package_must_not_depend_on_demo_mdm() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.file..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.mdm..");
@@ -97,7 +97,7 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_core_must_not_depend_on_demo_file() {
+    void demo_core_must_not_depend_on_demo_system_file_package() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.core..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.file..");
@@ -105,7 +105,7 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_mdm_must_not_depend_on_demo_file() {
+    void demo_mdm_must_not_depend_on_demo_system_file_package() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.mdm..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.file..");

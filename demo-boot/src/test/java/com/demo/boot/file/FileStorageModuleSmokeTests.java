@@ -213,7 +213,7 @@ class FileStorageModuleSmokeTests {
 
     private static Path createStorageRoot() {
         try {
-            return Files.createTempDirectory("java-demo-file-smoke-tests");
+            return Files.createTempDirectory("java-demo-system-file-smoke-tests");
         } catch (IOException ex) {
             throw new IllegalStateException("failed to create temp directory", ex);
         }
