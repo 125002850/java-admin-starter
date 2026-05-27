@@ -16,6 +16,8 @@
         <knife4j.version>4.5.0</knife4j.version>
         <swagger.annotations.version>2.2.19</swagger.annotations.version>
         <qiniu.sdk.version>7.19.0</qiniu.sdk.version>
+        <minio.sdk.version>8.6.0</minio.sdk.version>
+        <okhttp.version>4.12.0</okhttp.version>
     </properties>
 
     <modules>

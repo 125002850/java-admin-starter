@@ -7,7 +7,7 @@ spring:
 platform:
   file:
     storage:
-      type: ${FILE_STORAGE_TYPE:local}
+      type: ${FILE_STORAGE_TYPE:minio}
       zone-id: ${FILE_STORAGE_ZONE_ID:Asia/Shanghai}
 
 logging:
