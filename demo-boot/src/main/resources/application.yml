@@ -16,7 +16,7 @@ knife4j:
 platform:
   file:
     storage:
-      type: ${FILE_STORAGE_TYPE:local}
+      type: ${FILE_STORAGE_TYPE:minio}
       zone-id: ${FILE_STORAGE_ZONE_ID:Asia/Shanghai}
       local:
         root-dir: ${java.io.tmpdir}/java-demo/uploads
@@ -34,3 +34,15 @@ platform:
         connect-timeout: ${FILE_STORAGE_QINIU_CONNECT_TIMEOUT:10}
         read-timeout: ${FILE_STORAGE_QINIU_READ_TIMEOUT:30}
         write-timeout: ${FILE_STORAGE_QINIU_WRITE_TIMEOUT:0}
+      minio:
+        endpoint: ${FILE_STORAGE_MINIO_ENDPOINT:}
+        access-key: ${FILE_STORAGE_MINIO_ACCESS_KEY:}
+        secret-key: ${FILE_STORAGE_MINIO_SECRET_KEY:}
+        bucket-name: ${FILE_STORAGE_MINIO_BUCKET_NAME:}
+        base-url: ${FILE_STORAGE_MINIO_BASE_URL:}
+        private-bucket: ${FILE_STORAGE_MINIO_PRIVATE_BUCKET:true}
+        download-url-expire-seconds: ${FILE_STORAGE_MINIO_DOWNLOAD_URL_EXPIRE_SECONDS:1200}
+        region: ${FILE_STORAGE_MINIO_REGION:}
+        connect-timeout: ${FILE_STORAGE_MINIO_CONNECT_TIMEOUT:10}
+        read-timeout: ${FILE_STORAGE_MINIO_READ_TIMEOUT:30}
+        write-timeout: ${FILE_STORAGE_MINIO_WRITE_TIMEOUT:0}
