@@ -7,7 +7,8 @@
 - 当前工作分支：`feature/sso`
 - boot/core/mdm 底座已完成（原登录/租户 system 业务模块已移除，鉴权与租户由网关 SSO 承接）
 - 本地开发固定使用仓库根目录 `compose.yaml` 启动 MySQL，`dev` profile 连接 `127.0.0.1:3307/java_demo_sso`
-- `demo-system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` 两种 provider，通过配置切换
+- `demo-system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换
+- 顶层模块边界约定为：`demo-boot` 负责启动，`demo-core` 负责底层通用能力与原生抽象，`demo-mdm` 承载通用业务服务，`demo-system` 承载外部服务集成，`demo-{biz}` 承载具体业务
 
 ## 项目结构
 
@@ -52,7 +53,7 @@ java-demo/
 │           ├── java/com/demo/boot/web/              #     Web/Validation 集成测试
 │           └── resources/                           #     测试 profile 与 Mockito 配置
 │
-├── demo-core/                                       # 全局共享基础设施（薄核心，不承载业务语义）
+├── demo-core/                                       # 全局共享基础设施与业务无关的底层抽象
 │   └── src/
 │       ├── main/java/com/demo/core/
 │       │   ├── web/                                 #     R<T>、PageReqDTO、PageResult
@@ -64,7 +65,7 @@ java-demo/
 │       │   └── mybatis/                             #     MyBatis-Plus 配置、审计字段自动填充
 │       └── test/java/com/demo/core/                 #     核心基础设施单元测试
 │
-├── demo-system/                                     # 系统集成模块：当前承载 file，后续可扩展 sms/email/pay 等三方能力
+├── demo-system/                                     # 系统集成模块：对接对象存储、短信、邮件、支付等外部服务
 │   └── src/
 │       ├── main/java/com/demo/
 │       │   └── file/
@@ -74,10 +75,10 @@ java-demo/
 │       │       ├── service/                         #     文件存储服务、对象键规则、provider 编排
 │       │       ├── config/                          #     文件存储配置与本地静态资源映射
 │       │       ├── enums/                           #     文件模块错误码等枚举
-│       │       └── infra/provider/                  #     local/qiniu provider 适配
+│       │       └── infra/provider/                  #     local/qiniu/minio provider 适配
 │       └── test/java/com/demo/file/                 #     provider 级单元测试
 │
-└── demo-mdm/                                        # 主数据模块：全局字典
+└── demo-mdm/                                        # 通用业务服务模块：承载主数据与跨业务复用的平台型业务能力
     └── src/
         ├── main/java/com/demo/mdm/
         │   ├── controller/                          #     全局字典接口
@@ -96,10 +97,18 @@ java-demo/
 | 模块 | 职责 | 约束 |
 |------|------|------|
 | `demo-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
-| `demo-core` | `R<T>`、异常处理、分页、网关操作人上下文、MyBatis-Plus 配置、日志等 | 只放全局通用基础设施，不放业务语义 |
-| `demo-system` | 系统集成能力，当前承载 `file` 子模块；后续可扩展 `sms`、`email`、`pay` 等第三方服务适配 | 当前 `file` 不落库；provider 通过配置切换；业务侧禁止直接依赖厂商 SDK |
-| `demo-mdm` | 全局字典主数据 | 只保留全局字典，不区分租户 |
-| `demo-{biz}` | 其余具体业务 | 有需求时创建，严格按分层链路落地 |
+| `demo-core` | 全局通用基础设施，以及与具体业务解耦的底层原生抽象（如通用 SPI、上下文、通用配置） | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
+| `demo-system` | 系统集成能力，负责对象存储、短信、邮件、支付等外部服务适配 | 只做外部系统/厂商能力适配；业务侧禁止直接依赖厂商 SDK；如需落库，应仅保存集成能力自身必要的元数据 |
+| `demo-mdm` | 通用业务服务，承载“有明确业务语义、但不从属于单一业务域”的共享业务能力 | 可承载主数据、平台型业务服务、跨业务复用的统一能力；不承载仅属于单一业务域的实现 |
+| `demo-{biz}` | 其余具体业务 | 只放本业务域实现；如需导出等能力，应复用 `core/system/mdm` 提供的基础抽象与平台服务 |
+
+### 顶层模块边界原则
+
+- `demo-boot` 只负责启动和装配，不吸收业务语义。
+- `demo-core` 只放与具体业务解耦的底层能力；可复用的原生抽象优先沉淀在这里，而不是散落到业务模块。
+- `demo-system` 只负责对接外部服务；文件存储属于这一层，不上移到 `demo-core`。
+- `demo-mdm` 用于沉淀通用业务服务，而不局限于“字典”这一类主数据；跨业务复用、带明确业务语义的平台能力优先落在这里。
+- `demo-{biz}` 只承载具体业务域实现；与平台共享能力的边界应通过 `AppService`、SPI 或事件解耦，而不是反向把业务细节塞进 `core/system/mdm`。
 
 ### 业务模块内部目录
 
@@ -200,7 +209,9 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 ### 扩展能力（按需引入）
 
-- **文件存储**：当前已落地 `demo-system` 下的 `file` 子模块，默认本地实现，支持通过配置切换到七牛；后续如有需要再补 MinIO。
+- **文件存储**：当前已落地 `demo-system` 下的 `file` 子模块，默认本地实现，支持通过配置切换到七牛或 MinIO。
+- **导出基础抽象**：如需引入 handler、renderer、sink 等与具体业务解耦的原生抽象，优先放在 `demo-core`。
+- **平台型业务能力**：如需沉淀跨业务复用、带明确业务语义的统一服务，优先放在 `demo-mdm`。
 - **翻译引擎**：ID 转名称走翻译机制，不在 SQL 中写大量 `LEFT JOIN`。
 - **导出**：使用独立 `ExportDTO`，不污染接口响应对象。
 - **状态枚举**：影响后端逻辑分支用 `Enum`，仅用于展示/筛选用 `Dict`。
@@ -230,11 +241,21 @@ Controller → AppService → Domain/Service → Infra/Mapper
   - `/api/file/storage/object/delete`
   - `/api/file/storage/object/temp-url/fetch`
   - `/api/file/storage/direct-upload/credential/fetch`
-- provider 切换：`platform.file.storage.type=local|qiniu`。
+- provider 切换：`platform.file.storage.type=local|qiniu|minio`。
 - `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-demo/uploads`，避免临时目录被系统清理。
 - `qiniu` 模式只在 `demo-system` 的 `file` provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
+- `minio` 模式只在 `demo-system` 的 `file` provider 适配层内依赖 MinIO Java SDK，当前支持服务端上传、删除和临时下载地址；直传凭证暂未开放。
 - 当前阶段不新增数据库表、不新增 Flyway migration；对象元信息只存在于对象存储，不做数据库持久化。
 - 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `FILE_STORAGE_QINIU_*` 配置。
+- MinIO 真实网络集成测试为手动 gate：使用 `minio-it` profile，并通过环境变量注入 `FILE_STORAGE_MINIO_*` 配置。
+
+### 导出与下载中心架构原则
+
+- 与具体业务解耦的导出原生抽象放在 `demo-core`，例如导出场景声明、导出 handler SPI、文件渲染器 SPI、导出结果落盘 sink 等。
+- 外部文件落盘与文件访问能力放在 `demo-system`，导出框架如需写入对象存储，应通过 `demo-system` 提供的文件能力完成，而不是直接依赖厂商 SDK。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `demo-mdm`，例如导出记录、状态流转、有效期管理、下载留痕、过期清理等。
+- 具体业务导出实现放在 `demo-{biz}`，例如某个业务的导出参数组装、数据查询、列定义与导出内容构建；业务模块通过 `demo-core` 提供的 SPI 接入平台能力。
+- 模块协作链路保持清晰：业务模块声明导出场景并提供 handler，`demo-mdm` 负责编排与记录生命周期，`demo-system` 负责文件存储，`demo-core` 负责抽象契约。
 
 ## 启动方式
 
@@ -337,3 +358,8 @@ lefthook run pre-commit
 - 禁止引入 `VO`、`BO`、`DO`、`Command` 等额外对象层，除非文档明确更新。
 - 禁止使用动态依赖版本。
 - 禁止提前创建空模块、空包、空接口。
+
+## todo list
+
+- 文件导出中心
+- 日志
