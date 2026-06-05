@@ -47,6 +47,7 @@
 - `FileRenderer`
 - `RenderedFile`
 - `ExportFileSink`
+- `ExportFileLifecycle`
 
 `demo-core` 只定义契约和抽象，不落导出记录表，不承载状态编排。
 
@@ -204,6 +205,15 @@
 #### `ExportFileSink`
 
 统一导出文件落盘抽象。首期由 `demo-system` 基于现有文件能力提供实现。
+
+#### `ExportFileLifecycle`
+
+统一导出文件访问与删除抽象，用于：
+
+- 获取下载地址
+- 删除底层文件
+
+该抽象同样由 `demo-system` 基于现有文件能力提供实现，使 `demo-mdm` 无需直接依赖 `com.demo.file..`。
 
 ### 7.2 `demo-system` 适配
 

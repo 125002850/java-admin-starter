@@ -210,7 +210,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 ### 扩展能力（按需引入）
 
 - **文件存储**：当前已落地 `demo-system` 下的 `file` 子模块，默认本地实现，支持通过配置切换到七牛或 MinIO。
-- **导出基础抽象**：如需引入 handler、renderer、sink 等与具体业务解耦的原生抽象，优先放在 `demo-core`。
+- **导出基础抽象**：如需引入 handler、renderer、sink、file lifecycle 等与具体业务解耦的原生抽象，优先放在 `demo-core`。
 - **平台型业务能力**：如需沉淀跨业务复用、带明确业务语义的统一服务，优先放在 `demo-mdm`。
 - **翻译引擎**：ID 转名称走翻译机制，不在 SQL 中写大量 `LEFT JOIN`。
 - **导出**：使用独立 `ExportDTO`，不污染接口响应对象。
@@ -251,7 +251,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 ### 导出与下载中心架构原则
 
-- 与具体业务解耦的导出原生抽象放在 `demo-core`，例如导出场景声明、导出 handler SPI、文件渲染器 SPI、导出结果落盘 sink 等。
+- 与具体业务解耦的导出原生抽象放在 `demo-core`，例如导出场景声明、导出 handler SPI、文件渲染器 SPI、导出结果落盘 sink、文件访问 lifecycle 等。
 - 外部文件落盘与文件访问能力放在 `demo-system`，导出框架如需写入对象存储，应通过 `demo-system` 提供的文件能力完成，而不是直接依赖厂商 SDK。
 - 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `demo-mdm`，例如导出记录、状态流转、有效期管理、下载留痕、过期清理等。
 - 具体业务导出实现放在 `demo-{biz}`，例如某个业务的导出参数组装、数据查询、列定义与导出内容构建；业务模块通过 `demo-core` 提供的 SPI 接入平台能力。

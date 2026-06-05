@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -40,6 +41,7 @@ class FlywaySmokeTests {
         assertThat(hasSuccessfulMigration("4")).isTrue();
         assertThat(hasSuccessfulMigration("5")).isTrue();
         assertThat(hasSuccessfulMigration("6")).isTrue();
+        assertThat(hasSuccessfulMigration("7")).isTrue();
 
         assertThat(tableExists("sys_tenant_global")).isFalse();
         assertThat(tableExists("sys_user")).isFalse();
@@ -53,6 +55,29 @@ class FlywaySmokeTests {
         assertThat(tableColumns("sys_dict_item_global"))
             .containsAll(AUDIT_COLUMNS)
             .doesNotContain("tenant_id");
+
+        assertThat(tableExists("sys_export_record_global")).isTrue();
+        assertThat(tableColumns("sys_export_record_global"))
+            .containsAll(AUDIT_COLUMNS)
+            .contains(
+                "export_biz_code",
+                "export_biz_name",
+                "file_name",
+                "file_type",
+                "status",
+                "expire_time",
+                "query_snapshot_json",
+                "query_snapshot_summary",
+                "download_count",
+                "expire_seconds"
+            )
+            .doesNotContain("tenant_id");
+        assertThat(tableIndexes("sys_export_record_global"))
+            .contains(
+                "idx_sys_export_record_global_creator_status_time",
+                "idx_sys_export_record_global_status_expire_time",
+                "idx_sys_export_record_global_biz_code_time"
+            );
     }
 
     @Test
@@ -158,11 +183,27 @@ class FlywaySmokeTests {
              ResultSet columns = connection.getMetaData().getColumns(null, null, tableName, null)) {
             Set<String> columnNames = new LinkedHashSet<>();
             while (columns.next()) {
-                columnNames.add(columns.getString("COLUMN_NAME"));
+                columnNames.add(columns.getString("COLUMN_NAME").toLowerCase(Locale.ROOT));
             }
             return columnNames;
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to inspect column metadata", exception);
+        }
+    }
+
+    private Set<String> tableIndexes(String tableName) {
+        try (Connection connection = dataSource.getConnection();
+             ResultSet indexes = connection.getMetaData().getIndexInfo(null, null, tableName, false, false)) {
+            Set<String> indexNames = new LinkedHashSet<>();
+            while (indexes.next()) {
+                String indexName = indexes.getString("INDEX_NAME");
+                if (indexName != null) {
+                    indexNames.add(indexName.toLowerCase(Locale.ROOT));
+                }
+            }
+            return indexNames;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("failed to inspect index metadata", exception);
         }
     }
 }
