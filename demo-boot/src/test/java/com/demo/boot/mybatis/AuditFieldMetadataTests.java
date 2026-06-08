@@ -29,7 +29,10 @@ class AuditFieldMetadataTests {
     }
 
     private void assertFieldFill(Class<?> entityClass, String fieldName, FieldFill expectedFill) throws Exception {
-        Field field = entityClass.getDeclaredField(fieldName);
+        Field field = findFieldInHierarchy(entityClass, fieldName);
+        assertThat(field)
+                .as("%s.%s should be declared in class hierarchy", entityClass.getSimpleName(), fieldName)
+                .isNotNull();
         TableField tableField = field.getAnnotation(TableField.class);
 
         assertThat(tableField)
@@ -38,5 +41,17 @@ class AuditFieldMetadataTests {
         assertThat(tableField.fill())
                 .as("%s.%s fill strategy", entityClass.getSimpleName(), fieldName)
                 .isEqualTo(expectedFill);
+    }
+
+    private Field findFieldInHierarchy(Class<?> clazz, String fieldName) {
+        Class<?> current = clazz;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                current = current.getSuperclass();
+            }
+        }
+        return null;
     }
 }
