@@ -1,32 +1,41 @@
 package com.demo.mdm.service;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.demo.core.exception.BizException;
-import com.demo.mdm.enums.DictErrorCode;
-import com.demo.mdm.infra.entity.GlobalDictItemEntity;
-import com.demo.mdm.infra.entity.GlobalDictTypeEntity;
-import com.demo.mdm.infra.mapper.GlobalDictItemMapper;
-import com.demo.mdm.infra.mapper.GlobalDictTypeMapper;
+import java.util.Collections;
+import java.util.List;
+
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Collections;
-import java.util.List;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.demo.core.exception.BizException;
+import com.demo.core.query.ast.QueryAst;
+import com.demo.core.query.executor.MybatisPlusQueryExecutor;
+import com.demo.core.query.scene.SceneQueryDefinition;
+import com.demo.core.enums.EnableStatusEnum;
+import com.demo.mdm.enums.DictErrorCode;
+import com.demo.mdm.export.enums.ExportCenterErrorCode;
+import com.demo.mdm.infra.entity.GlobalDictItemEntity;
+import com.demo.mdm.infra.entity.GlobalDictTypeEntity;
+import com.demo.mdm.infra.mapper.GlobalDictItemMapper;
+import com.demo.mdm.infra.mapper.GlobalDictTypeMapper;
 
 @Service
 public class DictService {
 
     private final GlobalDictTypeMapper globalDictTypeMapper;
     private final GlobalDictItemMapper globalDictItemMapper;
+    private final MybatisPlusQueryExecutor mybatisPlusQueryExecutor;
 
     public DictService(
             GlobalDictTypeMapper globalDictTypeMapper,
-            GlobalDictItemMapper globalDictItemMapper
+            GlobalDictItemMapper globalDictItemMapper,
+            MybatisPlusQueryExecutor mybatisPlusQueryExecutor
     ) {
         this.globalDictTypeMapper = globalDictTypeMapper;
         this.globalDictItemMapper = globalDictItemMapper;
+        this.mybatisPlusQueryExecutor = mybatisPlusQueryExecutor;
     }
 
     public void createGlobalType(String dictTypeCode, String dictTypeName) {
@@ -56,6 +65,52 @@ public class DictService {
         }
         Page<GlobalDictTypeEntity> page = new Page<>(pageNo, pageSize);
         return globalDictTypeMapper.selectPage(page, query);
+    }
+
+    public Page<GlobalDictTypeEntity> pageGlobalTypes(
+            QueryAst queryAst,
+            SceneQueryDefinition<GlobalDictTypeEntity> sceneQueryDefinition
+    ) {
+        return mybatisPlusQueryExecutor.selectPage(globalDictTypeMapper, queryAst, sceneQueryDefinition);
+    }
+
+    public Page<GlobalDictItemEntity> pageGlobalItems(
+            QueryAst queryAst,
+            SceneQueryDefinition<GlobalDictItemEntity> sceneQueryDefinition
+    ) {
+        return mybatisPlusQueryExecutor.selectPage(globalDictItemMapper, queryAst, sceneQueryDefinition);
+    }
+
+    public List<GlobalDictTypeEntity> listGlobalTypesForExport(
+            QueryAst queryAst,
+            SceneQueryDefinition<GlobalDictTypeEntity> sceneQueryDefinition
+    ) {
+        QueryAst exportQueryAst = new QueryAst();
+        exportQueryAst.setRoot(queryAst.getRoot());
+        exportQueryAst.setSorts(queryAst.getSorts());
+        exportQueryAst.setPageNo(1L);
+        exportQueryAst.setPageSize((long) sceneQueryDefinition.maxExportRows() + 1L);
+        Page<GlobalDictTypeEntity> page = mybatisPlusQueryExecutor.selectPage(
+                globalDictTypeMapper,
+                exportQueryAst,
+                sceneQueryDefinition
+        );
+        if (page.getTotal() > sceneQueryDefinition.maxExportRows()) {
+            throw new BizException(ExportCenterErrorCode.EXPORT_QUERY_ROW_LIMIT_EXCEEDED);
+        }
+        return page.getRecords();
+    }
+
+    public List<GlobalDictTypeEntity> listAllGlobalTypes(String keyword) {
+        var query = Wrappers.<GlobalDictTypeEntity>lambdaQuery()
+                .orderByAsc(GlobalDictTypeEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(GlobalDictTypeEntity::getDictTypeCode, keyword)
+                    .or()
+                    .like(GlobalDictTypeEntity::getDictTypeName, keyword));
+        }
+        return globalDictTypeMapper.selectList(query);
     }
 
     public void updateGlobalType(Long id, String dictTypeCode, String dictTypeName) {
@@ -90,11 +145,10 @@ public class DictService {
         if (itemCount != null && itemCount > 0L) {
             throw new BizException(DictErrorCode.GLOBAL_DICT_TYPE_HAS_ITEMS);
         }
-        entity.setDeleted(1L);
-        globalDictTypeMapper.updateById(entity);
+        globalDictTypeMapper.deleteById(entity.getId());
     }
 
-    public void createGlobalItem(String dictTypeCode, String dictItemCode, String dictItemName) {
+    public void createGlobalItem(String dictTypeCode, String dictItemCode, String dictItemName, Integer sortOrder, String remark, EnableStatusEnum status) {
         if (!globalDictTypeCodeExists(dictTypeCode, null)) {
             throw new BizException(DictErrorCode.GLOBAL_DICT_TYPE_NOT_FOUND);
         }
@@ -106,6 +160,9 @@ public class DictService {
         entity.setDictTypeCode(dictTypeCode);
         entity.setDictItemCode(dictItemCode);
         entity.setDictItemName(dictItemName);
+        entity.setSortOrder(sortOrder != null ? sortOrder : 0);
+        entity.setRemark(remark);
+        entity.setStatus(status != null ? status : EnableStatusEnum.ENABLE);
         entity.setDeleted(0L);
         try {
             globalDictItemMapper.insert(entity);
@@ -114,7 +171,7 @@ public class DictService {
         }
     }
 
-    public void updateGlobalItem(Long id, String dictTypeCode, String dictItemCode, String dictItemName) {
+    public void updateGlobalItem(Long id, String dictTypeCode, String dictItemCode, String dictItemName, Integer sortOrder, String remark, EnableStatusEnum status) {
         GlobalDictItemEntity entity = getGlobalItem(id);
         if (!globalDictTypeCodeExists(dictTypeCode, null)) {
             throw new BizException(DictErrorCode.GLOBAL_DICT_TYPE_NOT_FOUND);
@@ -126,6 +183,9 @@ public class DictService {
         entity.setDictTypeCode(dictTypeCode);
         entity.setDictItemCode(dictItemCode);
         entity.setDictItemName(dictItemName);
+        entity.setSortOrder(sortOrder != null ? sortOrder : entity.getSortOrder());
+        entity.setRemark(remark);
+        entity.setStatus(status != null ? status : entity.getStatus());
         try {
             globalDictItemMapper.updateById(entity);
         } catch (DuplicateKeyException exception) {
@@ -133,10 +193,12 @@ public class DictService {
         }
     }
 
-    public void deleteGlobalItem(Long id) {
-        GlobalDictItemEntity entity = getGlobalItem(id);
-        entity.setDeleted(1L);
-        globalDictItemMapper.updateById(entity);
+    public void deleteGlobalItems(List<Long> ids) {
+        List<GlobalDictItemEntity> entities = globalDictItemMapper.selectBatchIds(ids);
+        if (entities.isEmpty()) {
+            throw new BizException(DictErrorCode.GLOBAL_DICT_ITEM_NOT_FOUND);
+        }
+        globalDictItemMapper.deleteBatchIds(ids);
     }
 
     public List<GlobalDictItemEntity> listGlobalItemsByType(String dictTypeCode) {
@@ -151,6 +213,7 @@ public class DictService {
         return globalDictItemMapper.selectList(
                 Wrappers.<GlobalDictItemEntity>lambdaQuery()
                         .eq(GlobalDictItemEntity::getDictTypeCode, dictTypeCode)
+                        .orderByAsc(GlobalDictItemEntity::getSortOrder)
                         .orderByAsc(GlobalDictItemEntity::getId)
         );
     }

@@ -7,12 +7,13 @@ import com.demo.mdm.controller.dto.DictItemRspDTO;
 import com.demo.mdm.controller.dto.GlobalDictItemCreateReqDTO;
 import com.demo.mdm.controller.dto.GlobalDictItemDeleteReqDTO;
 import com.demo.mdm.controller.dto.GlobalDictItemUpdateReqDTO;
-import com.demo.mdm.controller.dto.GlobalDictListReqDTO;
 import com.demo.mdm.controller.dto.GlobalDictTypeCreateReqDTO;
 import com.demo.mdm.controller.dto.GlobalDictTypeDeleteReqDTO;
 import com.demo.mdm.controller.dto.GlobalDictTypeListReqDTO;
 import com.demo.mdm.controller.dto.GlobalDictTypeRspDTO;
 import com.demo.mdm.controller.dto.GlobalDictTypeUpdateReqDTO;
+import com.demo.mdm.controller.dto.query.GlobalDictItemDynamicPageReqDTO;
+import com.demo.mdm.controller.dto.query.GlobalDictTypeDynamicListReqDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -38,7 +39,7 @@ public class GlobalDictController {
 
     @Operation(summary = "查询全局字典列表", description = "查询平台级全局字典类型列表")
     @PostMapping("/types/list")
-    public R<PageResult<GlobalDictTypeRspDTO>> listGlobalTypes(@Valid @RequestBody GlobalDictTypeListReqDTO reqDTO) {
+    public R<PageResult<GlobalDictTypeRspDTO>> listGlobalTypes(@Valid @RequestBody GlobalDictTypeDynamicListReqDTO reqDTO) {
         return R.ok(dictAppService.listGlobalTypes(reqDTO));
     }
 
@@ -77,16 +78,22 @@ public class GlobalDictController {
         return R.ok();
     }
 
-    @Operation(summary = "删除全局字典项", description = "删除平台级全局字典项")
+    @Operation(summary = "删除全局字典项", description = "批量删除平台级全局字典项，传入ID列表")
     @PostMapping("/item/delete")
     public R<Void> deleteGlobalItem(@Valid @RequestBody GlobalDictItemDeleteReqDTO reqDTO) {
         dictAppService.deleteGlobalItem(reqDTO);
         return R.ok();
     }
 
-    @Operation(summary = "按字典类型查询全局字典项", description = "根据全局字典类型编码返回平台级字典项列表")
+    @Operation(summary = "查询全部全局字典类型", description = "查询平台级全局字典类型全部列表（不分页）")
+    @PostMapping("/types/list-all")
+    public R<List<GlobalDictTypeRspDTO>> listAllGlobalTypes(@Valid @RequestBody GlobalDictTypeListReqDTO reqDTO) {
+        return R.ok(dictAppService.listAllGlobalTypes(reqDTO));
+    }
+
+    @Operation(summary = "按字典类型查询全局字典项", description = "根据全局字典类型编码分页查询平台级字典项列表")
     @PostMapping("/items/by-type")
-    public R<List<DictItemRspDTO>> listGlobalItemsByType(@Valid @RequestBody GlobalDictListReqDTO reqDTO) {
+    public R<PageResult<DictItemRspDTO>> listGlobalItemsByType(@Valid @RequestBody GlobalDictItemDynamicPageReqDTO reqDTO) {
         return R.ok(dictAppService.listGlobalItemsByType(reqDTO));
     }
 }

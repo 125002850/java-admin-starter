@@ -1,12 +1,27 @@
 package com.demo.mdm.export;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.demo.core.exception.BizException;
+import com.demo.core.query.ast.ConditionLeafAst;
+import com.demo.core.query.ast.QueryAst;
+import com.demo.core.query.ast.QueryOperator;
+import com.demo.core.query.ast.SortSpec;
+import com.demo.core.query.dto.SortItemDTO;
+import com.demo.core.query.executor.MybatisPlusQueryExecutor;
+import com.demo.core.query.scene.SceneQueryDefinition;
 import com.demo.mdm.export.enums.ExportCenterErrorCode;
 import com.demo.mdm.export.enums.ExportDeleteReason;
 import com.demo.mdm.export.enums.ExportRecordStatus;
 import com.demo.mdm.export.infra.entity.ExportRecordEntity;
 import com.demo.mdm.export.infra.mapper.ExportRecordMapper;
 import com.demo.mdm.export.service.ExportRecordService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,9 +30,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,10 +48,19 @@ class ExportRecordServiceTests {
     private ExportRecordMapper exportRecordMapper;
 
     private ExportRecordService exportRecordService;
+    private final MybatisPlusQueryExecutor mybatisPlusQueryExecutor = new MybatisPlusQueryExecutor();
+
+    @BeforeAll
+    static void initTableInfo() {
+        MybatisConfiguration configuration = new MybatisConfiguration();
+        MybatisMapperBuilderAssistant assistant = new MybatisMapperBuilderAssistant(configuration, "export-record-service");
+        assistant.setCurrentNamespace(ExportRecordEntity.class.getName());
+        TableInfoHelper.initTableInfo(assistant, ExportRecordEntity.class);
+    }
 
     @BeforeEach
     void setUp() {
-        exportRecordService = new ExportRecordService(exportRecordMapper);
+        exportRecordService = new ExportRecordService(exportRecordMapper, mybatisPlusQueryExecutor);
     }
 
     @Test
@@ -41,7 +70,7 @@ class ExportRecordServiceTests {
         Long recordId = exportRecordService.createProcessingRecord(entity);
 
         assertThat(recordId).isEqualTo(1L);
-        assertThat(entity.getStatus()).isEqualTo(ExportRecordStatus.PROCESSING.getCode());
+        assertThat(entity.getStatus()).isEqualTo(ExportRecordStatus.PROCESSING.getIntCode());
         assertThat(entity.getDeleted()).isEqualTo(0L);
         verify(exportRecordMapper).insert(entity);
     }
@@ -75,7 +104,7 @@ class ExportRecordServiceTests {
 
         ArgumentCaptor<ExportRecordEntity> captor = ArgumentCaptor.forClass(ExportRecordEntity.class);
         verify(exportRecordMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(ExportRecordStatus.SUCCESS.getCode());
+        assertThat(captor.getValue().getStatus()).isEqualTo(ExportRecordStatus.SUCCESS.getIntCode());
         assertThat(captor.getValue().getObjectKey()).isEqualTo("export/test.xlsx");
         assertThat(captor.getValue().getContentType())
             .isEqualTo("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -101,7 +130,7 @@ class ExportRecordServiceTests {
 
         ArgumentCaptor<ExportRecordEntity> captor = ArgumentCaptor.forClass(ExportRecordEntity.class);
         verify(exportRecordMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(ExportRecordStatus.EXPIRED.getCode());
+        assertThat(captor.getValue().getStatus()).isEqualTo(ExportRecordStatus.EXPIRED.getIntCode());
     }
 
     @Test
@@ -114,47 +143,22 @@ class ExportRecordServiceTests {
     }
 
     @Test
-    void markDeleted_should_allow_success_record() {
-        when(exportRecordMapper.selectById(1L)).thenReturn(buildRecord(1L, ExportRecordStatus.SUCCESS));
+    void markDeleted_should_soft_delete_any_status() {
+        ExportRecordEntity entity = buildRecord(1L, ExportRecordStatus.SUCCESS);
+        entity.setDeleted(0L);
+        when(exportRecordMapper.selectById(1L)).thenReturn(entity);
 
         exportRecordService.markDeleted(1L, ExportDeleteReason.MANUAL);
 
-        ArgumentCaptor<ExportRecordEntity> captor = ArgumentCaptor.forClass(ExportRecordEntity.class);
-        verify(exportRecordMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(ExportRecordStatus.DELETED.getCode());
-        assertThat(captor.getValue().getDeleteReason()).isEqualTo(ExportDeleteReason.MANUAL.getCode());
-        assertThat(captor.getValue().getDeletedTime()).isNotNull();
-    }
-
-    @Test
-    void markDeleted_should_allow_expired_record() {
-        when(exportRecordMapper.selectById(1L)).thenReturn(buildRecord(1L, ExportRecordStatus.EXPIRED));
-
-        exportRecordService.markDeleted(1L, ExportDeleteReason.EXPIRED_CLEANUP);
-
-        ArgumentCaptor<ExportRecordEntity> captor = ArgumentCaptor.forClass(ExportRecordEntity.class);
-        verify(exportRecordMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(ExportRecordStatus.DELETED.getCode());
-        assertThat(captor.getValue().getDeleteReason()).isEqualTo(ExportDeleteReason.EXPIRED_CLEANUP.getCode());
-        assertThat(captor.getValue().getDeletedTime()).isNotNull();
-    }
-
-    @Test
-    void markDeleted_should_reject_processing_record() {
-        when(exportRecordMapper.selectById(1L)).thenReturn(buildRecord(1L, ExportRecordStatus.PROCESSING));
-
-        assertThatThrownBy(() -> exportRecordService.markDeleted(1L, ExportDeleteReason.MANUAL))
-            .isInstanceOf(BizException.class)
-            .hasMessage(ExportCenterErrorCode.EXPORT_RECORD_STATUS_INVALID.getMsg());
-    }
-
-    @Test
-    void markDeleted_should_reject_failed_record() {
-        when(exportRecordMapper.selectById(1L)).thenReturn(buildRecord(1L, ExportRecordStatus.FAILED));
-
-        assertThatThrownBy(() -> exportRecordService.markDeleted(1L, ExportDeleteReason.MANUAL))
-            .isInstanceOf(BizException.class)
-            .hasMessage(ExportCenterErrorCode.EXPORT_RECORD_STATUS_INVALID.getMsg());
+        ArgumentCaptor<LambdaUpdateWrapper<ExportRecordEntity>> captor = ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+        verify(exportRecordMapper).update(isNull(), captor.capture());
+        assertThat(captor.getValue().getSqlSet())
+                .contains("deleted=")
+                .contains("delete_reason=")
+                .contains("deleted_time=");
+        assertThat(captor.getValue().getSqlSegment())
+                .contains("id")
+                .contains("deleted");
     }
 
     @Test
@@ -166,6 +170,36 @@ class ExportRecordServiceTests {
             .hasMessage(ExportCenterErrorCode.EXPORT_RECORD_NOT_FOUND.getMsg());
     }
 
+    @Test
+    void pageMyRecords_should_apply_owner_status_and_default_sort() {
+        when(exportRecordMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        QueryAst queryAst = new QueryAst();
+        queryAst.setPageNo(2L);
+        queryAst.setPageSize(5L);
+        queryAst.setRoot(and(
+                leaf("OWNER_ID", QueryOperator.EQ, 0L),
+                leaf("STATUS", QueryOperator.IN, List.of(2, 4)),
+                leaf("CREATE_TIME", QueryOperator.GTE, LocalDateTime.of(2026, 6, 1, 0, 0, 0))
+        ));
+
+        exportRecordService.pageMyRecords(queryAst, exportRecordSceneDefinition());
+
+        ArgumentCaptor<Page<ExportRecordEntity>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        ArgumentCaptor<LambdaQueryWrapper<ExportRecordEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(exportRecordMapper).selectPage(pageCaptor.capture(), wrapperCaptor.capture());
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(2L);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(5L);
+        assertThat(wrapperCaptor.getValue().getSqlSegment())
+                .contains("create_by")
+                .contains("status")
+                .contains("create_time")
+                .contains("ORDER BY create_time DESC");
+        assertThat(wrapperCaptor.getValue().getParamNameValuePairs().values())
+                .contains(0L, 2, 4);
+    }
+
     private ExportRecordEntity buildRecord(Long id, ExportRecordStatus status) {
         ExportRecordEntity entity = new ExportRecordEntity();
         entity.setId(id);
@@ -173,12 +207,100 @@ class ExportRecordServiceTests {
         entity.setExportBizName("演示导出");
         entity.setFileName("demo.xlsx");
         entity.setFileType("EXCEL");
-        entity.setStatus(status.getCode());
+        entity.setStatus(status.getIntCode());
         entity.setExpireTime(LocalDateTime.now().plusDays(1));
         entity.setExpireSeconds(3600);
         entity.setQuerySnapshotJson("{\"keyword\":\"demo\"}");
         entity.setQuerySnapshotSummary("keyword=demo");
         entity.setDeleted(0L);
         return entity;
+    }
+
+    private ConditionLeafAst leaf(String fieldKey, QueryOperator operator, Object typedValue) {
+        ConditionLeafAst leaf = new ConditionLeafAst();
+        leaf.setFieldKey(fieldKey);
+        leaf.setOperator(operator);
+        leaf.setTypedValue(typedValue);
+        return leaf;
+    }
+
+    private com.demo.core.query.ast.ConditionGroupAst and(ConditionLeafAst... children) {
+        com.demo.core.query.ast.ConditionGroupAst group = new com.demo.core.query.ast.ConditionGroupAst();
+        group.setLogic(com.demo.core.query.ast.QueryLogicOperator.AND);
+        group.setChildren(List.of(children));
+        return group;
+    }
+
+    private SceneQueryDefinition<ExportRecordEntity> exportRecordSceneDefinition() {
+        return new SceneQueryDefinition<>() {
+            @Override
+            public String sceneCode() {
+                return "mdm.export.record.page";
+            }
+
+            @Override
+            public Map<String, SFunction<ExportRecordEntity, String>> textFields() {
+                return Map.of(
+                        "EXPORT_BIZ_CODE", ExportRecordEntity::getExportBizCode,
+                        "EXPORT_BIZ_NAME", ExportRecordEntity::getExportBizName,
+                        "FILE_NAME", ExportRecordEntity::getFileName
+                );
+            }
+
+            @Override
+            public Map<String, SFunction<ExportRecordEntity, LocalDateTime>> dateTimeFields() {
+                return Map.of(
+                        "CREATE_TIME", ExportRecordEntity::getCreateTime,
+                        "FINISHED_TIME", ExportRecordEntity::getFinishedTime,
+                        "EXPIRE_TIME", ExportRecordEntity::getExpireTime
+                );
+            }
+
+            @Override
+            public Map<String, SFunction<ExportRecordEntity, ?>> enumFields() {
+                return Map.of(
+                        "STATUS", ExportRecordEntity::getStatus,
+                        "OWNER_ID", ExportRecordEntity::getCreateBy
+                );
+            }
+
+            @Override
+            public Map<String, SFunction<ExportRecordEntity, ?>> sortFields() {
+                return Map.of(
+                        "CREATE_TIME", ExportRecordEntity::getCreateTime,
+                        "FINISHED_TIME", ExportRecordEntity::getFinishedTime,
+                        "EXPIRE_TIME", ExportRecordEntity::getExpireTime,
+                        "DOWNLOAD_COUNT", ExportRecordEntity::getDownloadCount
+                );
+            }
+
+            @Override
+            public Set<QueryOperator> allowedOperators(String fieldKey) {
+                return switch (fieldKey) {
+                    case "EXPORT_BIZ_CODE", "EXPORT_BIZ_NAME", "FILE_NAME" -> Set.of(
+                            QueryOperator.EQ,
+                            QueryOperator.CONTAINS,
+                            QueryOperator.STARTS_WITH,
+                            QueryOperator.ENDS_WITH,
+                            QueryOperator.IN
+                    );
+                    case "STATUS" -> Set.of(QueryOperator.EQ, QueryOperator.IN);
+                    case "OWNER_ID" -> Set.of(QueryOperator.EQ);
+                    case "CREATE_TIME", "FINISHED_TIME", "EXPIRE_TIME" -> Set.of(
+                            QueryOperator.GT,
+                            QueryOperator.GTE,
+                            QueryOperator.LT,
+                            QueryOperator.LTE,
+                            QueryOperator.BETWEEN
+                    );
+                    default -> Set.of();
+                };
+            }
+
+            @Override
+            public List<SortSpec> defaultSorts() {
+                return List.of(new SortSpec("CREATE_TIME", SortItemDTO.SortDirection.DESC));
+            }
+        };
     }
 }

@@ -3,8 +3,15 @@ package com.demo.mdm;
 import com.demo.core.exception.GlobalExceptionHandler;
 import com.demo.core.mybatis.CommonMetaObjectHandler;
 import com.demo.core.mybatis.MybatisPlusConfig;
+import com.demo.core.query.executor.MybatisPlusQueryExecutor;
+import com.demo.core.query.support.DynamicQueryGuard;
+import com.demo.core.query.support.QueryComplexityScorer;
 import com.demo.mdm.app.DictAppService;
 import com.demo.mdm.controller.GlobalDictController;
+import com.demo.mdm.query.globaldict.GlobalDictTypeSceneQueryDefinition;
+import com.demo.mdm.query.globaldict.GlobalDictTypeSceneQueryMapper;
+import com.demo.mdm.query.globaldict.GlobalDictItemSceneQueryMapper;
+import com.demo.mdm.query.globaldict.GlobalDictItemSceneQueryDefinition;
 import com.demo.mdm.service.DictService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(
         classes = DictModuleSmokeTests.TestApplication.class,
         properties = {
-                "spring.datasource.url=jdbc:h2:mem:demo-mdm-dict;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
+                "spring.datasource.url=jdbc:h2:mem:java-demo-mdm-dict;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
                 "spring.datasource.driver-class-name=org.h2.Driver",
                 "spring.datasource.username=sa",
                 "spring.datasource.password="
@@ -53,6 +60,9 @@ class DictModuleSmokeTests {
                 + "id bigint primary key,"
                 + "dict_type_code varchar(64) not null,"
                 + "dict_type_name varchar(128) not null,"
+                + "remark varchar(512) null,"
+                + "status varchar(32) not null default 'enable',"
+                + "version int not null default 0,"
                 + "create_time timestamp not null default current_timestamp,"
                 + "update_time timestamp not null default current_timestamp,"
                 + "create_by bigint null,"
@@ -65,6 +75,10 @@ class DictModuleSmokeTests {
                 + "dict_type_code varchar(64) not null,"
                 + "dict_item_code varchar(64) not null,"
                 + "dict_item_name varchar(128) not null,"
+                + "sort_order int not null default 0,"
+                + "remark varchar(512) null,"
+                + "status varchar(32) not null default 'enable',"
+                + "version int not null default 0,"
                 + "create_time timestamp not null default current_timestamp,"
                 + "update_time timestamp not null default current_timestamp,"
                 + "create_by bigint null,"
@@ -118,25 +132,160 @@ class DictModuleSmokeTests {
     }
 
     @Test
-    void listGlobalTypes_should_return_platform_dict_types_with_pagination() throws Exception {
+    void listGlobalTypes_should_return_platform_dict_types_with_dynamic_query_pagination() throws Exception {
         jdbcTemplate.update(
                 "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, create_time, update_time, deleted) "
-                        + "values (71, 'gender', '性别', current_timestamp, current_timestamp, 0)"
+                        + "values (71, 'gender', '性别', timestamp '2026-06-01 08:00:00', timestamp '2026-06-01 08:00:00', 0)"
         );
         jdbcTemplate.update(
                 "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, create_time, update_time, deleted) "
-                        + "values (72, 'user_status', '用户状态', current_timestamp, current_timestamp, 0)"
+                        + "values (72, 'user_status', '用户状态', timestamp '2026-06-02 08:00:00', timestamp '2026-06-02 08:00:00', 0)"
         );
 
         mockMvc.perform(post("/api/mdm/dict/global/types/list")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"pageNo\":2,\"pageSize\":1}"))
+                        .content("""
+                                {
+                                  "pageNo": 2,
+                                  "pageSize": 1,
+                                  "condition": {
+                                    "nodeType": "text",
+                                    "field": "dictTypeName",
+                                    "op": "CONTAINS",
+                                    "value": "状态"
+                                  }
+                                }
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.msg").value("ok"))
-                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list.length()").value(0));
+    }
+
+    @Test
+    void listGlobalTypes_should_filter_sort_and_hide_deleted_records() throws Exception {
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, create_time, update_time, deleted) "
+                        + "values (73, 'user_status', '用户状态', timestamp '2026-06-01 08:00:00', timestamp '2026-06-01 08:00:00', 0)"
+        );
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, create_time, update_time, deleted) "
+                        + "values (74, 'user_status_old', '旧用户状态', timestamp '2026-05-01 08:00:00', timestamp '2026-05-01 08:00:00', 0)"
+        );
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, create_time, update_time, deleted) "
+                        + "values (75, 'order_status', '订单状态', timestamp '2026-06-03 08:00:00', timestamp '2026-06-03 08:00:00', 1)"
+        );
+
+        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageNo": 1,
+                                  "pageSize": 10,
+                                  "condition": {
+                                    "nodeType": "compose",
+                                    "logic": "AND",
+                                    "children": [
+                                      {
+                                        "nodeType": "text",
+                                        "field": "dictTypeCode",
+                                         "op": "CONTAINS",
+                                        "value": "status"
+                                      },
+                                      {
+                                        "nodeType": "dateTime",
+"field": "createTime",
+                                        "op": "GTE",
+                                        "value": "2026-06-01 00:00:00"
+                                      }
+                                    ]
+                                  },
+                                  "sort": [
+                                    {
+                                      "field": "createTime",
+                                      "direction": "DESC"
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.list.length()").value(1))
                 .andExpect(jsonPath("$.data.list[0].dictTypeCode").value("user_status"));
+    }
+
+    @Test
+    void listGlobalTypes_should_reject_too_deep_condition_tree() throws Exception {
+        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageNo": 1,
+                                  "pageSize": 10,
+                                  "condition": {
+                                    "nodeType": "compose",
+                                    "logic": "AND",
+                                    "children": [
+                                      {
+                                        "nodeType": "compose",
+                                        "logic": "AND",
+                                        "children": [
+                                          {
+                                            "nodeType": "compose",
+                                            "logic": "AND",
+                                            "children": [
+                                              {
+                                                "nodeType": "compose",
+                                                "logic": "AND",
+                                                "children": [
+                                                  {
+                                                    "nodeType": "compose",
+                                                    "logic": "AND",
+                                                    "children": [
+                                                      {
+                                                        "nodeType": "text",
+                                                        "field": "dictTypeCode",
+                                                         "op": "EQ",
+                                                        "value": "user_status"
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(3000011));
+    }
+
+    @Test
+    void listGlobalTypes_should_return_bad_request_when_node_type_unknown() throws Exception {
+        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageNo": 1,
+                                  "pageSize": 10,
+                                  "condition": {
+                                    "nodeType": "mystery",
+                                    "field": "dictTypeCode",
+                                    "op": "EQ",
+                                    "value": "user_status"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("参数错误"));
     }
 
     @Test
@@ -317,7 +466,7 @@ class DictModuleSmokeTests {
 
         mockMvc.perform(post("/api/mdm/dict/global/item/delete")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"id\":91}"))
+                        .content("{\"ids\":[91]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.msg").value("ok"));
@@ -348,7 +497,7 @@ class DictModuleSmokeTests {
 
         mockMvc.perform(post("/api/mdm/dict/global/item/delete")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"id\":93}"))
+                        .content("{\"ids\":[93]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -385,13 +534,25 @@ class DictModuleSmokeTests {
 
         mockMvc.perform(post("/api/mdm/dict/global/items/by-type")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"dictTypeCode\":\"gender\"}"))
+                        .content("""
+                                {
+                                  "pageNo": 1,
+                                  "pageSize": 10,
+                                  "condition": {
+                                    "nodeType": "text",
+                                    "field": "dictTypeCode",
+                                    "op": "EQ",
+                                    "value": "gender"
+                                  }
+                                }
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.msg").value("ok"))
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[0].dictItemCode").value("MALE"))
-                .andExpect(jsonPath("$.data[1].dictItemCode").value("FEMALE"));
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.list.length()").value(2))
+                .andExpect(jsonPath("$.data.list[0].dictItemCode").value("MALE"))
+                .andExpect(jsonPath("$.data.list[1].dictItemCode").value("FEMALE"));
     }
 
     @SpringBootConfiguration
@@ -400,6 +561,13 @@ class DictModuleSmokeTests {
             GlobalDictController.class,
             DictAppService.class,
             DictService.class,
+            QueryComplexityScorer.class,
+            DynamicQueryGuard.class,
+            MybatisPlusQueryExecutor.class,
+            GlobalDictTypeSceneQueryDefinition.class,
+            GlobalDictTypeSceneQueryMapper.class,
+            GlobalDictItemSceneQueryMapper.class,
+            GlobalDictItemSceneQueryDefinition.class,
             CommonMetaObjectHandler.class,
             MybatisPlusConfig.class,
             GlobalExceptionHandler.class

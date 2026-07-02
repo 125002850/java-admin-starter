@@ -1,20 +1,22 @@
 package com.demo.mdm.controller.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 
-@Schema(description = "全局字典项删除请求")
+import java.util.List;
+
+@Schema(description = "全局字典项删除请求（支持多选）")
 public class GlobalDictItemDeleteReqDTO {
 
-    @NotNull
-    @Schema(description = "字典项ID", example = "1")
-    private Long id;
+    @NotEmpty
+    @Schema(description = "字典项ID列表", example = "[1, 2, 3]")
+    private List<Long> ids;
 
-    public Long getId() {
-        return id;
+    public List<Long> getIds() {
+        return ids;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setIds(List<Long> ids) {
+        this.ids = ids;
     }
 }
