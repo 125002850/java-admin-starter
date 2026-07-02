@@ -31,7 +31,7 @@ class CommonMetaObjectHandlerTests {
 
     @Test
     void insertFill_should_use_operator_id_when_context_is_populated() {
-        OperatorContext.set(OPERATOR_ID, "test-operator");
+        OperatorContext.set(OPERATOR_ID, "test-operator", null);
         TestEntity entity = new TestEntity();
         MetaObject metaObject = metaObjectFor(entity);
 
@@ -56,7 +56,7 @@ class CommonMetaObjectHandlerTests {
 
     @Test
     void updateFill_should_use_operator_id_when_context_is_populated() {
-        OperatorContext.set(OPERATOR_ID, "test-operator");
+        OperatorContext.set(OPERATOR_ID, "test-operator", null);
         TestEntity entity = new TestEntity();
         MetaObject metaObject = metaObjectFor(entity);
 

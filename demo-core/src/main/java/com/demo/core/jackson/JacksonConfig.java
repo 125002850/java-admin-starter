@@ -1,7 +1,15 @@
 package com.demo.core.jackson;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.BeanDescription;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
+import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -14,6 +22,7 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Configuration
 public class JacksonConfig {
@@ -31,9 +40,26 @@ public class JacksonConfig {
         javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(dateTimeFormatter));
         javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(dateTimeFormatter));
 
+        SimpleModule auditModule = new SimpleModule();
+        auditModule.setSerializerModifier(new BeanSerializerModifier() {
+            @Override
+            public List<BeanPropertyWriter> changeProperties(SerializationConfig config,
+                                                             BeanDescription beanDesc,
+                                                             List<BeanPropertyWriter> beanProperties) {
+                for (BeanPropertyWriter writer : beanProperties) {
+                    String name = writer.getName();
+                    if (("createBy".equals(name) || "updateBy".equals(name))
+                            && Long.class.isAssignableFrom(writer.getType().getRawClass())) {
+                        writer.assignSerializer(new AuditUserIdSerializer());
+                    }
+                }
+                return beanProperties;
+            }
+        });
+
         return builder
                 .createXmlMapper(false)
-                .modulesToInstall(javaTimeModule)
+                .modulesToInstall(javaTimeModule, auditModule)
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .simpleDateFormat(DATE_TIME_PATTERN)
                 .build();
