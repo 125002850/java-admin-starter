@@ -6,7 +6,7 @@
 
 - 当前工作分支：`feature/sso`
 - boot/core/mdm 底座已完成（原登录/租户 system 业务模块已移除，鉴权与租户由网关 SSO 承接）
-- 本地开发固定使用仓库根目录 `compose.yaml` 启动 MySQL，`dev` profile 连接 `127.0.0.1:3307/java_demo_sso`
+- `dev` profile 支持通过环境变量连接独立 MySQL 库 `basic_platform_sso`，未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL
 - `demo-system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换
 - 顶层模块边界约定为：`demo-boot` 负责启动，`demo-core` 负责底层通用能力与原生抽象，`demo-mdm` 承载通用业务服务，`demo-system` 承载外部服务集成，`demo-{biz}` 承载具体业务
 
@@ -194,6 +194,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充，优先从网关操作人上下文（`OperatorContext`）读取 `X-User-Id`，缺失时回退 `0L`。
 - 逻辑删除字段统一为 `deleted`。
 - 本仓库不再要求业务表包含 `tenant_id`，不再校验 `X-Tenant-Id` 请求头。多租户隔离由网关 SSO 和基础设施层承接。
+- 本分支不提供本地登录、用户、角色、菜单、权限表；SSO 透传用户展示信息仅缓存到 `sys_user_cache`，不作为本地用户体系。
 
 ### 对象模型
 
@@ -245,7 +246,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-demo/uploads`，避免临时目录被系统清理。
 - `qiniu` 模式只在 `demo-system` 的 `file` provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
 - `minio` 模式只在 `demo-system` 的 `file` provider 适配层内依赖 MinIO Java SDK，当前支持服务端上传、删除和临时下载地址；直传凭证暂未开放。
-- 当前阶段不新增数据库表、不新增 Flyway migration；对象元信息只存在于对象存储，不做数据库持久化。
+- 文件对象元信息只存在于对象存储，不做数据库持久化；导出中心和 SSO 用户展示缓存通过 Flyway migration 维护平台表。
 - 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `FILE_STORAGE_QINIU_*` 配置。
 - MinIO 真实网络集成测试为手动 gate：使用 `minio-it` profile，并通过环境变量注入 `FILE_STORAGE_MINIO_*` 配置。
 
@@ -260,15 +261,20 @@ Controller → AppService → Domain/Service → Infra/Mapper
 ## 启动方式
 
 ```bash
-# 1. 启动当前分支的 MySQL
+# 1. 可选：启动当前分支的本地 MySQL fallback
 docker compose up -d
 
-# 2. 以 dev profile 启动应用
+# 2. 可选：使用远程独立库 basic_platform_sso
+export JAVA_DEMO_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/basic_platform_sso?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true'
+export JAVA_DEMO_DATASOURCE_USERNAME=oig
+export JAVA_DEMO_DATASOURCE_PASSWORD='<从本地安全配置读取>'
+
+# 3. 以 dev profile 启动应用
 cd demo-boot
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-当前分支数据库固定映射如下：
+未设置 `JAVA_DEMO_DATASOURCE_*` 时，当前分支本地 fallback 数据库映射如下：
 
 | 项目 | 值 |
 |------|----|
@@ -278,17 +284,31 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 | 用户名 | `root` |
 | 密码 | `root` |
 
+推荐远程开发库：
+
+| 项目 | 值 |
+|------|----|
+| MySQL 地址 | `192.168.186.154:32425` |
+| 数据库名 | `basic_platform_sso` |
+| 用户名 | `oig` |
+| 密码 | 不写入仓库，通过 `JAVA_DEMO_DATASOURCE_PASSWORD` 注入 |
+
 启动后可访问接口文档：
 
 - `http://127.0.0.1:8080/doc.html`
 - `http://127.0.0.1:8080/v3/api-docs`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-dict`
 - `http://127.0.0.1:8080/v3/api-docs/file-storage`
+- `http://127.0.0.1:8080/v3/api-docs/mdm-export`
+- `http://127.0.0.1:8080/v3/api-docs/staff`
 
 ## 数据库初始化
 
 ```bash
-# Flyway 自动迁移，应用启动时执行
+# Flyway 自动迁移，应用启动时执行。推荐新建独立库验证 SSO 分支基座：
+mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
+  -e "create database if not exists basic_platform_sso character set utf8mb4 collate utf8mb4_general_ci;"
+
 # 如需单独执行迁移，可在启动模块下运行：
 cd demo-boot
 mvn flyway:migrate
@@ -315,7 +335,8 @@ docker compose down -v
 - 涉及列默认值、时间字段、`alter table` 之类 DDL 时，必须优先使用 MySQL 8 语法。例如修改默认值应写成 `alter table ... modify column ... default ...`，不要写 H2 可过但 MySQL 8 会失败的 `alter column ... set default ...`。
 - 一旦 migration 在本地或测试库执行失败，Flyway 会在 `flyway_schema_history` 留下 `success = false` 记录，后续启动会被 `validate` 阶段直接拦截；修复 SQL 后需要先 `repair` 或清理失败记录，再重新执行迁移。
 - 对逻辑删除表新增唯一约束时，必须先明确约束作用范围；如果唯一索引列中不包含 `deleted`，那它约束的是整张表，包含已逻辑删除行，迁移前查重也必须按同样语义检查，不能只筛 `deleted = 0`。
-- 当前分支历史迁移已演进到 `V6__remove_tenant_auth_tables.sql`，租户/用户/本地鉴权表已从应用侧移除。
+- 当前分支历史迁移已演进到 `V6__remove_tenant_auth_tables.sql`，租户/用户/本地鉴权表已从应用侧移除；后续只追加更高版本 migration，例如 `V8__backport_track_bench_foundation.sql`。
+- `V8` 只补齐基础能力：字典状态/备注/排序/版本字段、导出记录版本字段、`sys_user_cache` 和通用字典数据；不迁入 `track-bench-postloan`、`tb_track_*`、客户工作台、订单、库存、贷后跟踪或 `/api/postloan/**`。
 
 ### Lefthook 启用
 

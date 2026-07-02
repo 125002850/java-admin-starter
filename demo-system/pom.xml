@@ -60,6 +60,17 @@
             <version>${okhttp.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.oigit.appcik</groupId>
+            <artifactId>oigit-appcik</artifactId>
+            <version>${oigit-appcik.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.14</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>

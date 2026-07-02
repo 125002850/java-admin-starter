@@ -42,6 +42,7 @@ class FlywaySmokeTests {
         assertThat(hasSuccessfulMigration("5")).isTrue();
         assertThat(hasSuccessfulMigration("6")).isTrue();
         assertThat(hasSuccessfulMigration("7")).isTrue();
+        assertThat(hasSuccessfulMigration("8")).isTrue();
 
         assertThat(tableExists("sys_tenant_global")).isFalse();
         assertThat(tableExists("sys_user")).isFalse();
@@ -50,11 +51,15 @@ class FlywaySmokeTests {
 
         assertThat(tableColumns("sys_dict_type_global"))
             .containsAll(AUDIT_COLUMNS)
+            .contains("remark", "status", "version")
             .doesNotContain("tenant_id");
 
         assertThat(tableColumns("sys_dict_item_global"))
             .containsAll(AUDIT_COLUMNS)
+            .contains("remark", "status", "sort_order", "version")
             .doesNotContain("tenant_id");
+        assertThat(tableIndexes("sys_dict_item_global"))
+            .contains("idx_sys_dict_item_global_type_sort");
 
         assertThat(tableExists("sys_export_record_global")).isTrue();
         assertThat(tableColumns("sys_export_record_global"))
@@ -69,7 +74,8 @@ class FlywaySmokeTests {
                 "query_snapshot_json",
                 "query_snapshot_summary",
                 "download_count",
-                "expire_seconds"
+                "expire_seconds",
+                "version"
             )
             .doesNotContain("tenant_id");
         assertThat(tableIndexes("sys_export_record_global"))
@@ -78,6 +84,10 @@ class FlywaySmokeTests {
                 "idx_sys_export_record_global_status_expire_time",
                 "idx_sys_export_record_global_biz_code_time"
             );
+
+        assertThat(tableExists("sys_user_cache")).isTrue();
+        assertThat(tableColumns("sys_user_cache"))
+            .contains("user_id", "user_name", "user_phone", "real_name", "user_code", "create_time", "update_time");
     }
 
     @Test
@@ -103,7 +113,7 @@ class FlywaySmokeTests {
 
     private boolean tableExists(String tableName) {
         try (Connection connection = dataSource.getConnection();
-             ResultSet tables = connection.getMetaData().getTables(null, null, tableName, null)) {
+             ResultSet tables = connection.getMetaData().getTables(connection.getCatalog(), null, tableName, new String[] {"TABLE"})) {
             return tables.next();
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to inspect table metadata", exception);
@@ -180,7 +190,7 @@ class FlywaySmokeTests {
 
     private Set<String> tableColumns(String tableName) {
         try (Connection connection = dataSource.getConnection();
-             ResultSet columns = connection.getMetaData().getColumns(null, null, tableName, null)) {
+             ResultSet columns = connection.getMetaData().getColumns(connection.getCatalog(), null, tableName, null)) {
             Set<String> columnNames = new LinkedHashSet<>();
             while (columns.next()) {
                 columnNames.add(columns.getString("COLUMN_NAME").toLowerCase(Locale.ROOT));
@@ -193,7 +203,7 @@ class FlywaySmokeTests {
 
     private Set<String> tableIndexes(String tableName) {
         try (Connection connection = dataSource.getConnection();
-             ResultSet indexes = connection.getMetaData().getIndexInfo(null, null, tableName, false, false)) {
+             ResultSet indexes = connection.getMetaData().getIndexInfo(connection.getCatalog(), null, tableName, false, false)) {
             Set<String> indexNames = new LinkedHashSet<>();
             while (indexes.next()) {
                 String indexName = indexes.getString("INDEX_NAME");

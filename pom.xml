@@ -11,6 +11,7 @@
     <properties>
         <java.version>17</java.version>
         <spring-boot.version>3.3.0</spring-boot.version>
+        <h2.version>2.2.220</h2.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <flyway.version>10.15.0</flyway.version>
         <knife4j.version>4.5.0</knife4j.version>
@@ -18,6 +19,7 @@
         <qiniu.sdk.version>7.19.0</qiniu.sdk.version>
         <minio.sdk.version>8.6.0</minio.sdk.version>
         <okhttp.version>4.12.0</okhttp.version>
+        <oigit-appcik.version>2.0-SNAPSHOT</oigit-appcik.version>
     </properties>
 
     <modules>
