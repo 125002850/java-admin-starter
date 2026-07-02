@@ -65,6 +65,13 @@ class ModuleBoundaryTests {
     }
 
     @Test
+    void no_code_must_depend_on_postloan_package() {
+        ArchRule rule = noClasses()
+                .should().dependOnClassesThat().resideInAPackage("com.demo.postloan..");
+        rule.check(allClasses);
+    }
+
+    @Test
     void operator_context_and_filter_must_exist() {
         ArchRule rule = classes()
                 .that().resideInAPackage("com.demo.core.operator")
@@ -130,6 +137,13 @@ class ModuleBoundaryTests {
     void no_controller_must_expose_vendor_qiniu_paths() {
         ArchRule rule = noClasses()
                 .should(haveRequestMappingStartingWith("/api/framework/qiniu"));
+        rule.check(allClasses);
+    }
+
+    @Test
+    void no_controller_must_expose_postloan_paths() {
+        ArchRule rule = noClasses()
+                .should(haveRequestMappingStartingWith("/api/postloan"));
         rule.check(allClasses);
     }
 
