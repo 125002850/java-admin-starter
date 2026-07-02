@@ -2,6 +2,10 @@ package com.demo.core.mybatis;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.Version;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.demo.core.jackson.AuditUserIdSerializer;
 
 import java.time.LocalDateTime;
 
@@ -17,14 +21,21 @@ public abstract class BaseEntity {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
+    @JsonSerialize(using = AuditUserIdSerializer.class)
     @TableField(value = "create_by", fill = FieldFill.INSERT)
     private Long createBy;
 
+    @JsonSerialize(using = AuditUserIdSerializer.class)
     @TableField(value = "update_by", fill = FieldFill.INSERT_UPDATE)
     private Long updateBy;
 
+    @TableLogic
     @TableField("deleted")
     private Long deleted;
+
+    @Version
+    @TableField("version")
+    private Integer version;
 
     public LocalDateTime getCreateTime() {
         return createTime;
@@ -64,5 +75,13 @@ public abstract class BaseEntity {
 
     public void setDeleted(Long deleted) {
         this.deleted = deleted;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 }
