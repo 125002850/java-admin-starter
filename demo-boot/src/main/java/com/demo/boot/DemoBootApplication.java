@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication(scanBasePackages = "com.demo")
 @MapperScan({
+    "com.demo.core.operator",
     "com.demo.mdm.infra.mapper",
     "com.demo.mdm.export.infra.mapper"
 })

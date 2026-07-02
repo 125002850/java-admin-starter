@@ -50,6 +50,15 @@ public class MinioFileStorageProvider implements FileStorageProvider {
     }
 
     @Override
+    public byte[] download(String objectKey) {
+        try (InputStream inputStream = minioOperations.download(bucketName, objectKey)) {
+            return inputStream.readAllBytes();
+        } catch (Exception ex) {
+            throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
+        }
+    }
+
+    @Override
     public void delete(String objectKey) {
         try {
             minioOperations.delete(bucketName, objectKey);

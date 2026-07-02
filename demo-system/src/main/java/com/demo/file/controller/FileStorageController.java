@@ -15,6 +15,8 @@ import com.demo.file.app.FileAppService;
 import com.demo.file.controller.dto.DeleteFileReqDTO;
 import com.demo.file.controller.dto.FetchDirectUploadCredentialReqDTO;
 import com.demo.file.controller.dto.FetchDirectUploadCredentialRspDTO;
+import com.demo.file.controller.dto.FetchTempUrlBatchReqDTO;
+import com.demo.file.controller.dto.FetchTempUrlBatchRspDTO;
 import com.demo.file.controller.dto.FetchTempUrlReqDTO;
 import com.demo.file.controller.dto.FetchTempUrlRspDTO;
 import com.demo.file.controller.dto.StoredFileRspDTO;
@@ -38,7 +40,7 @@ public class FileStorageController {
         this.fileAppService = fileAppService;
     }
 
-    @Operation(summary = "上传文件对象", description = "上传文件到当前启用的文件存储 provider")
+    @Operation(summary = "上传文件对象", description = "上传文件到当前启用的文件存储 provider", operationId = "uploadFileObject")
     @PostMapping(value = "/object/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public R<StoredFileRspDTO> upload(
             @Schema(type = "string", format = "binary")
@@ -54,7 +56,7 @@ public class FileStorageController {
         return R.ok(fileAppService.upload(file, reqDTO));
     }
 
-    @Operation(summary = "删除文件对象", description = "根据对象键删除文件")
+    @Operation(summary = "删除文件对象", description = "根据对象键删除文件", operationId = "deleteFileObject")
     @PostMapping("/object/delete")
     public R<Void> delete(@Valid @RequestBody DeleteFileReqDTO reqDTO) {
         fileAppService.delete(reqDTO);
@@ -65,6 +67,16 @@ public class FileStorageController {
     @PostMapping("/object/temp-url/fetch")
     public R<FetchTempUrlRspDTO> fetchTempUrl(@Valid @RequestBody FetchTempUrlReqDTO reqDTO) {
         return R.ok(fileAppService.fetchTempUrl(reqDTO));
+    }
+
+    @Operation(
+            summary = "批量获取文件临时访问地址",
+            description = "根据对象键列表批量获取临时访问地址，重复对象键会按首次出现顺序去重",
+            operationId = "batchFetchFileObjectTempUrls"
+    )
+    @PostMapping("/object/temp-url/batch-fetch")
+    public R<FetchTempUrlBatchRspDTO> batchFetchTempUrls(@Valid @RequestBody FetchTempUrlBatchReqDTO reqDTO) {
+        return R.ok(fileAppService.batchFetchTempUrls(reqDTO));
     }
 
     @Operation(summary = "获取直传凭证", description = "获取客户端直传所需的凭证与对象信息")

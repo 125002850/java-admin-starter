@@ -1,8 +1,15 @@
 package com.demo.file.app;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+
 import com.demo.file.controller.dto.DeleteFileReqDTO;
 import com.demo.file.controller.dto.FetchDirectUploadCredentialReqDTO;
 import com.demo.file.controller.dto.FetchDirectUploadCredentialRspDTO;
+import com.demo.file.controller.dto.FetchTempUrlBatchReqDTO;
+import com.demo.file.controller.dto.FetchTempUrlBatchRspDTO;
+import com.demo.file.controller.dto.FetchTempUrlItemRspDTO;
 import com.demo.file.controller.dto.FetchTempUrlReqDTO;
 import com.demo.file.controller.dto.FetchTempUrlRspDTO;
 import com.demo.file.controller.dto.StoredFileRspDTO;
@@ -39,6 +46,15 @@ public class FileAppService {
 
     public FetchTempUrlRspDTO fetchTempUrl(FetchTempUrlReqDTO reqDTO) {
         return new FetchTempUrlRspDTO(reqDTO.getObjectKey(), fileService.fetchTempUrl(reqDTO.getObjectKey()));
+    }
+
+    public FetchTempUrlBatchRspDTO batchFetchTempUrls(FetchTempUrlBatchReqDTO reqDTO) {
+        LinkedHashSet<String> objectKeys = new LinkedHashSet<>(reqDTO.getObjectKeys());
+        List<FetchTempUrlItemRspDTO> items = new ArrayList<>(objectKeys.size());
+        for (String objectKey : objectKeys) {
+            items.add(new FetchTempUrlItemRspDTO(objectKey, fileService.fetchTempUrl(objectKey)));
+        }
+        return new FetchTempUrlBatchRspDTO(items);
     }
 
     public FetchDirectUploadCredentialRspDTO fetchDirectUploadCredential(FetchDirectUploadCredentialReqDTO reqDTO) {

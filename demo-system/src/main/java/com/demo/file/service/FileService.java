@@ -1,15 +1,8 @@
 package com.demo.file.service;
 
-import com.demo.core.exception.BizException;
-import com.demo.file.config.FileStorageProperties;
-import com.demo.file.enums.FileErrorCode;
-import com.demo.file.infra.provider.DirectUploadCapable;
-import com.demo.file.infra.provider.FileStorageProvider;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
-
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -18,6 +11,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.demo.core.exception.BizException;
+import com.demo.file.config.FileStorageProperties;
+import com.demo.file.enums.FileErrorCode;
+import com.demo.file.infra.provider.DirectUploadCapable;
+import com.demo.file.infra.provider.FileStorageProvider;
 
 @Service
 public class FileService {
@@ -44,8 +47,9 @@ public class FileService {
                 : generateObjectKey(normalizedBizPath, file.getOriginalFilename());
 
         try (var inputStream = file.getInputStream()) {
-            return fileStorageProvider.upload(
+            return doUpload(
                     inputStream,
+                    normalizedBizPath,
                     resolvedObjectKey,
                     file.getContentType(),
                     file.getSize(),
@@ -56,8 +60,40 @@ public class FileService {
         }
     }
 
+    public StoredFile upload(byte[] content, String bizPath, String objectKey, String originalFilename, String contentType) {
+        if (content == null || content.length == 0) {
+            throw new BizException(FileErrorCode.EMPTY_FILE);
+        }
+        String normalizedBizPath = normalizeBizPath(bizPath);
+        String resolvedObjectKey = StringUtils.hasText(objectKey)
+                ? normalizeObjectKey(objectKey)
+                : generateObjectKey(normalizedBizPath, originalFilename);
+        try (InputStream inputStream = new ByteArrayInputStream(content)) {
+            return doUpload(
+                    inputStream,
+                    normalizedBizPath,
+                    resolvedObjectKey,
+                    contentType,
+                    (long) content.length,
+                    originalFilename
+            );
+        } catch (IOException ex) {
+            throw new BizException(FileErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
     public void delete(String objectKey) {
         fileStorageProvider.delete(normalizeObjectKey(objectKey));
+    }
+
+    public byte[] download(String objectKey) {
+        try {
+            return fileStorageProvider.download(normalizeObjectKey(objectKey));
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
+        }
     }
 
     public String fetchTempUrl(String objectKey) {
@@ -79,6 +115,26 @@ public class FileService {
                 ? normalizeObjectKey(objectKey)
                 : generateObjectKey(normalizedBizPath, null);
         return directUploadCapable.fetchDirectUploadCredential(resolvedObjectKey);
+    }
+
+    private StoredFile doUpload(
+            InputStream inputStream,
+            String normalizedBizPath,
+            String resolvedObjectKey,
+            String contentType,
+            Long size,
+            String originalFilename
+    ) {
+        String objectKey = StringUtils.hasText(resolvedObjectKey)
+                ? resolvedObjectKey
+                : generateObjectKey(normalizedBizPath, originalFilename);
+        return fileStorageProvider.upload(
+                inputStream,
+                objectKey,
+                contentType,
+                size,
+                originalFilename
+        );
     }
 
     private String generateObjectKey(String bizPath, String originalFilename) {

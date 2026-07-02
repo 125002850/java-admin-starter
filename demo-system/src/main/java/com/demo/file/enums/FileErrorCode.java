@@ -13,7 +13,8 @@ public enum FileErrorCode implements ErrorCode {
     TEMP_URL_GENERATE_FAILED(3002007, "临时访问地址生成失败"),
     DIRECT_UPLOAD_NOT_SUPPORTED(3002008, "当前存储类型不支持直传凭证"),
     INVALID_STORAGE_CONFIG(3002009, "文件存储配置非法"),
-    DIRECT_UPLOAD_CREDENTIAL_GENERATE_FAILED(3002010, "直传凭证生成失败");
+    DIRECT_UPLOAD_CREDENTIAL_GENERATE_FAILED(3002010, "直传凭证生成失败"),
+    FILE_DOWNLOAD_FAILED(3002011, "文件下载失败");
 
     private final int code;
     private final String msg;
