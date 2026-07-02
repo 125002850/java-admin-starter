@@ -8,6 +8,8 @@ public interface FileStorageProvider {
 
     StoredFile upload(InputStream inputStream, String objectKey, String contentType, long size, String fileName);
 
+    byte[] download(String objectKey);
+
     void delete(String objectKey);
 
     String buildOriginUrl(String objectKey);

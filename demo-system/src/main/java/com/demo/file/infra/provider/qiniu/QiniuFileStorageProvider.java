@@ -1,6 +1,9 @@
 package com.demo.file.infra.provider.qiniu;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URLConnection;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -54,6 +57,18 @@ public class QiniuFileStorageProvider implements FileStorageProvider, DirectUplo
             throw new BizException(FileErrorCode.FILE_UPLOAD_FAILED);
         }
         return new StoredFile(objectKey, buildOriginUrl(objectKey), fileName, contentType, size);
+    }
+
+    @Override
+    public byte[] download(String objectKey) {
+        try {
+            URLConnection connection = URI.create(buildTempUrl(objectKey)).toURL().openConnection();
+            try (InputStream inputStream = connection.getInputStream()) {
+                return inputStream.readAllBytes();
+            }
+        } catch (IllegalArgumentException | IOException ex) {
+            throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
+        }
     }
 
     @Override

@@ -12,6 +12,7 @@ import com.demo.core.exception.BizException;
 import com.demo.file.config.FileStorageProperties;
 import com.demo.file.enums.FileErrorCode;
 
+import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -55,6 +56,14 @@ public class DefaultMinioOperations implements MinioOperations {
             builder.contentType(contentType);
         }
         minioClient.putObject(builder.build());
+    }
+
+    @Override
+    public InputStream download(String bucketName, String objectKey) throws Exception {
+        return minioClient.getObject(GetObjectArgs.builder()
+                .bucket(bucketName)
+                .object(objectKey)
+                .build());
     }
 
     @Override
