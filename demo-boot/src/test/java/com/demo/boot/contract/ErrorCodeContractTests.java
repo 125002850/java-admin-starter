@@ -2,6 +2,7 @@ package com.demo.boot.contract;
 
 import com.demo.core.exception.CommonErrorCode;
 import com.demo.core.exception.ErrorCode;
+import com.demo.core.query.exception.DynamicQueryErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -25,6 +26,11 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ErrorCodeContractTests {
+
+    @Test
+    void contractScanShouldIncludeDynamicQueryErrorCodes() {
+        assertThat(scanErrorCodeEnums("com.demo")).contains(DynamicQueryErrorCode.class);
+    }
 
     @Test
     void all_error_code_enums_should_have_unique_codes_and_non_blank_msgs() {

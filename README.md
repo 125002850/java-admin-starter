@@ -8,6 +8,8 @@
 - boot/core/mdm 底座已完成（原登录/租户 system 业务模块已移除，鉴权与租户由网关 SSO 承接）
 - `dev` profile 支持通过环境变量连接独立 MySQL 库 `basic_platform_sso`，未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL
 - `demo-system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换
+- 动态查询 DSL 已在 `demo-core` 落地，当前接入全局字典类型、字典项和导出记录分页场景
+- `demo-mdm` 已承载全局字典和导出中心，支持导出提交、我的导出记录、详情、下载、批量下载和软删除
 - 顶层模块边界约定为：`demo-boot` 负责启动，`demo-core` 负责底层通用能力与原生抽象，`demo-mdm` 承载通用业务服务，`demo-system` 承载外部服务集成，`demo-{biz}` 承载具体业务
 
 ## 项目结构
@@ -247,8 +249,15 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - `qiniu` 模式只在 `demo-system` 的 `file` provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
 - `minio` 模式只在 `demo-system` 的 `file` provider 适配层内依赖 MinIO Java SDK，当前支持服务端上传、删除和临时下载地址；直传凭证暂未开放。
 - 文件对象元信息只存在于对象存储，不做数据库持久化；导出中心和 SSO 用户展示缓存通过 Flyway migration 维护平台表。
+- 文件模块额外支持字节数组上传、对象下载和批量临时 URL，供导出中心复用。
 - 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `FILE_STORAGE_QINIU_*` 配置。
 - MinIO 真实网络集成测试为手动 gate：使用 `minio-it` profile，并通过环境变量注入 `FILE_STORAGE_MINIO_*` 配置。
+
+### SSO 员工查询摘要
+
+- `demo-system` 下 `staff` 子模块对接可选 `oigit-appcik` SSO staff client。
+- 对外接口为 `POST /api/staff/list-all`，返回 SSO 员工展示数据，不落本地用户表。
+- 真实 SSO 地址通过 `OIGIT_APPCIK_SSO_SERVER_ADDR` / `oigit.appcik.sso.server-addr` 配置。
 
 ### 导出与下载中心架构原则
 
@@ -301,6 +310,20 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 - `http://127.0.0.1:8080/v3/api-docs/file-storage`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-export`
 - `http://127.0.0.1:8080/v3/api-docs/staff`
+
+当前基座公开端点范围：
+
+- `/api/mdm/dict/global/**`
+- `/api/mdm/export/**`
+- `/api/file/storage/**`
+- `/api/staff/list-all`
+
+明确不包含：
+
+- `track-bench-postloan` 模块
+- `com.demo.postloan.*` / `com.trackbench.postloan.*`
+- `tb_track_*`、客户工作台、订单、库存、贷后跟踪、附件业务表
+- `/api/postloan/**`
 
 ## 数据库初始化
 
@@ -382,5 +405,4 @@ lefthook run pre-commit
 
 ## todo list
 
-- 文件导出中心
 - 日志
