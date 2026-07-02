@@ -14,6 +14,9 @@ knife4j:
   enable: true
 
 platform:
+  operator:
+    cache-user:
+      update-window-seconds: ${CACHE_USER_UPDATE_WINDOW_SECONDS:600}
   file:
     storage:
       type: ${FILE_STORAGE_TYPE:minio}
@@ -46,3 +49,21 @@ platform:
         connect-timeout: ${FILE_STORAGE_MINIO_CONNECT_TIMEOUT:10}
         read-timeout: ${FILE_STORAGE_MINIO_READ_TIMEOUT:30}
         write-timeout: ${FILE_STORAGE_MINIO_WRITE_TIMEOUT:0}
+
+oigit:
+  appcik:
+    sso:
+      server-addr: ${OIGIT_APPCIK_SSO_SERVER_ADDR:}
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-enums-package: com.demo
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: auto
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
