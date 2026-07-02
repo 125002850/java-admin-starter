@@ -1,6 +1,7 @@
 package com.demo.mdm.service;
 
 import com.demo.core.exception.BizException;
+import com.demo.core.query.executor.MybatisPlusQueryExecutor;
 import com.demo.mdm.enums.DictErrorCode;
 import com.demo.mdm.infra.entity.GlobalDictItemEntity;
 import com.demo.mdm.infra.entity.GlobalDictTypeEntity;
@@ -27,10 +28,11 @@ class DictServiceDuplicateKeyTests {
     private GlobalDictItemMapper globalDictItemMapper;
 
     private DictService dictService;
+    private final MybatisPlusQueryExecutor mybatisPlusQueryExecutor = new MybatisPlusQueryExecutor();
 
     @BeforeEach
     void setUp() {
-        dictService = new DictService(globalDictTypeMapper, globalDictItemMapper);
+        dictService = new DictService(globalDictTypeMapper, globalDictItemMapper, mybatisPlusQueryExecutor);
     }
 
     @Test
@@ -66,7 +68,7 @@ class DictServiceDuplicateKeyTests {
         doThrow(new DuplicateKeyException("uk_sys_dict_item_global_type_code"))
                 .when(globalDictItemMapper).updateById(any(GlobalDictItemEntity.class));
 
-        assertThatThrownBy(() -> dictService.updateGlobalItem(1L, "gender", "FEMALE", "女"))
+        assertThatThrownBy(() -> dictService.updateGlobalItem(1L, "gender", "FEMALE", "女", null, null, null))
                 .isInstanceOf(BizException.class)
                 .hasMessage(DictErrorCode.GLOBAL_DICT_ITEM_CODE_DUPLICATED.getMsg());
     }

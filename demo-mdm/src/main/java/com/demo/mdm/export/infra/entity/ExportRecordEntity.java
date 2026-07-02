@@ -1,8 +1,6 @@
 package com.demo.mdm.export.infra.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.demo.core.mybatis.BaseEntity;
 
@@ -11,7 +9,6 @@ import java.time.LocalDateTime;
 @TableName("sys_export_record_global")
 public class ExportRecordEntity extends BaseEntity {
 
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     @TableField("export_biz_code")

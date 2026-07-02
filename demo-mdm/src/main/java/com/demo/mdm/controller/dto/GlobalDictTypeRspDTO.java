@@ -1,9 +1,10 @@
 package com.demo.mdm.controller.dto;
 
+import com.demo.core.web.AuditRspDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "全局字典类型响应")
-public class GlobalDictTypeRspDTO {
+public class GlobalDictTypeRspDTO extends AuditRspDTO {
 
     @Schema(description = "字典类型ID", example = "1")
     private Long id;
@@ -13,6 +14,12 @@ public class GlobalDictTypeRspDTO {
 
     @Schema(description = "字典类型名称", example = "性别")
     private String dictTypeName;
+
+    @Schema(description = "备注")
+    private String remark;
+
+    @Schema(description = "状态：enable-启用，disable-禁用", allowableValues = {"enable", "disable"}, example = "enable")
+    private String status;
 
     public GlobalDictTypeRspDTO() {
     }
@@ -45,5 +52,21 @@ public class GlobalDictTypeRspDTO {
 
     public void setDictTypeName(String dictTypeName) {
         this.dictTypeName = dictTypeName;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

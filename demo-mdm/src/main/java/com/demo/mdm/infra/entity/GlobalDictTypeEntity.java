@@ -1,15 +1,13 @@
 package com.demo.mdm.infra.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.demo.core.enums.EnableStatusEnum;
 import com.demo.core.mybatis.BaseEntity;
 
 @TableName("sys_dict_type_global")
 public class GlobalDictTypeEntity extends BaseEntity {
 
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     @TableField("dict_type_code")
@@ -17,6 +15,12 @@ public class GlobalDictTypeEntity extends BaseEntity {
 
     @TableField("dict_type_name")
     private String dictTypeName;
+
+    @TableField("remark")
+    private String remark;
+
+    @TableField("status")
+    private EnableStatusEnum status;
 
     public Long getId() {
         return id;
@@ -40,5 +44,21 @@ public class GlobalDictTypeEntity extends BaseEntity {
 
     public void setDictTypeName(String dictTypeName) {
         this.dictTypeName = dictTypeName;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+
+    public EnableStatusEnum getStatus() {
+        return status;
+    }
+
+    public void setStatus(EnableStatusEnum status) {
+        this.status = status;
     }
 }

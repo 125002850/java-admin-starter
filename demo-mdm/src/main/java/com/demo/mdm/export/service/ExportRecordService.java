@@ -1,6 +1,11 @@
 package com.demo.mdm.export.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.demo.core.exception.BizException;
+import com.demo.core.query.ast.QueryAst;
+import com.demo.core.query.executor.MybatisPlusQueryExecutor;
+import com.demo.core.query.scene.SceneQueryDefinition;
 import com.demo.mdm.export.enums.ExportCenterErrorCode;
 import com.demo.mdm.export.enums.ExportDeleteReason;
 import com.demo.mdm.export.enums.ExportRecordStatus;
@@ -10,19 +15,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 
 @Service
 public class ExportRecordService {
 
     private final ExportRecordMapper exportRecordMapper;
+    private final MybatisPlusQueryExecutor mybatisPlusQueryExecutor;
 
-    public ExportRecordService(ExportRecordMapper exportRecordMapper) {
+    public ExportRecordService(
+            ExportRecordMapper exportRecordMapper,
+            MybatisPlusQueryExecutor mybatisPlusQueryExecutor
+    ) {
         this.exportRecordMapper = exportRecordMapper;
+        this.mybatisPlusQueryExecutor = mybatisPlusQueryExecutor;
     }
 
     @Transactional
     public Long createProcessingRecord(ExportRecordEntity entity) {
-        entity.setStatus(ExportRecordStatus.PROCESSING.getCode());
+        entity.setStatus(ExportRecordStatus.PROCESSING.getIntCode());
         if (entity.getDeleted() == null) {
             entity.setDeleted(0L);
         }
@@ -32,9 +44,9 @@ public class ExportRecordService {
 
     @Transactional
     public void markSuccess(Long recordId, String objectKey, String contentType, Long fileSize, String storageType) {
-        ExportRecordEntity entity = getRequired(recordId);
+        ExportRecordEntity entity = getActiveRequired(recordId);
         ensureStatus(entity, ExportRecordStatus.PROCESSING);
-        entity.setStatus(ExportRecordStatus.SUCCESS.getCode());
+        entity.setStatus(ExportRecordStatus.SUCCESS.getIntCode());
         entity.setObjectKey(objectKey);
         entity.setContentType(contentType);
         entity.setFileSize(fileSize);
@@ -45,9 +57,9 @@ public class ExportRecordService {
 
     @Transactional
     public void markFailed(Long recordId, String failCode, String failMessage) {
-        ExportRecordEntity entity = getRequired(recordId);
+        ExportRecordEntity entity = getActiveRequired(recordId);
         ensureStatus(entity, ExportRecordStatus.PROCESSING);
-        entity.setStatus(ExportRecordStatus.FAILED.getCode());
+        entity.setStatus(ExportRecordStatus.FAILED.getIntCode());
         entity.setFailCode(failCode);
         entity.setFailMessage(failMessage);
         entity.setFinishedTime(LocalDateTime.now());
@@ -56,21 +68,44 @@ public class ExportRecordService {
 
     @Transactional
     public void markExpired(Long recordId) {
-        ExportRecordEntity entity = getRequired(recordId);
+        ExportRecordEntity entity = getActiveRequired(recordId);
         ensureStatus(entity, ExportRecordStatus.SUCCESS);
-        entity.setStatus(ExportRecordStatus.EXPIRED.getCode());
+        entity.setStatus(ExportRecordStatus.EXPIRED.getIntCode());
         exportRecordMapper.updateById(entity);
     }
 
     @Transactional
     public void markDeleted(Long recordId, ExportDeleteReason deleteReason) {
         ExportRecordEntity entity = getRequired(recordId);
-        if (!isDeletable(entity.getStatus())) {
-            throw new BizException(ExportCenterErrorCode.EXPORT_RECORD_STATUS_INVALID);
+        if (isDeleted(entity)) {
+            return;
         }
-        entity.setStatus(ExportRecordStatus.DELETED.getCode());
-        entity.setDeleteReason(deleteReason.getCode());
-        entity.setDeletedTime(LocalDateTime.now());
+        exportRecordMapper.update(
+                null,
+                Wrappers.<ExportRecordEntity>lambdaUpdate()
+                        .set(ExportRecordEntity::getDeleted, 1L)
+                        .set(ExportRecordEntity::getDeleteReason, deleteReason.getIntCode())
+                        .set(ExportRecordEntity::getDeletedTime, LocalDateTime.now())
+                        .eq(ExportRecordEntity::getId, recordId)
+                        .eq(ExportRecordEntity::getDeleted, 0L)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ExportRecordEntity> pageMyRecords(
+            QueryAst queryAst,
+            SceneQueryDefinition<ExportRecordEntity> sceneQueryDefinition
+    ) {
+        return mybatisPlusQueryExecutor.selectPage(exportRecordMapper, queryAst, sceneQueryDefinition);
+    }
+
+    @Transactional
+    public void recordDownloadLinkAcquired(Long recordId, Long operatorId) {
+        ExportRecordEntity entity = getActiveRequired(recordId);
+        int nextDownloadCount = entity.getDownloadCount() == null ? 1 : entity.getDownloadCount() + 1;
+        entity.setDownloadCount(nextDownloadCount);
+        entity.setLastDownloadTime(LocalDateTime.now());
+        entity.setLastDownloadBy(operatorId);
         exportRecordMapper.updateById(entity);
     }
 
@@ -82,14 +117,41 @@ public class ExportRecordService {
         return entity;
     }
 
+    public ExportRecordEntity getActiveRequired(Long recordId) {
+        ExportRecordEntity entity = getRequired(recordId);
+        if (isDeleted(entity)) {
+            throw new BizException(ExportCenterErrorCode.EXPORT_RECORD_NOT_FOUND);
+        }
+        return entity;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExportRecordEntity> listByIds(List<Long> recordIds) {
+        if (recordIds == null || recordIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return exportRecordMapper.selectBatchIds(recordIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExportRecordEntity> listActiveByIds(List<Long> recordIds) {
+        if (recordIds == null || recordIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return exportRecordMapper.selectList(
+                Wrappers.<ExportRecordEntity>lambdaQuery()
+                        .in(ExportRecordEntity::getId, recordIds)
+                        .eq(ExportRecordEntity::getDeleted, 0L)
+        );
+    }
+
     private void ensureStatus(ExportRecordEntity entity, ExportRecordStatus expectedStatus) {
-        if (entity.getStatus() == null || entity.getStatus() != expectedStatus.getCode()) {
+        if (entity.getStatus() == null || !entity.getStatus().equals(expectedStatus.getIntCode())) {
             throw new BizException(ExportCenterErrorCode.EXPORT_RECORD_STATUS_INVALID);
         }
     }
 
-    private boolean isDeletable(Integer status) {
-        return status != null
-            && (status == ExportRecordStatus.SUCCESS.getCode() || status == ExportRecordStatus.EXPIRED.getCode());
+    private boolean isDeleted(ExportRecordEntity entity) {
+        return entity.getDeleted() != null && entity.getDeleted() == 1L;
     }
 }
