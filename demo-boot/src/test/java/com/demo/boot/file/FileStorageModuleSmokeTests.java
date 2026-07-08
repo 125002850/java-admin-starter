@@ -1,6 +1,7 @@
 package com.demo.boot.file;
 
 import com.demo.boot.DemoBootApplication;
+import com.demo.boot.iam.IamTestAuth;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterAll;
@@ -92,6 +93,7 @@ class FileStorageModuleSmokeTests {
 
         String content = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
+                        .header("Authorization", authorizationHeader())
                         .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -120,6 +122,7 @@ class FileStorageModuleSmokeTests {
 
         String uploadResponse = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
+                        .header("Authorization", authorizationHeader())
                         .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -129,6 +132,7 @@ class FileStorageModuleSmokeTests {
         String objectKey = objectMapper.readTree(uploadResponse).get("data").get("objectKey").asText();
 
         mockMvc.perform(post("/api/file/storage/object/temp-url/fetch")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"objectKey\":\"" + objectKey + "\"}"))
                 .andExpect(status().isOk())
@@ -148,6 +152,7 @@ class FileStorageModuleSmokeTests {
 
         String uploadResponse = mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
+                        .header("Authorization", authorizationHeader())
                         .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -159,6 +164,7 @@ class FileStorageModuleSmokeTests {
         assertThat(Files.exists(storedFile)).isTrue();
 
         mockMvc.perform(post("/api/file/storage/object/delete")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"objectKey\":\"" + objectKey + "\"}"))
                 .andExpect(status().isOk())
@@ -178,6 +184,7 @@ class FileStorageModuleSmokeTests {
 
         mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
+                        .header("Authorization", authorizationHeader())
                         .param("bizPath", "avatar/user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(3002001))
@@ -195,6 +202,7 @@ class FileStorageModuleSmokeTests {
 
         mockMvc.perform(multipart("/api/file/storage/object/upload")
                         .file(file)
+                        .header("Authorization", authorizationHeader())
                         .param("bizPath", "avatar//user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(3002002))
@@ -204,6 +212,7 @@ class FileStorageModuleSmokeTests {
     @Test
     void fetchDirectUploadCredential_should_reject_when_local_provider_does_not_support_it() throws Exception {
         mockMvc.perform(post("/api/file/storage/direct-upload/credential/fetch")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"bizPath\":\"avatar/user\"}"))
                 .andExpect(status().isOk())
@@ -217,5 +226,9 @@ class FileStorageModuleSmokeTests {
         } catch (IOException ex) {
             throw new IllegalStateException("failed to create temp directory", ex);
         }
+    }
+
+    private String authorizationHeader() throws Exception {
+        return "Bearer " + IamTestAuth.adminAccessToken(mockMvc, objectMapper);
     }
 }

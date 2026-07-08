@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongSupplier;
 
 @Component
+@ConditionalOnProperty(prefix = "platform.operator", name = "gateway-filter-enabled", havingValue = "true")
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class GatewayOperatorFilter extends OncePerRequestFilter {
 

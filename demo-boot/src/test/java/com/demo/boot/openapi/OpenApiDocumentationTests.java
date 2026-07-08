@@ -47,7 +47,13 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("/api/mdm/export/download/batch")))
             .andExpect(content().string(containsString("/api/file/storage/object/upload")))
             .andExpect(content().string(containsString("/api/file/storage/object/temp-url/batch-fetch")))
-            .andExpect(content().string(containsString("/api/staff/list-all")))
+            .andExpect(content().string(containsString("/api/iam/auth/login")))
+            .andExpect(content().string(containsString("/api/iam/auth/me")))
+            .andExpect(content().string(containsString("/api/iam/staff/page")))
+            .andExpect(content().string(containsString("/api/iam/role/menus/assign")))
+            .andExpect(content().string(containsString("/api/iam/menu/tree")))
+            .andExpect(content().string(containsString("/api/iam/log/operation/page")))
+            .andExpect(content().string(not(containsString("/api/staff/list-all"))))
             .andExpect(content().string(not(containsString("postloan"))))
             .andExpect(content().string(not(containsString("tb_track_"))));
     }
@@ -78,8 +84,18 @@ class OpenApiDocumentationTests {
                     .value("fileStorageObjectTempUrlFetch"))
             .andExpect(jsonPath("$.paths['/api/file/storage/object/temp-url/batch-fetch'].post.operationId")
                     .value("batchFetchFileObjectTempUrls"))
-            .andExpect(jsonPath("$.paths['/api/staff/list-all'].post.operationId")
-                    .value("staffListAll"));
+            .andExpect(jsonPath("$.paths['/api/iam/auth/login'].post.operationId")
+                    .value("iamAuthLogin"))
+            .andExpect(jsonPath("$.paths['/api/iam/auth/me'].post.operationId")
+                    .value("iamAuthMe"))
+            .andExpect(jsonPath("$.paths['/api/iam/staff/page'].post.operationId")
+                    .value("iamStaffPage"))
+            .andExpect(jsonPath("$.paths['/api/iam/role/menus/assign'].post.operationId")
+                    .value("iamRoleMenusAssign"))
+            .andExpect(jsonPath("$.paths['/api/iam/menu/tree'].post.operationId")
+                    .value("iamMenuTree"))
+            .andExpect(jsonPath("$.paths['/api/iam/log/operation/page'].post.operationId")
+                    .value("iamOperationLogPage"));
     }
 
     @Test

@@ -51,6 +51,51 @@ class ModuleBoundaryTests {
     }
 
     @Test
+    void demo_core_must_not_depend_on_demo_iam() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.core..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.iam..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_mdm_must_not_depend_on_demo_iam() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.mdm..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.iam..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_system_must_not_depend_on_demo_iam() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.file..")
+                .or().resideInAPackage("com.demo.staff..")
+                .should().dependOnClassesThat().resideInAPackage("com.demo.iam..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_iam_must_not_depend_on_demo_mdm_or_system_implementations() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.iam..")
+                .should().dependOnClassesThat().resideInAnyPackage("com.demo.mdm..", "com.demo.file..", "com.demo.staff..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void demo_iam_controller_must_not_depend_on_service_mapper_or_entity() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("com.demo.iam.controller..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "com.demo.iam.service..",
+                        "com.demo.iam.infra.mapper..",
+                        "com.demo.iam.infra.entity.."
+                );
+        rule.check(allClasses);
+    }
+
+    @Test
     void no_code_must_depend_on_deleted_demo_system() {
         ArchRule rule = noClasses()
                 .should().dependOnClassesThat().resideInAPackage("com.demo.system..");

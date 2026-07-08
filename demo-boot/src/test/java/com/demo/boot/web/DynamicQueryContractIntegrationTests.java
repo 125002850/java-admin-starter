@@ -1,6 +1,8 @@
 package com.demo.boot.web;
 
+import com.demo.boot.iam.IamTestAuth;
 import com.demo.core.operator.OperatorContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,9 @@ class DynamicQueryContractIntegrationTests {
     private MockMvc mockMvc;
 
     @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
@@ -47,6 +52,7 @@ class DynamicQueryContractIntegrationTests {
     @Test
     void unknownNodeTypeShouldReturnWrappedParamError() throws Exception {
         mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -65,6 +71,7 @@ class DynamicQueryContractIntegrationTests {
     @Test
     void tooDeepConditionTreeShouldReturnBizError() throws Exception {
         mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -127,6 +134,7 @@ class DynamicQueryContractIntegrationTests {
                 .collect(Collectors.joining(","));
 
         mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -147,6 +155,7 @@ class DynamicQueryContractIntegrationTests {
     @Test
     void oversizedPageSizeShouldReturnBizError() throws Exception {
         mockMvc.perform(post("/api/mdm/export/my/page")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -166,6 +175,7 @@ class DynamicQueryContractIntegrationTests {
                 .collect(Collectors.joining(","));
 
         mockMvc.perform(post("/api/mdm/export/my/page")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -187,6 +197,7 @@ class DynamicQueryContractIntegrationTests {
     @Test
     void eqWithNullShouldReturnWrappedValidationError() throws Exception {
         mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -211,6 +222,7 @@ class DynamicQueryContractIntegrationTests {
         insertGlobalDictType(802L, "user_status_deleted", "已删除用户状态", 1L, LocalDateTime.of(2026, 6, 2, 8, 0, 0));
 
         mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -264,5 +276,9 @@ class DynamicQueryContractIntegrationTests {
                 0L,
                 deleted
         );
+    }
+
+    private String authorizationHeader() throws Exception {
+        return "Bearer " + IamTestAuth.adminAccessToken(mockMvc, objectMapper);
     }
 }

@@ -26,6 +26,11 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>demo-iam</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>demo-system</artifactId>
             <version>${project.version}</version>
         </dependency>

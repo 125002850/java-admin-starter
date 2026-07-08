@@ -14,7 +14,15 @@ knife4j:
   enable: true
 
 platform:
+  iam:
+    jwt-secret: ${IAM_JWT_SECRET:change-me-change-me-change-me-change-me}
+    access-token-ttl-minutes: ${IAM_ACCESS_TOKEN_TTL_MINUTES:30}
+    refresh-token-ttl-days: ${IAM_REFRESH_TOKEN_TTL_DAYS:14}
+    failure-delay-millis: ${IAM_FAILURE_DELAY_MILLIS:500}
+  sso-staff:
+    enabled: ${SSO_STAFF_ENABLED:false}
   operator:
+    gateway-filter-enabled: ${GATEWAY_OPERATOR_FILTER_ENABLED:false}
     cache-user:
       update-window-seconds: ${CACHE_USER_UPDATE_WINDOW_SECONDS:600}
   file:
