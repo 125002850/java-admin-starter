@@ -83,14 +83,14 @@ java-demo/
 └── demo-mdm/                                        # 通用业务服务模块：承载主数据与跨业务复用的平台型业务能力
     └── src/
         ├── main/java/com/demo/mdm/
-        │   ├── controller/                          #     全局字典接口
-        │   │   └── dto/                             #     请求/响应 DTO
-        │   ├── app/                                 #     DictAppService（事务边界）
-        │   ├── service/                             #     字典领域服务
-        │   ├── enums/                               #     字典模块错误码枚举
-        │   └── infra/
-        │       ├── entity/                          #     数据库实体
-        │       └── mapper/                          #     MyBatis Mapper
+        │   ├── dict/                                #     全局字典能力
+        │   │   ├── controller/                      #     全局字典接口与 DTO
+        │   │   ├── app/                             #     DictAppService（事务边界）
+        │   │   ├── service/                         #     字典领域服务
+        │   │   ├── enums/                           #     字典模块错误码枚举
+        │   │   ├── export/                          #     字典导出场景 handler
+        │   │   └── infra/                           #     字典实体与 Mapper
+        │   └── export/                              #     导出中心能力
         └── test/                                    #     模块冒烟测试与 Mockito 配置
 ```
 
@@ -194,7 +194,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - 所有业务表必须包含：`create_time`、`update_time`、`create_by`、`update_by`、`deleted`。
 - `create_time` / `update_time` 禁止在业务 `service` 中手工赋值；建表时应提供 `default current_timestamp`，并由 MyBatis-Plus `MetaObjectHandler` 统一兜底填充。
 - `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充，优先从网关操作人上下文（`OperatorContext`）读取 `X-User-Id`，缺失时回退 `0L`。
-- 逻辑删除字段统一为 `deleted`。
+- 逻辑删除字段统一为 `deleted`，未删除值为 `0`，删除值使用数据库时间戳表达式，避免软删后唯一索引冲突。
 - 本仓库不再要求业务表包含 `tenant_id`，不再校验 `X-Tenant-Id` 请求头。多租户隔离由网关 SSO 和基础设施层承接。
 - 本分支不提供本地登录、用户、角色、菜单、权限表；SSO 透传用户展示信息仅缓存到 `sys_user_cache`，不作为本地用户体系。
 

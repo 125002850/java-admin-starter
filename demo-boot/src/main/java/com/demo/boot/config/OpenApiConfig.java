@@ -35,7 +35,7 @@ public class OpenApiConfig {
     private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of(
         "com.demo.core",
         "com.demo.file.controller.dto",
-        "com.demo.mdm.controller.dto",
+        "com.demo.mdm.dict.controller.dto",
         "com.demo.mdm.export.controller.dto",
         "com.demo.staff.controller.dto"
     );
