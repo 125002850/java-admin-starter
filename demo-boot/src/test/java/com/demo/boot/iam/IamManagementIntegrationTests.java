@@ -2,6 +2,7 @@ package com.demo.boot.iam;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -213,6 +214,14 @@ class IamManagementIntegrationTests {
                 """.formatted(username, staffName, loginIp), token, 200);
         assertThat(loginLogPage.path("code").asInt()).isEqualTo(200);
         assertThat(loginLogPage.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode loginLog = loginLogPage.path("data").path("list").get(0);
+        assertThat(loginLog.path("staffName").asText()).isEqualTo(staffName);
+
+        JsonNode loginLogDetail = postJson("/api/iam/log/login/detail", """
+                {"logId": %d}
+                """.formatted(loginLog.path("logId").asLong()), token, 200);
+        assertThat(loginLogDetail.path("code").asInt()).isEqualTo(200);
+        assertThat(loginLogDetail.path("data").path("staffName").asText()).isEqualTo(staffName);
 
         String requestPath = "/api/iam/staff/filter-" + suffix;
         jdbcTemplate.update("""
@@ -328,7 +337,7 @@ class IamManagementIntegrationTests {
                 .andExpect(status().is(expectedStatus))
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
+                .getContentAsString(StandardCharsets.UTF_8);
         return objectMapper.readTree(content);
     }
 
