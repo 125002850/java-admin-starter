@@ -159,6 +159,88 @@ class IamManagementIntegrationTests {
         assertThat(descendantParent.path("code").asInt()).isEqualTo(2005006);
     }
 
+    @Test
+    void pageFiltersShouldSupportPrdFields() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String deptCode = "PF_" + suffix;
+        createDept(token, 1L, deptCode, "筛选部门" + suffix, "ENABLED");
+        Long deptId = deptId(deptCode);
+
+        String username = "filter_" + suffix;
+        String staffCode = "F_" + suffix;
+        String staffName = "筛选员工" + suffix;
+        createStaff(token, username, staffCode, staffName, deptId);
+        Long staffId = staffId(username);
+
+        JsonNode staffPage = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "staffCode": "%s",
+                  "username": "%s",
+                  "staffName": "%s",
+                  "createTimeRange": {
+                    "startTime": "2000-01-01 00:00:00",
+                    "endTime": "2099-01-01 00:00:00"
+                  }
+                }
+                """.formatted(staffCode, username, staffName), token, 200);
+        assertThat(staffPage.path("code").asInt()).isEqualTo(200);
+        assertThat(staffPage.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(staffPage.path("data").path("list").get(0).path("username").asText()).isEqualTo(username);
+
+        String loginIp = "10.88.0.1";
+        jdbcTemplate.update("""
+                insert into sys_login_log
+                  (staff_id, username, event_type, result, ip, operation_time, create_by, update_by, deleted)
+                values (?, ?, 'LOGIN', 'SUCCESS', ?, '2026-07-08 10:00:00', 0, 0, 0)
+                """, staffId, username, loginIp);
+
+        JsonNode loginLogPage = postJson("/api/iam/log/login/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "username": "%s",
+                  "staffName": "%s",
+                  "result": "SUCCESS",
+                  "ip": "%s",
+                  "operationTimeRange": {
+                    "startTime": "2026-07-08 00:00:00",
+                    "endTime": "2026-07-08 23:59:59"
+                  }
+                }
+                """.formatted(username, staffName, loginIp), token, 200);
+        assertThat(loginLogPage.path("code").asInt()).isEqualTo(200);
+        assertThat(loginLogPage.path("data").path("total").asLong()).isEqualTo(1);
+
+        String requestPath = "/api/iam/staff/filter-" + suffix;
+        jdbcTemplate.update("""
+                insert into sys_operation_log
+                  (operator_id, operator_username, operator_staff_name, module, action, request_path, http_method,
+                   success, ip, user_agent, cost_millis, operation_time, create_by, update_by, deleted)
+                values (?, ?, ?, 'IAM_STAFF', 'CREATE', ?, 'POST', 1, '10.88.0.2', 'JUnit', 12,
+                        '2026-07-08 11:00:00', 0, 0, 0)
+                """, staffId, username, staffName, requestPath);
+
+        JsonNode operationLogPage = postJson("/api/iam/log/operation/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "operatorUsername": "%s",
+                  "operatorStaffName": "%s",
+                  "success": true,
+                  "requestPath": "%s",
+                  "operationTimeRange": {
+                    "startTime": "2026-07-08 00:00:00",
+                    "endTime": "2026-07-08 23:59:59"
+                  }
+                }
+                """.formatted(username, staffName, requestPath), token, 200);
+        assertThat(operationLogPage.path("code").asInt()).isEqualTo(200);
+        assertThat(operationLogPage.path("data").path("total").asLong()).isEqualTo(1);
+    }
+
     private String adminAccessToken() throws Exception {
         JsonNode login = postJson("/api/iam/auth/login", """
                 {"username":"admin","password":"Admin@123456"}
@@ -181,16 +263,20 @@ class IamManagementIntegrationTests {
     }
 
     private void createStaff(String token, String username, String staffCode, Long deptId) throws Exception {
+        createStaff(token, username, staffCode, "测试员工", deptId);
+    }
+
+    private void createStaff(String token, String username, String staffCode, String staffName, Long deptId) throws Exception {
         JsonNode response = postJson("/api/iam/staff/create", """
                 {
                   "username": "%s",
                   "staffCode": "%s",
-                  "staffName": "测试员工",
+                  "staffName": "%s",
                   "deptId": %d,
                   "password": "Staff@123456",
                   "status": "ENABLED"
                 }
-                """.formatted(username, staffCode, deptId), token, 200);
+                """.formatted(username, staffCode, staffName, deptId), token, 200);
         assertThat(response.path("code").asInt()).isEqualTo(200);
     }
 

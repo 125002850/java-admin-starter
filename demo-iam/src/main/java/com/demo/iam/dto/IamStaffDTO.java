@@ -1,6 +1,7 @@
 package com.demo.iam.dto;
 
 import com.demo.core.web.PageReqDTO;
+import com.demo.iam.dto.IamCommonDTO.DateTimeRangeReqDTO;
 import com.demo.iam.enums.IamStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -26,6 +27,18 @@ public final class IamStaffDTO {
         @Schema(description = "员工状态", example = "ENABLED")
         private IamStatus status;
 
+        @Schema(description = "员工工号，模糊匹配", example = "E1001")
+        private String staffCode;
+
+        @Schema(description = "用户名，模糊匹配", example = "zhangsan")
+        private String username;
+
+        @Schema(description = "员工姓名，模糊匹配", example = "张三")
+        private String staffName;
+
+        @Schema(description = "创建时间范围")
+        private DateTimeRangeReqDTO createTimeRange;
+
         public String getKeyword() {
             return keyword;
         }
@@ -48,6 +61,38 @@ public final class IamStaffDTO {
 
         public void setStatus(IamStatus status) {
             this.status = status;
+        }
+
+        public String getStaffCode() {
+            return staffCode;
+        }
+
+        public void setStaffCode(String staffCode) {
+            this.staffCode = staffCode;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getStaffName() {
+            return staffName;
+        }
+
+        public void setStaffName(String staffName) {
+            this.staffName = staffName;
+        }
+
+        public DateTimeRangeReqDTO getCreateTimeRange() {
+            return createTimeRange;
+        }
+
+        public void setCreateTimeRange(DateTimeRangeReqDTO createTimeRange) {
+            this.createTimeRange = createTimeRange;
         }
     }
 

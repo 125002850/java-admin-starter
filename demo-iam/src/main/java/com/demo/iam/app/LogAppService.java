@@ -12,9 +12,12 @@ import com.demo.iam.dto.IamLogDTO.OperationLogRspDTO;
 import com.demo.iam.enums.LoginResult;
 import com.demo.iam.infra.entity.IamLoginLogEntity;
 import com.demo.iam.infra.entity.IamOperationLogEntity;
+import com.demo.iam.infra.entity.IamStaffEntity;
 import com.demo.iam.infra.mapper.IamLoginLogMapper;
 import com.demo.iam.infra.mapper.IamOperationLogMapper;
+import com.demo.iam.infra.mapper.IamStaffMapper;
 import com.demo.core.exception.CommonErrorCode;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,10 +27,16 @@ public class LogAppService {
 
     private final IamLoginLogMapper loginLogMapper;
     private final IamOperationLogMapper operationLogMapper;
+    private final IamStaffMapper staffMapper;
 
-    public LogAppService(IamLoginLogMapper loginLogMapper, IamOperationLogMapper operationLogMapper) {
+    public LogAppService(
+            IamLoginLogMapper loginLogMapper,
+            IamOperationLogMapper operationLogMapper,
+            IamStaffMapper staffMapper
+    ) {
         this.loginLogMapper = loginLogMapper;
         this.operationLogMapper = operationLogMapper;
+        this.staffMapper = staffMapper;
     }
 
     @Transactional(readOnly = true)
@@ -38,8 +47,32 @@ public class LogAppService {
         if (StringUtils.hasText(reqDTO.username)) {
             query.like(IamLoginLogEntity::getUsername, reqDTO.username);
         }
+        if (StringUtils.hasText(reqDTO.staffName)) {
+            List<Long> staffIds = staffMapper.selectList(
+                            Wrappers.<IamStaffEntity>lambdaQuery()
+                                    .like(IamStaffEntity::getStaffName, reqDTO.staffName)
+                    ).stream()
+                    .map(IamStaffEntity::getId)
+                    .toList();
+            if (staffIds.isEmpty()) {
+                query.eq(IamLoginLogEntity::getStaffId, -1L);
+            } else {
+                query.in(IamLoginLogEntity::getStaffId, staffIds);
+            }
+        }
         if (StringUtils.hasText(reqDTO.result)) {
             query.eq(IamLoginLogEntity::getResult, LoginResult.valueOf(reqDTO.result));
+        }
+        if (StringUtils.hasText(reqDTO.ip)) {
+            query.like(IamLoginLogEntity::getIp, reqDTO.ip);
+        }
+        if (reqDTO.operationTimeRange != null) {
+            if (reqDTO.operationTimeRange.getStartTime() != null) {
+                query.ge(IamLoginLogEntity::getOperationTime, reqDTO.operationTimeRange.getStartTime());
+            }
+            if (reqDTO.operationTimeRange.getEndTime() != null) {
+                query.le(IamLoginLogEntity::getOperationTime, reqDTO.operationTimeRange.getEndTime());
+            }
         }
         Page<IamLoginLogEntity> page = loginLogMapper.selectPage(new Page<>(reqDTO.getPageNo(), reqDTO.getPageSize()), query);
         return new PageResult<>(page.getRecords().stream().map(this::toLoginLogRsp).toList(), page.getTotal());
@@ -62,11 +95,31 @@ public class LogAppService {
         if (reqDTO.operatorId != null) {
             query.eq(IamOperationLogEntity::getOperatorId, reqDTO.operatorId);
         }
+        if (StringUtils.hasText(reqDTO.operatorUsername)) {
+            query.like(IamOperationLogEntity::getOperatorUsername, reqDTO.operatorUsername);
+        }
+        if (StringUtils.hasText(reqDTO.operatorStaffName)) {
+            query.like(IamOperationLogEntity::getOperatorStaffName, reqDTO.operatorStaffName);
+        }
         if (StringUtils.hasText(reqDTO.module)) {
             query.eq(IamOperationLogEntity::getModule, reqDTO.module);
         }
         if (StringUtils.hasText(reqDTO.action)) {
             query.eq(IamOperationLogEntity::getAction, reqDTO.action);
+        }
+        if (reqDTO.success != null) {
+            query.eq(IamOperationLogEntity::getSuccess, reqDTO.success);
+        }
+        if (StringUtils.hasText(reqDTO.requestPath)) {
+            query.like(IamOperationLogEntity::getRequestPath, reqDTO.requestPath);
+        }
+        if (reqDTO.operationTimeRange != null) {
+            if (reqDTO.operationTimeRange.getStartTime() != null) {
+                query.ge(IamOperationLogEntity::getOperationTime, reqDTO.operationTimeRange.getStartTime());
+            }
+            if (reqDTO.operationTimeRange.getEndTime() != null) {
+                query.le(IamOperationLogEntity::getOperationTime, reqDTO.operationTimeRange.getEndTime());
+            }
         }
         Page<IamOperationLogEntity> page = operationLogMapper.selectPage(new Page<>(reqDTO.getPageNo(), reqDTO.getPageSize()), query);
         return new PageResult<>(page.getRecords().stream().map(this::toOperationLogRsp).toList(), page.getTotal());

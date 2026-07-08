@@ -1,6 +1,7 @@
 package com.demo.iam.dto;
 
 import com.demo.core.web.PageReqDTO;
+import com.demo.iam.dto.IamCommonDTO.DateTimeRangeReqDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -14,18 +15,34 @@ public final class IamLogDTO {
     public static class LoginLogPageReqDTO extends PageReqDTO {
         @Schema(description = "用户名")
         public String username;
+        @Schema(description = "员工姓名")
+        public String staffName;
         @Schema(description = "结果：SUCCESS/FAIL")
         public String result;
+        @Schema(description = "IP地址")
+        public String ip;
+        @Schema(description = "操作时间范围")
+        public DateTimeRangeReqDTO operationTimeRange;
     }
 
     @Schema(description = "操作日志分页请求")
     public static class OperationLogPageReqDTO extends PageReqDTO {
         @Schema(description = "操作人ID")
         public Long operatorId;
+        @Schema(description = "操作人用户名")
+        public String operatorUsername;
+        @Schema(description = "操作人员工姓名")
+        public String operatorStaffName;
         @Schema(description = "模块")
         public String module;
         @Schema(description = "动作")
         public String action;
+        @Schema(description = "是否成功")
+        public Boolean success;
+        @Schema(description = "请求路径")
+        public String requestPath;
+        @Schema(description = "操作时间范围")
+        public DateTimeRangeReqDTO operationTimeRange;
     }
 
     @Schema(description = "日志ID请求")

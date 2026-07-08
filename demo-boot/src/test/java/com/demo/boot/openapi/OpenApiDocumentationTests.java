@@ -154,6 +154,26 @@ class OpenApiDocumentationTests {
     }
 
     @Test
+    void iamPageFilterSchemasShouldExposePrdFields() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.staffCode").exists())
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.username").exists())
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.staffName").exists())
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.createTimeRange").exists())
+            .andExpect(jsonPath("$.components.schemas.LoginLogPageReqDTO.properties.staffName").exists())
+            .andExpect(jsonPath("$.components.schemas.LoginLogPageReqDTO.properties.ip").exists())
+            .andExpect(jsonPath("$.components.schemas.LoginLogPageReqDTO.properties.operationTimeRange").exists())
+            .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.operatorUsername").exists())
+            .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.operatorStaffName").exists())
+            .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.success").exists())
+            .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.requestPath").exists())
+            .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.operationTimeRange").exists())
+            .andExpect(jsonPath("$.components.schemas.DateTimeRangeReqDTO.properties.startTime").exists())
+            .andExpect(jsonPath("$.components.schemas.DateTimeRangeReqDTO.properties.endTime").exists());
+    }
+
+    @Test
     void pageResultSchemasShouldRequireTotalAndList() throws Exception {
         String content = mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
