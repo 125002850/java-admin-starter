@@ -47,4 +47,15 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# AI / IDE tooling
+.claude/
+.playwright-mcp/
+
+# Build artifacts
+*.log
+
+# Maven local repo
+maven_repo/
+
 # Others
+dist/
