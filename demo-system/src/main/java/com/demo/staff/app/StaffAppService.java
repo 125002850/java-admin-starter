@@ -7,6 +7,7 @@ import com.oigit.common.page.PageInfo;
 import com.demo.staff.controller.dto.StaffInfoRspDTO;
 import com.demo.staff.controller.dto.query.StaffListAllReqDTO;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnProperty(prefix = "platform.sso-staff", name = "enabled", havingValue = "true")
 public class StaffAppService {
 
     private static final int CIK_PAGE_SIZE = 500;

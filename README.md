@@ -1,22 +1,23 @@
 # java-demo
 
-模块化单体架构的 Java 后端项目，基于 Spring Boot 3.x + MyBatis-Plus + MySQL 8。
+模块化单体架构的 Java 后端项目，基于 Spring Boot 3.x + MyBatis-Plus + MySQL 8，当前 main 分支内置本地 IAM 管理后台基础能力。
 
 ## 当前完成状态
 
-- 当前工作分支：`feature/sso`
-- boot/core/mdm 底座已完成（原登录/租户 system 业务模块已移除，鉴权与租户由网关 SSO 承接）
-- `dev` profile 支持通过环境变量连接独立 MySQL 库 `basic_platform_sso`，未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL
+- 当前工作分支：`main`
+- boot/core/iam/mdm/system 底座已完成，main 分支采用本地 IAM，不依赖网关 SSO 透传身份
+- `dev` profile 支持通过环境变量连接独立 MySQL 库，未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL
+- `demo-iam` 已落地本地登录、JWT、refresh token 轮换、员工、部门、角色、菜单/按钮权限、数据权限、登录日志和操作日志
 - `demo-system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换
 - 动态查询 DSL 已在 `demo-core` 落地，当前接入全局字典类型、字典项和导出记录分页场景
 - `demo-mdm` 已承载全局字典和导出中心，支持导出提交、我的导出记录、详情、下载、批量下载和软删除
-- 顶层模块边界约定为：`demo-boot` 负责启动，`demo-core` 负责底层通用能力与原生抽象，`demo-mdm` 承载通用业务服务，`demo-system` 承载外部服务集成，`demo-{biz}` 承载具体业务
+- 顶层模块边界约定为：`demo-boot` 负责启动，`demo-core` 负责底层通用能力与原生抽象，`demo-iam` 承载本地身份权限，`demo-mdm` 承载通用业务服务，`demo-system` 承载外部服务集成，`demo-{biz}` 承载具体业务
 
 ## 项目结构
 
 ```
 java-demo/
-├── pom.xml                                          # 根 POM：依赖版本管理与 4 个模块聚合
+├── pom.xml                                          # 根 POM：依赖版本管理与 5 个模块聚合
 ├── README.md                                        # 项目说明文档
 ├── AGENTS.md                                        # AI 辅助开发配置
 ├── CLAUDE.md                                        # 另一套 AI 协作约束
@@ -49,6 +50,7 @@ java-demo/
 │           ├── java/com/demo/boot/contract/         #     错误码契约测试
 │           ├── java/com/demo/boot/file/             #     文件模块集成测试
 │           ├── java/com/demo/boot/flyway/           #     迁移冒烟测试
+│           ├── java/com/demo/boot/iam/              #     IAM 认证与鉴权集成测试
 │           ├── java/com/demo/boot/mybatis/          #     审计字段与 MyBatis 配置测试
 │           ├── java/com/demo/boot/openapi/          #     OpenAPI 文档测试
 │           ├── java/com/demo/boot/trace/            #     traceId 相关测试
@@ -63,9 +65,18 @@ java-demo/
 │       │   ├── validation/                          #     Bean Validation 集成
 │       │   ├── jackson/                             #     Jackson 全局配置
 │       │   ├── trace/                               #     TraceId 过滤器与 MDC
-│       │   ├── operator/                            #     网关操作人上下文与过滤器
+│       │   ├── operator/                            #     操作人上下文与可选网关过滤器
 │       │   └── mybatis/                             #     MyBatis-Plus 配置、审计字段自动填充
 │       └── test/java/com/demo/core/                 #     核心基础设施单元测试
+│
+├── demo-iam/                                        # 本地 IAM 模块：认证、员工、部门、角色、菜单、权限和日志
+│   └── src/main/java/com/demo/iam/
+│       ├── controller/                              #     IAM HTTP 接口与 DTO
+│       ├── app/                                     #     事务边界与流程编排
+│       ├── service/                                 #     权限快照、密码、Token、数据权限等核心规则
+│       ├── security/                                #     Spring Security、JWT filter、权限切面
+│       ├── infra/                                   #     实体与 Mapper
+│       └── enums/                                   #     IAM 错误码和业务枚举
 │
 ├── demo-system/                                     # 系统集成模块：对接对象存储、短信、邮件、支付等外部服务
 │   └── src/
@@ -100,6 +111,7 @@ java-demo/
 |------|------|------|
 | `demo-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `demo-core` | 全局通用基础设施，以及与具体业务解耦的底层原生抽象（如通用 SPI、上下文、通用配置） | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
+| `demo-iam` | 本地身份与权限能力，负责认证、员工、部门、角色、菜单、权限、数据权限和审计日志 | 不依赖 SSO；不放通用主数据或第三方 provider |
 | `demo-system` | 系统集成能力，负责对象存储、短信、邮件、支付等外部服务适配 | 只做外部系统/厂商能力适配；业务侧禁止直接依赖厂商 SDK；如需落库，应仅保存集成能力自身必要的元数据 |
 | `demo-mdm` | 通用业务服务，承载“有明确业务语义、但不从属于单一业务域”的共享业务能力 | 可承载主数据、平台型业务服务、跨业务复用的统一能力；不承载仅属于单一业务域的实现 |
 | `demo-{biz}` | 其余具体业务 | 只放本业务域实现；如需导出等能力，应复用 `core/system/mdm` 提供的基础抽象与平台服务 |
@@ -108,6 +120,7 @@ java-demo/
 
 - `demo-boot` 只负责启动和装配，不吸收业务语义。
 - `demo-core` 只放与具体业务解耦的底层能力；可复用的原生抽象优先沉淀在这里，而不是散落到业务模块。
+- `demo-iam` 只承载本地身份权限与审计能力；业务模块通过当前登录态、权限注解和数据权限辅助能力接入。
 - `demo-system` 只负责对接外部服务；文件存储属于这一层，不上移到 `demo-core`。
 - `demo-mdm` 用于沉淀通用业务服务，而不局限于“字典”这一类主数据；跨业务复用、带明确业务语义的平台能力优先落在这里。
 - `demo-{biz}` 只承载具体业务域实现；与平台共享能力的边界应通过 `AppService`、SPI 或事件解耦，而不是反向把业务细节塞进 `core/system/mdm`。
@@ -146,7 +159,7 @@ com.demo.{module}
 | JSON | Jackson（Spring Boot 默认） | — |
 | 连接池 | HikariCP（Spring Boot 默认） | — |
 | 测试 | JUnit 5 + Spring Boot Test + ArchUnit | — |
-| 鉴权 | 网关 SSO 透传 `X-User-Id` | 本仓库不做登录/Token 校验 |
+| 鉴权 | 本地 IAM + Spring Security + JWT | access token 只承载员工身份，权限快照每次请求加载 |
 
 所有依赖版本统一锁定，禁止使用 `LATEST`、`RELEASE` 或动态范围。
 
@@ -193,10 +206,10 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 - 所有业务表必须包含：`create_time`、`update_time`、`create_by`、`update_by`、`deleted`。
 - `create_time` / `update_time` 禁止在业务 `service` 中手工赋值；建表时应提供 `default current_timestamp`，并由 MyBatis-Plus `MetaObjectHandler` 统一兜底填充。
-- `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充，优先从网关操作人上下文（`OperatorContext`）读取 `X-User-Id`，缺失时回退 `0L`。
+- `create_by` / `update_by` 通过 MyBatis-Plus `MetaObjectHandler` 自动填充，优先从本地 JWT 登录态写入的 `OperatorContext` 读取当前员工 ID，缺失时回退 `0L`。
 - 逻辑删除字段统一为 `deleted`，未删除值为 `0`，删除值使用数据库时间戳表达式，避免软删后唯一索引冲突。
-- 本仓库不再要求业务表包含 `tenant_id`，不再校验 `X-Tenant-Id` 请求头。多租户隔离由网关 SSO 和基础设施层承接。
-- 本分支不提供本地登录、用户、角色、菜单、权限表；SSO 透传用户展示信息仅缓存到 `sys_user_cache`，不作为本地用户体系。
+- 本仓库不再要求业务表包含 `tenant_id`，不再校验 `X-Tenant-Id` 请求头。
+- 本地 IAM 使用 `sys_staff`、`sys_dept`、`sys_role`、`sys_menu` 等表；`staff` 表示本地员工，业务代码不得混用 `user` 表示本地账号。
 
 ### 对象模型
 
@@ -218,7 +231,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - **翻译引擎**：ID 转名称走翻译机制，不在 SQL 中写大量 `LEFT JOIN`。
 - **导出**：使用独立 `ExportDTO`，不污染接口响应对象。
 - **状态枚举**：影响后端逻辑分支用 `Enum`，仅用于展示/筛选用 `Dict`。
-- **操作日志**：首个真实业务模块接入后再补全链路。
+- **操作日志**：通过 `@OperationLog` 记录 IAM 关键操作，异步落入 `sys_operation_log`。
 
 ### 开发环境
 
@@ -227,14 +240,16 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - 日志中必须输出 `traceId`。
 - 健康检查端点可访问。
 
-### 网关-SSO 边界摘要
+### 本地 IAM 边界摘要
 
-- 网关到应用的可信链路负责完成登录、Token/JWT 校验、权限判断；本仓库只消费透传 header，不实现本地登录态。
-- 生产环境写操作的操作人信息来自 `X-User-Id`；`X-User-Name` 仅用于日志/排障。
-- 本仓库不接收 `X-Tenant-Id`、`X-User-Roles`、`X-User-Permissions`、`Authorization`、`Cookie`。
-- 开发/测试环境无网关时允许缺失 `X-User-Id`，审计字段 `create_by` / `update_by` 回退为 `0L`；如需模拟操作人，可手工加 `X-User-Id: 1`。
+- main 分支由本仓库完成登录、access token 校验、refresh token 轮换、权限快照加载和接口级权限校验。
+- access token 使用 Bearer JWT，只承载员工 ID、JWT ID、签发时间和过期时间；角色、权限、菜单和数据权限不写入 JWT。
+- `/api/iam/auth/me` 是前端权限快照的事实源，返回 staff、dept、roles、permissions、menus、dataScopeSummary、mustChangePassword 和 permissionFingerprint。
+- 业务无权限稳定返回 HTTP 403，未认证或 token 失效稳定返回 HTTP 401；403 不表示前端必须登出。
+- 强制改密状态访问非白名单接口稳定返回 HTTP 403，响应体为 `code=2001007`、`msg=必须修改密码`，前端可据此跳转改密页；普通无权限仍使用公共 403。
+- 默认关闭网关操作人过滤器：`platform.operator.gateway-filter-enabled=false`。只有兼容旧网关场景时才打开。
 
-详细契约见 [2026-05-19-gateway-sso-boundary.md](/Users/youdingte/studys/java-demo/docs/architecture/2026-05-19-gateway-sso-boundary.md:1)。
+详细需求见 [2026-07-08-main-local-iam-prd.md](/Users/youdingte/studys/java-demo/docs/prd/2026-07-08-main-local-iam-prd.md:1)。历史 SSO 边界文档只适用于 `feature/sso`。
 
 ### 文件存储模块摘要
 
@@ -248,15 +263,16 @@ Controller → AppService → Domain/Service → Infra/Mapper
 - `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-demo/uploads`，避免临时目录被系统清理。
 - `qiniu` 模式只在 `demo-system` 的 `file` provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
 - `minio` 模式只在 `demo-system` 的 `file` provider 适配层内依赖 MinIO Java SDK，当前支持服务端上传、删除和临时下载地址；直传凭证暂未开放。
-- 文件对象元信息只存在于对象存储，不做数据库持久化；导出中心和 SSO 用户展示缓存通过 Flyway migration 维护平台表。
+- 文件对象元信息只存在于对象存储，不做数据库持久化；导出中心和 IAM 初始化数据通过 Flyway migration 维护平台表。
 - 文件模块额外支持字节数组上传、对象下载和批量临时 URL，供导出中心复用。
 - 七牛真实网络集成测试为手动 gate：使用 `qiniu-it` profile，并通过环境变量注入 `FILE_STORAGE_QINIU_*` 配置。
 - MinIO 真实网络集成测试为手动 gate：使用 `minio-it` profile，并通过环境变量注入 `FILE_STORAGE_MINIO_*` 配置。
 
-### SSO 员工查询摘要
+### SSO 员工查询兼容开关
 
 - `demo-system` 下 `staff` 子模块对接可选 `oigit-appcik` SSO staff client。
-- 对外接口为 `POST /api/staff/list-all`，返回 SSO 员工展示数据，不落本地用户表。
+- main 分支默认关闭：`platform.sso-staff.enabled=false`，不会暴露 `POST /api/staff/list-all`。
+- 如兼容旧 SSO 场景，可显式设置 `SSO_STAFF_ENABLED=true` 开启该接口；返回 SSO 员工展示数据，不作为本地 IAM 员工表。
 - 真实 SSO 地址通过 `OIGIT_APPCIK_SSO_SERVER_ADDR` / `oigit.appcik.sso.server-addr` 配置。
 
 ### 导出与下载中心架构原则
@@ -273,8 +289,8 @@ Controller → AppService → Domain/Service → Infra/Mapper
 # 1. 可选：启动当前分支的本地 MySQL fallback
 docker compose up -d
 
-# 2. 可选：使用远程独立库 basic_platform_sso
-export JAVA_DEMO_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/basic_platform_sso?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true'
+# 2. 可选：使用远程独立库 java_demo_iam
+export JAVA_DEMO_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/java_demo_iam?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true'
 export JAVA_DEMO_DATASOURCE_USERNAME=oig
 export JAVA_DEMO_DATASOURCE_PASSWORD='<从本地安全配置读取>'
 
@@ -287,9 +303,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 | 项目 | 值 |
 |------|----|
-| Compose 项目标识 | `java-demo-feature-sso` |
+| Compose 项目标识 | `java-demo-main-iam` |
 | MySQL 端口 | `3307` |
-| 数据库名 | `java_demo_sso` |
+| 数据库名 | `java_demo_iam` |
 | 用户名 | `root` |
 | 密码 | `root` |
 
@@ -298,7 +314,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 | 项目 | 值 |
 |------|----|
 | MySQL 地址 | `192.168.186.154:32425` |
-| 数据库名 | `basic_platform_sso` |
+| 数据库名 | `java_demo_iam` |
 | 用户名 | `oig` |
 | 密码 | 不写入仓库，通过 `JAVA_DEMO_DATASOURCE_PASSWORD` 注入 |
 
@@ -306,17 +322,24 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 - `http://127.0.0.1:8080/doc.html`
 - `http://127.0.0.1:8080/v3/api-docs`
+- `http://127.0.0.1:8080/v3/api-docs/iam`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-dict`
 - `http://127.0.0.1:8080/v3/api-docs/file-storage`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-export`
-- `http://127.0.0.1:8080/v3/api-docs/staff`
 
-当前基座公开端点范围：
+当前基座业务端点范围：
 
+- `/api/iam/auth/**`
+- `/api/iam/staff/**`
+- `/api/iam/dept/**`
+- `/api/iam/role/**`
+- `/api/iam/menu/**`
+- `/api/iam/log/**`
 - `/api/mdm/dict/global/**`
 - `/api/mdm/export/**`
 - `/api/file/storage/**`
-- `/api/staff/list-all`
+
+除登录、刷新、健康检查、接口文档和本地文件访问外，业务接口默认要求 Bearer token。
 
 明确不包含：
 
@@ -328,9 +351,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ## 数据库初始化
 
 ```bash
-# Flyway 自动迁移，应用启动时执行。推荐新建独立库验证 SSO 分支基座：
+# Flyway 自动迁移，应用启动时执行。推荐新建独立库验证 main 本地 IAM 基座：
 mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
-  -e "create database if not exists basic_platform_sso character set utf8mb4 collate utf8mb4_general_ci;"
+  -e "create database if not exists java_demo_iam character set utf8mb4 collate utf8mb4_general_ci;"
 
 # 如需单独执行迁移，可在启动模块下运行：
 cd demo-boot
@@ -358,8 +381,9 @@ docker compose down -v
 - 涉及列默认值、时间字段、`alter table` 之类 DDL 时，必须优先使用 MySQL 8 语法。例如修改默认值应写成 `alter table ... modify column ... default ...`，不要写 H2 可过但 MySQL 8 会失败的 `alter column ... set default ...`。
 - 一旦 migration 在本地或测试库执行失败，Flyway 会在 `flyway_schema_history` 留下 `success = false` 记录，后续启动会被 `validate` 阶段直接拦截；修复 SQL 后需要先 `repair` 或清理失败记录，再重新执行迁移。
 - 对逻辑删除表新增唯一约束时，必须先明确约束作用范围；如果唯一索引列中不包含 `deleted`，那它约束的是整张表，包含已逻辑删除行，迁移前查重也必须按同样语义检查，不能只筛 `deleted = 0`。
-- 当前分支历史迁移已演进到 `V6__remove_tenant_auth_tables.sql`，租户/用户/本地鉴权表已从应用侧移除；后续只追加更高版本 migration，例如 `V8__backport_track_bench_foundation.sql`。
+- 当前分支历史迁移已演进到 `V9__add_local_iam_tables.sql`，新增本地 IAM 表和默认超级管理员数据；后续只追加更高版本 migration。
 - `V8` 只补齐基础能力：字典状态/备注/排序/版本字段、导出记录版本字段、`sys_user_cache` 和通用字典数据；不迁入 `track-bench-postloan`、`tb_track_*`、客户工作台、订单、库存、贷后跟踪或 `/api/postloan/**`。
+- `V9` 补齐本地 IAM：`sys_staff`、`sys_dept`、`sys_role`、`sys_menu`、关联表、refresh token、登录日志和操作日志。
 
 ### Lefthook 启用
 

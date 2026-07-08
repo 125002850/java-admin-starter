@@ -43,6 +43,7 @@ class FlywaySmokeTests {
         assertThat(hasSuccessfulMigration("6")).isTrue();
         assertThat(hasSuccessfulMigration("7")).isTrue();
         assertThat(hasSuccessfulMigration("8")).isTrue();
+        assertThat(hasSuccessfulMigration("9")).isTrue();
 
         assertThat(tableExists("sys_tenant_global")).isFalse();
         assertThat(tableExists("sys_user")).isFalse();
@@ -88,6 +89,57 @@ class FlywaySmokeTests {
         assertThat(tableExists("sys_user_cache")).isTrue();
         assertThat(tableColumns("sys_user_cache"))
             .contains("user_id", "user_name", "user_phone", "real_name", "user_code", "create_time", "update_time");
+
+        assertThat(tableExists("sys_staff")).isTrue();
+        assertThat(tableColumns("sys_staff"))
+            .containsAll(AUDIT_COLUMNS)
+            .contains(
+                "username",
+                "password_hash",
+                "staff_code",
+                "staff_name",
+                "dept_id",
+                "status",
+                "must_change_password",
+                "password_updated_time",
+                "version"
+            );
+        assertThat(tableIndexes("sys_staff"))
+            .anyMatch(index -> index.startsWith("uk_sys_staff_username_deleted"))
+            .anyMatch(index -> index.startsWith("uk_sys_staff_code_deleted"));
+
+        assertThat(tableExists("sys_dept")).isTrue();
+        assertThat(tableColumns("sys_dept"))
+            .containsAll(AUDIT_COLUMNS)
+            .contains("parent_id", "dept_code", "dept_name", "full_path", "status", "version");
+
+        assertThat(tableExists("sys_role")).isTrue();
+        assertThat(tableColumns("sys_role"))
+            .containsAll(AUDIT_COLUMNS)
+            .contains("role_code", "role_name", "data_scope_type", "system_builtin", "version");
+        assertThat(tableIndexes("sys_role"))
+            .anyMatch(index -> index.startsWith("uk_sys_role_code_deleted"))
+            .anyMatch(index -> index.startsWith("uk_sys_role_name_deleted"));
+
+        assertThat(tableExists("sys_menu")).isTrue();
+        assertThat(tableColumns("sys_menu"))
+            .containsAll(AUDIT_COLUMNS)
+            .contains("menu_code", "menu_name", "menu_type", "permission_code", "hidden", "cached", "version");
+        assertThat(tableIndexes("sys_menu"))
+            .anyMatch(index -> index.startsWith("uk_sys_menu_code_deleted"))
+            .anyMatch(index -> index.startsWith("uk_sys_menu_permission_deleted"));
+
+        assertThat(tableExists("sys_staff_role")).isTrue();
+        assertThat(tableExists("sys_role_menu")).isTrue();
+        assertThat(tableExists("sys_role_data_scope_dept")).isTrue();
+        assertThat(tableExists("sys_refresh_token")).isTrue();
+        assertThat(tableExists("sys_login_log")).isTrue();
+        assertThat(tableExists("sys_operation_log")).isTrue();
+
+        assertThat(queryCount("select count(*) from sys_staff where username = 'admin' and deleted = 0")).isEqualTo(1);
+        assertThat(queryCount("select count(*) from sys_role where role_code = 'SUPER_ADMIN' and data_scope_type = 'ALL' and deleted = 0")).isEqualTo(1);
+        assertThat(queryCount("select count(*) from sys_staff_role where staff_id = 1 and role_id = 1 and deleted = 0")).isEqualTo(1);
+        assertThat(queryCount("select count(*) from sys_role_menu where role_id = 1 and deleted = 0")).isGreaterThan(0);
     }
 
     @Test
@@ -185,6 +237,16 @@ class FlywaySmokeTests {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to query audit timestamp count", exception);
+        }
+    }
+
+    private int queryCount(String sql) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            return resultSet.next() ? resultSet.getInt(1) : 0;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("failed to query count", exception);
         }
     }
 

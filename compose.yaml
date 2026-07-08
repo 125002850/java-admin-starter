@@ -1,11 +1,11 @@
-name: java-demo-feature-sso
+name: java-demo-main-iam
 
 services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: java_demo_sso
+      MYSQL_DATABASE: java_demo_iam
       MYSQL_ROOT_PASSWORD: root
       TZ: Asia/Shanghai
     ports:

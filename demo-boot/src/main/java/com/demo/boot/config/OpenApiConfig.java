@@ -34,6 +34,7 @@ public class OpenApiConfig {
     private static final String ENUM_VO_REF = "#/components/schemas/EnumVO";
     private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of(
         "com.demo.core",
+        "com.demo.iam.dto",
         "com.demo.file.controller.dto",
         "com.demo.mdm.dict.controller.dto",
         "com.demo.mdm.export.controller.dto",

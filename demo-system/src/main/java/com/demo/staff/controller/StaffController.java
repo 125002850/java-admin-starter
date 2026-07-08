@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @Validated
 @RestController
+@ConditionalOnProperty(prefix = "platform.sso-staff", name = "enabled", havingValue = "true")
 @Tag(name = "员工信息", description = "通过 SSO 服务查询员工信息")
 @RequestMapping("/api/staff")
 public class StaffController {
