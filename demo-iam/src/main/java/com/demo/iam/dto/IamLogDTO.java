@@ -57,6 +57,8 @@ public final class IamLogDTO {
         public Long logId;
         public Long staffId;
         public String username;
+        @Schema(description = "员工姓名")
+        public String staffName;
         public String eventType;
         public String result;
         public String failureReason;

@@ -164,6 +164,7 @@ class OpenApiDocumentationTests {
             .andExpect(jsonPath("$.components.schemas.LoginLogPageReqDTO.properties.staffName").exists())
             .andExpect(jsonPath("$.components.schemas.LoginLogPageReqDTO.properties.ip").exists())
             .andExpect(jsonPath("$.components.schemas.LoginLogPageReqDTO.properties.operationTimeRange").exists())
+            .andExpect(jsonPath("$.components.schemas.LoginLogRspDTO.properties.staffName").exists())
             .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.operatorUsername").exists())
             .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.operatorStaffName").exists())
             .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.success").exists())
