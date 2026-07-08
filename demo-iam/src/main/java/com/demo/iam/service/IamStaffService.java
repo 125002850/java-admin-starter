@@ -64,6 +64,23 @@ public class IamStaffService {
         if (reqDTO.getStatus() != null) {
             query.eq(IamStaffEntity::getStatus, reqDTO.getStatus());
         }
+        if (StringUtils.hasText(reqDTO.getStaffCode())) {
+            query.like(IamStaffEntity::getStaffCode, reqDTO.getStaffCode());
+        }
+        if (StringUtils.hasText(reqDTO.getUsername())) {
+            query.like(IamStaffEntity::getUsername, reqDTO.getUsername());
+        }
+        if (StringUtils.hasText(reqDTO.getStaffName())) {
+            query.like(IamStaffEntity::getStaffName, reqDTO.getStaffName());
+        }
+        if (reqDTO.getCreateTimeRange() != null) {
+            if (reqDTO.getCreateTimeRange().getStartTime() != null) {
+                query.ge(IamStaffEntity::getCreateTime, reqDTO.getCreateTimeRange().getStartTime());
+            }
+            if (reqDTO.getCreateTimeRange().getEndTime() != null) {
+                query.le(IamStaffEntity::getCreateTime, reqDTO.getCreateTimeRange().getEndTime());
+            }
+        }
         applyDataScope(query, snapshot);
         return staffMapper.selectPage(new Page<>(reqDTO.getPageNo(), reqDTO.getPageSize()), query);
     }
