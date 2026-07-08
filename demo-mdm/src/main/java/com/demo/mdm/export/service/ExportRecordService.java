@@ -14,6 +14,7 @@ import com.demo.mdm.export.infra.mapper.ExportRecordMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -83,7 +84,7 @@ public class ExportRecordService {
         exportRecordMapper.update(
                 null,
                 Wrappers.<ExportRecordEntity>lambdaUpdate()
-                        .set(ExportRecordEntity::getDeleted, 1L)
+                        .set(ExportRecordEntity::getDeleted, currentDeletedTimestamp())
                         .set(ExportRecordEntity::getDeleteReason, deleteReason.getIntCode())
                         .set(ExportRecordEntity::getDeletedTime, LocalDateTime.now())
                         .eq(ExportRecordEntity::getId, recordId)
@@ -152,6 +153,10 @@ public class ExportRecordService {
     }
 
     private boolean isDeleted(ExportRecordEntity entity) {
-        return entity.getDeleted() != null && entity.getDeleted() == 1L;
+        return entity.getDeleted() != null && entity.getDeleted() != 0L;
+    }
+
+    private long currentDeletedTimestamp() {
+        return Instant.now().getEpochSecond();
     }
 }

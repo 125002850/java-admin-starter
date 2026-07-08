@@ -18,16 +18,16 @@ import com.demo.core.query.support.DynamicQuerySummaryRenderer;
 import com.demo.core.query.support.QueryComplexityScorer;
 import com.demo.mdm.export.app.ExportCenterAppService;
 import com.demo.mdm.export.controller.ExportCenterController;
-import com.demo.mdm.export.handler.GlobalDictTypeListExportHandler;
+import com.demo.mdm.dict.export.GlobalDictTypeListExportHandler;
 import com.demo.mdm.export.query.ExportRecordSceneQueryDefinition;
 import com.demo.mdm.export.query.ExportRecordSceneQueryMapper;
 import com.demo.mdm.export.service.ExportBatchDownloadService;
 import com.demo.mdm.export.service.ExportDownloadService;
 import com.demo.mdm.export.service.ExportExecutionService;
 import com.demo.mdm.export.service.ExportRecordService;
-import com.demo.mdm.query.globaldict.GlobalDictTypeSceneQueryDefinition;
-import com.demo.mdm.query.globaldict.GlobalDictTypeSceneQueryMapper;
-import com.demo.mdm.service.DictService;
+import com.demo.mdm.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
+import com.demo.mdm.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
+import com.demo.mdm.dict.service.DictService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,7 +69,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "spring.datasource.url=jdbc:h2:mem:java-demo-mdm-export;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
                 "spring.datasource.driver-class-name=org.h2.Driver",
                 "spring.datasource.username=sa",
-                "spring.datasource.password="
+                "spring.datasource.password=",
+                "mybatis-plus.global-config.db-config.logic-delete-value=unix_timestamp()",
+                "mybatis-plus.global-config.db-config.logic-not-delete-value=0"
         }
 )
 @AutoConfigureMockMvc
@@ -338,7 +340,7 @@ class ExportCenterSmokeTests {
                 .andExpect(jsonPath("$.code").value(200));
 
         Integer deletedCount = jdbcTemplate.queryForObject(
-                "select count(*) from sys_export_record_global where id in (401, 402) and deleted = 1 and delete_reason = 1",
+                "select count(*) from sys_export_record_global where id in (401, 402) and deleted > 1 and delete_reason = 1",
                 Integer.class
         );
         assertThat(deletedCount).isEqualTo(2);
@@ -512,7 +514,7 @@ class ExportCenterSmokeTests {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @MapperScan({
-            "com.demo.mdm.infra.mapper",
+            "com.demo.mdm.dict.infra.mapper",
             "com.demo.mdm.export.infra.mapper"
     })
     @Import({
