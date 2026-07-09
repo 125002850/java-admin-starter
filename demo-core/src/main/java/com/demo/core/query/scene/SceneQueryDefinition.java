@@ -45,7 +45,7 @@ public interface SceneQueryDefinition<T> {
     }
 
     default int maxComplexityScore() {
-        return 20;
+        return 100;
     }
 
     default int maxExportRows() {

@@ -170,7 +170,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void oversizedInValuesShouldReturnBizError() throws Exception {
-        String values = IntStream.rangeClosed(1, 201)
+        String values = IntStream.rangeClosed(1, 1001)
                 .mapToObj(String::valueOf)
                 .collect(Collectors.joining(","));
 

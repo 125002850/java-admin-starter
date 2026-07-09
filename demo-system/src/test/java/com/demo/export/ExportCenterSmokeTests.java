@@ -489,7 +489,7 @@ class ExportCenterSmokeTests {
 
     @Test
     void pageMyExports_should_reject_oversized_in_values() throws Exception {
-        String values = java.util.stream.IntStream.rangeClosed(1, 201)
+        String values = java.util.stream.IntStream.rangeClosed(1, 1001)
                 .mapToObj(String::valueOf)
                 .collect(java.util.stream.Collectors.joining(","));
 
