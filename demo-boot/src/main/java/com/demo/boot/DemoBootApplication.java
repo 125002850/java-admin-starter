@@ -8,8 +8,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @MapperScan({
     "com.demo.core.operator",
     "com.demo.iam.infra.mapper",
-    "com.demo.mdm.dict.infra.mapper",
-    "com.demo.mdm.export.infra.mapper"
+    "com.demo.dict.infra.mapper",
+    "com.demo.export.infra.mapper"
 })
 public class DemoBootApplication {
 

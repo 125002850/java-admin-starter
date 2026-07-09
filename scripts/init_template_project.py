@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 PACKAGE_SEGMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-MODULE_SUFFIXES = ("boot", "core", "mdm", "system")
+MODULE_SUFFIXES = ("boot", "core", "iam", "system")
 EXCLUDE_NAMES = {
     ".git",
     ".DS_Store",

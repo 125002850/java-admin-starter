@@ -102,7 +102,6 @@
         <module>demo-core</module>
         <module>demo-iam</module>
         <module>demo-system</module>
-        <module>demo-mdm</module>
     </modules>
 
     <build>
