@@ -1,22 +1,31 @@
 package com.demo.core.query.support;
 
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.demo.core.exception.BizException;
 import com.demo.core.query.ast.ConditionGroupAst;
 import com.demo.core.query.ast.ConditionLeafAst;
 import com.demo.core.query.ast.QueryAst;
 import com.demo.core.query.ast.QueryLogicOperator;
 import com.demo.core.query.ast.QueryOperator;
-import com.demo.core.query.ast.SortSpec;
+import com.demo.core.query.scene.SceneQueryDefinition;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DynamicQueryGuardTests {
 
     private final DynamicQueryGuard guard = new DynamicQueryGuard(new QueryComplexityScorer());
+
+    @Test
+    void default_scene_complexity_score_should_be_100() {
+        assertThat(new TestSceneQueryDefinition().maxComplexityScore()).isEqualTo(100);
+    }
 
     @Test
     void should_reject_depth_exceeded() {
@@ -47,7 +56,7 @@ class DynamicQueryGuardTests {
         queryAst.setRoot(leaf(
             "STATUS",
             QueryOperator.IN,
-            IntStream.range(0, 201).boxed().toList()
+            IntStream.range(0, 1001).boxed().toList()
         ));
 
         assertThatThrownBy(() -> guard.validate(queryAst, 50))
@@ -92,5 +101,33 @@ class DynamicQueryGuardTests {
         leaf.setOperator(operator);
         leaf.setTypedValue(typedValue);
         return leaf;
+    }
+
+    private static class TestSceneQueryDefinition implements SceneQueryDefinition<Object> {
+
+        @Override
+        public String sceneCode() {
+            return "test.scene";
+        }
+
+        @Override
+        public Map<String, SFunction<Object, String>> textFields() {
+            return Map.of();
+        }
+
+        @Override
+        public Map<String, SFunction<Object, LocalDateTime>> dateTimeFields() {
+            return Map.of();
+        }
+
+        @Override
+        public Map<String, SFunction<Object, ?>> enumFields() {
+            return Map.of();
+        }
+
+        @Override
+        public Map<String, SFunction<Object, ?>> sortFields() {
+            return Map.of();
+        }
     }
 }
