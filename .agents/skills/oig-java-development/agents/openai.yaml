@@ -1,0 +1,4 @@
+interface:
+  display_name: "OIG Java Development"
+  short_description: "Apply OIG Java backend development conventions."
+  default_prompt: "Use $oig-java-development to implement a repository change that follows architecture, API, migration, dynamic query, and verification conventions."

@@ -1,0 +1,9 @@
+package com.demo.export.infra.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.demo.export.infra.entity.ExportRecordEntity;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface ExportRecordMapper extends BaseMapper<ExportRecordEntity> {
+}

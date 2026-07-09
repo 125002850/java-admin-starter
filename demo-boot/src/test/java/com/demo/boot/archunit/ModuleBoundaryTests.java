@@ -27,7 +27,7 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_core_must_not_depend_on_demo_mdm() {
+    void demo_core_must_not_depend_on_deleted_demo_mdm() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.core..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.mdm..");
@@ -43,9 +43,9 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_mdm_must_not_depend_on_demo_boot() {
+    void demo_system_packages_must_not_depend_on_demo_boot() {
         ArchRule rule = noClasses()
-                .that().resideInAPackage("com.demo.mdm..")
+                .that().resideInAnyPackage("com.demo.file..", "com.demo.staff..", "com.demo.dict..", "com.demo.export..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.boot..");
         rule.check(allClasses);
     }
@@ -59,18 +59,12 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_mdm_must_not_depend_on_demo_iam() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("com.demo.mdm..")
-                .should().dependOnClassesThat().resideInAPackage("com.demo.iam..");
-        rule.check(allClasses);
-    }
-
-    @Test
     void demo_system_must_not_depend_on_demo_iam() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.file..")
                 .or().resideInAPackage("com.demo.staff..")
+                .or().resideInAPackage("com.demo.dict..")
+                .or().resideInAPackage("com.demo.export..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.iam..");
         rule.check(allClasses);
     }
@@ -79,7 +73,13 @@ class ModuleBoundaryTests {
     void demo_iam_must_not_depend_on_demo_mdm_or_system_implementations() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.iam..")
-                .should().dependOnClassesThat().resideInAnyPackage("com.demo.mdm..", "com.demo.file..", "com.demo.staff..");
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "com.demo.mdm..",
+                        "com.demo.file..",
+                        "com.demo.staff..",
+                        "com.demo.dict..",
+                        "com.demo.export.."
+                );
         rule.check(allClasses);
     }
 
@@ -99,6 +99,13 @@ class ModuleBoundaryTests {
     void no_code_must_depend_on_deleted_demo_system() {
         ArchRule rule = noClasses()
                 .should().dependOnClassesThat().resideInAPackage("com.demo.system..");
+        rule.check(allClasses);
+    }
+
+    @Test
+    void no_code_must_depend_on_deleted_demo_mdm() {
+        ArchRule rule = noClasses()
+                .should().dependOnClassesThat().resideInAPackage("com.demo.mdm..");
         rule.check(allClasses);
     }
 
@@ -133,34 +140,23 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void demo_system_file_package_must_not_depend_on_demo_boot() {
+    void demo_system_packages_must_not_depend_on_deleted_demo_mdm() {
         ArchRule rule = noClasses()
-                .that().resideInAPackage("com.demo.file..")
-                .should().dependOnClassesThat().resideInAPackage("com.demo.boot..");
-        rule.check(allClasses);
-    }
-
-    @Test
-    void demo_system_file_package_must_not_depend_on_demo_mdm() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("com.demo.file..")
+                .that().resideInAnyPackage("com.demo.file..", "com.demo.staff..", "com.demo.dict..", "com.demo.export..")
                 .should().dependOnClassesThat().resideInAPackage("com.demo.mdm..");
         rule.check(allClasses);
     }
 
     @Test
-    void demo_core_must_not_depend_on_demo_system_file_package() {
+    void demo_core_must_not_depend_on_demo_system_implementation_packages() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.demo.core..")
-                .should().dependOnClassesThat().resideInAPackage("com.demo.file..");
-        rule.check(allClasses);
-    }
-
-    @Test
-    void demo_mdm_must_not_depend_on_demo_system_file_package() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("com.demo.mdm..")
-                .should().dependOnClassesThat().resideInAPackage("com.demo.file..");
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "com.demo.file..",
+                        "com.demo.staff..",
+                        "com.demo.dict..",
+                        "com.demo.export.."
+                );
         rule.check(allClasses);
     }
 

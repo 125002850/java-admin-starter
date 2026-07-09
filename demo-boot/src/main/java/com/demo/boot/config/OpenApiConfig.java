@@ -36,8 +36,8 @@ public class OpenApiConfig {
         "com.demo.core",
         "com.demo.iam.dto",
         "com.demo.file.controller.dto",
-        "com.demo.mdm.dict.controller.dto",
-        "com.demo.mdm.export.controller.dto",
+        "com.demo.dict.controller.dto",
+        "com.demo.export.controller.dto",
         "com.demo.staff.controller.dto"
     );
 

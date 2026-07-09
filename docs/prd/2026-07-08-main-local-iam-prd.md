@@ -81,8 +81,7 @@
 两个分支可以共享：
 
 - `demo-core` 中的统一响应、异常、校验、Jackson、MyBatis、动态查询、导出基础抽象。
-- `demo-mdm` 中的全局字典、导出中心等通用业务服务。
-- `demo-system` 中的文件存储等外部系统集成能力。
+- `demo-system` 中的全局字典、导出中心、文件存储等系统级平台能力与外部系统集成能力。
 
 ## 6. 模块定位
 
@@ -100,15 +99,15 @@
 - 登录日志。
 - 操作日志。
 
-### 6.2 不放入 `demo-mdm`
+### 6.2 不放入 `demo-system`
 
-IAM 不放入 `demo-mdm`。
+IAM 不放入 `demo-system`。
 
 原因：
 
-- `demo-mdm` 面向主数据和跨业务平台能力。
+- `demo-system` 面向系统级平台能力和外部服务集成。
 - IAM 涉及认证、token、安全上下文、权限校验和日志审计，是安全基础能力，不只是主数据。
-- 将 IAM 放入 `demo-mdm` 会导致主数据模块承担安全网关职责，模块边界不清晰。
+- 将 IAM 放入 `demo-system` 会导致系统平台模块承担安全网关职责，模块边界不清晰。
 
 ## 7. 角色与使用对象
 
@@ -1027,10 +1026,10 @@ IAM 新表的唯一约束必须兼容逻辑删除后的同名复用。
 
 1. `demo-core` 不得依赖 `demo-iam`。
 2. `demo-iam` 可以依赖 `demo-core`。
-3. `demo-iam` 不得依赖 `demo-mdm` 的实现包。
+3. `demo-iam` 不得依赖已删除的 `demo-mdm` 实现包。
 4. `demo-iam` 不得依赖 `demo-system` 的实现包。
 5. `demo-boot` 可以依赖并装配 `demo-iam`。
-6. `demo-mdm` 和 `demo-system` 不得反向依赖 `demo-iam` 实现包。
+6. `demo-system` 不得反向依赖 `demo-iam` 实现包。
 7. `demo-iam` 的 Controller 不得直接依赖 Service、Mapper 或 Entity。
 8. `demo-iam` 的 AppService 是事务边界，不得在 Controller 中声明业务事务。
 

@@ -1,0 +1,90 @@
+# 架构边界与调用链
+
+## 模块职责
+
+| 模块 | 职责 | 约束 |
+|---|---|---|
+| `track-bench-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
+| `track-bench-core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
+| `track-bench-system` | 传统后台系统管理能力，承载字典、导出中心、员工信息、文件存储等平台能力 | 可承载跨业务复用的系统管理业务；外部厂商 SDK 只能出现在对应 provider 适配层 |
+| `track-bench-postloan` | 贷后跟踪工作台业务 | 读写分治：读侧 QueryModel 平铺，写侧战术 DDD 只用于有状态机的聚合根 |
+| `demo-{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
+
+## 调用链路
+
+强制调用链：
+
+```text
+Controller -> AppService -> Domain/Service -> Infra/Mapper
+```
+
+- `controller` 禁止绕过 `AppService` 直接调用 `service`、`infra` 或 `mapper`。
+- `AppService` 是事务边界所在层。
+- `AppService` 禁止直接面向 Web DTO 编写持久化逻辑，持久化访问统一下沉到 `service` / `infra`。
+- 业务链路对外部厂商能力的调用必须通过 `track-bench-system` 内对应 provider 适配层。
+
+## 分包规范
+
+标准业务模块包结构：
+
+```text
+com.trackbench.{module}
+├── controller
+│   └── dto
+├── app
+├── service
+├── config
+├── infra
+│   ├── entity
+│   ├── mapper
+│   └── provider
+└── enums
+```
+
+- 按业务领域分包，不按技术类型散乱拆包。
+- 模块之间禁止直接依赖对方实现包。
+- 需要同步返回值的跨模块调用，通过独立 `-api` 契约包完成。
+- 不需要返回值的事后通知，通过 Spring `ApplicationEvent` 解耦。
+- `service/query`、`openapi`、`convert` 只在确有需要时创建。
+
+## 网关 SSO 与操作人上下文
+
+- 网关完成登录、Token/JWT 校验、权限判断；本仓库只消费透传 header。
+- 生产环境写操作的操作人来自 `X-User-Id`；`X-User-Name` 仅用于日志/排障。
+- 本仓库不接收 `X-Tenant-Id`、`X-User-Roles`、`X-User-Permissions`、`Authorization`、`Cookie`。
+- 开发/测试环境无网关时允许缺失 `X-User-Id`，审计字段回退为 `0L`。
+- 业务代码获取当前操作人时调用 `OperatorContext.getOperatorId()`、`getOperatorName()`、`getOperatorPhone()`，禁止 Controller 解析 header 后层层透传。
+- `create_by` / `update_by` 由 MyBatis-Plus `MetaObjectHandler` 自动从 `OperatorContext` 填充，Service 层不要手工赋值。
+
+## 系统管理模块
+
+- 系统管理能力位于 `track-bench-system`，典型子域包括 `dict`、`export`、`staff`、`file`。
+- 全局字典接口统一暴露 `/api/system/dict/**`。
+- 导出中心接口统一暴露 `/api/system/export/**`。
+- 员工信息当前代理外部 SSO 服务，接口暴露 `/api/staff/**`。
+
+## 文件存储模块
+
+- 文件能力位于 `track-bench-system`，对外统一暴露 `/api/file/storage/**`。
+- provider 通过 `platform.file.storage.type=local|qiniu|minio` 切换。
+- `qiniu` / `minio` SDK 只允许出现在 `track-bench-system` 的 file provider 适配层。
+- 业务链路保持 `Controller -> AppService -> Service -> Provider`。
+- 当前阶段对象元信息只存在于对象存储，不新增数据库表。
+- 七牛真实网络集成测试使用 `qiniu-it` profile 和 `FILE_STORAGE_QINIU_*` 环境变量。
+- MinIO 真实网络集成测试使用 `minio-it` profile 和 `FILE_STORAGE_MINIO_*` 环境变量。
+
+## 导出与下载中心
+
+- 与具体业务解耦的导出原生抽象放在 `track-bench-core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
+- 外部文件落盘与访问能力放在 `track-bench-system/file`，导出框架不得直接依赖厂商 SDK。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `track-bench-system/export`。
+- 具体业务导出实现放在具体业务模块，例如参数组装、数据查询、列定义、导出内容构建。
+- 协作链路：业务模块声明导出场景并提供 handler，`track-bench-system/export` 编排与记录生命周期，`track-bench-system/file` 负责文件存储，`track-bench-core` 负责抽象契约。
+
+## 不提前做
+
+- 不提前做微服务拆分、MQ、分布式事务。
+- 不提前预建全量业务模块或 `-api` 契约包。
+- 不提前创建没有业务支撑的主数据实体。
+- 不提前建立为复用而复用的抽象基类体系。
+- 每新增模块、实体、对象、接口，都必须有当前业务理由。
