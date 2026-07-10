@@ -13,7 +13,7 @@ spring:
 
 platform:
   iam:
-    jwt-secret: ${IAM_JWT_SECRET:dev-only-secret-do-not-use-in-production-32chars}
+    jwt-secret: ${IAM_JWT_SECRET}
   file:
     storage:
       type: ${FILE_STORAGE_TYPE:local}

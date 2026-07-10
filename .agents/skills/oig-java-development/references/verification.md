@@ -33,7 +33,7 @@ mvn test -pl admin-core -Dtest=指定测试类
 
 ### 跨模块改动
 
-修改非启动模块后，例如 `admin-core`、`admin-system`、`admin-mdm`，在单独测试 `admin-boot` 前必须先执行：
+修改非启动模块后，例如 `admin-core`、`admin-iam`、`admin-system`，在单独测试 `admin-boot` 前必须先执行：
 
 ```bash
 mvn clean install -DskipTests
