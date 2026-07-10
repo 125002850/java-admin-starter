@@ -6,8 +6,8 @@
 |---|---|---|
 | `admin-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `admin-core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
-| `admin-system` | 外部系统集成能力，当前承载 `file`、`staff` 等对接型能力 | 只做外部服务/厂商适配；外部 SDK 只能出现在对应 provider 或 client 适配层 |
-| `admin-mdm` | 通用业务服务，当前承载全局字典、导出中心等跨业务复用的平台型能力 | 可承载带明确业务语义的共享能力；不承载仅属于单一业务域的实现 |
+| `admin-iam` | 本地身份、鉴权、权限、员工、部门、角色、菜单和审计日志 | 不依赖 `admin-system` 实现包；认证入口使用 Bearer JWT |
+| `admin-system` | 全局字典、导出中心、文件存储和员工兼容查询 | 依赖 `admin-core`；外部 SDK 只能出现在对应 provider 或 client 适配层 |
 | `admin-{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
 
 ## 调用链路
@@ -47,20 +47,19 @@ com.example.admin.{module}
 - 不需要返回值的事后通知，通过 Spring `ApplicationEvent` 解耦。
 - `service/query`、`openapi`、`convert` 只在确有需要时创建。
 
-## 网关 SSO 与操作人上下文
+## 本地 IAM 与操作人上下文
 
-- 本 reference 当前以 `feature/sso` 分支的网关透传模型为准；如果后续分支重新引入本地 IAM，必须先以仓库根目录 `README.md` 和当前分支真实代码为准，再更新本 reference。
-- 当前基础仓库由网关完成登录、Token/JWT 校验、权限判断；应用侧只消费透传 header。
-- 生产环境写操作的操作人来自 `X-User-Id`；`X-User-Name` 仅用于日志/排障。
-- 本仓库不接收 `X-Tenant-Id`、`X-User-Roles`、`X-User-Permissions`、`Authorization`、`Cookie`。
-- 开发/测试环境无网关时允许缺失 `X-User-Id`，审计字段回退为 `0L`。
+- 当前 `main` 分支由本地 IAM 完成登录、JWT 校验和权限判断；除公开接口外，业务接口要求 Bearer JWT。
+- 操作人默认从认证上下文读取；可选网关过滤器开启后才消费 `X-User-Id`、`X-User-Name`。
+- `Authorization` 由 JWT filter 处理；不要在 Controller 解析 Token 或透传权限集合。
+- 开发/测试环境无认证上下文时，审计字段回退为 `0L`。
 - 业务代码获取当前操作人时调用 `OperatorContext.getOperatorId()`、`getOperatorName()`、`getOperatorPhone()`，禁止 Controller 解析 header 后层层透传。
 - `create_by` / `update_by` 由 MyBatis-Plus `MetaObjectHandler` 自动从 `OperatorContext` 填充，Service 层不要手工赋值。
 
 ## 当前模块能力映射
 
-- 全局字典能力位于 `admin-mdm/dict`，接口统一暴露 `/api/mdm/dict/global/**`。
-- 导出中心能力位于 `admin-mdm/export`，接口统一暴露 `/api/mdm/export/**`。
+- 全局字典能力位于 `admin-system/dict`，接口统一暴露 `/api/mdm/dict/global/**`。
+- 导出中心能力位于 `admin-system/export`，接口统一暴露 `/api/mdm/export/**`。
 - 员工信息查询能力位于 `admin-system/staff`，接口统一暴露 `/api/staff/**`。
 - 文件存储能力位于 `admin-system/file`，接口统一暴露 `/api/file/storage/**`。
 
@@ -78,9 +77,9 @@ com.example.admin.{module}
 
 - 与具体业务解耦的导出原生抽象放在 `admin-core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
 - 外部文件落盘与访问能力放在 `admin-system/file`，导出框架不得直接依赖厂商 SDK。
-- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `admin-mdm/export`。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `admin-system/export`。
 - 具体业务导出实现放在具体业务模块，例如参数组装、数据查询、列定义、导出内容构建。
-- 协作链路：业务模块声明导出场景并提供 handler，`admin-mdm/export` 编排与记录生命周期，`admin-system/file` 负责文件存储，`admin-core` 负责抽象契约。
+- 协作链路：业务模块声明导出场景并提供 handler，`admin-system/export` 编排与记录生命周期，`admin-system/file` 负责文件存储，`admin-core` 负责抽象契约。
 
 ## 不提前做
 

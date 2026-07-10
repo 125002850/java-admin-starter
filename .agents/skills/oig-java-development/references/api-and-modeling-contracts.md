@@ -26,7 +26,7 @@
 - 成功响应固定为 `code = 200`、`msg = ok`。
 - 默认失败响应使用 `CommonErrorCode.FAILED(500, "操作失败")`。
 - 参数错误、未登录、无权限、资源不存在、限流使用公共 HTTP 语义码：`400 / 401 / 403 / 404 / 429`。
-- 模块私有业务码使用独立号段，例如当前 `admin-mdm` 使用 `3001xxx`。
+- 模块私有业务码使用独立号段，例如当前 `admin-system` 的字典与导出能力使用 `3001xxx`。
 - 业务异常统一使用 `BizException(ErrorCode)`。
 - `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
 

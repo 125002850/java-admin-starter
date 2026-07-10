@@ -11,6 +11,7 @@ import java.util.Set;
 import javax.sql.DataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -164,6 +165,17 @@ class FlywaySmokeTests {
             .isEqualTo(1);
     }
 
+    @Test
+    void flywayMigrationShouldAllowReassigningLogicallyDeletedStaffRole() {
+        executeUpdate("update sys_staff_role set deleted = 100 where staff_id = 1 and role_id = 1");
+
+        assertThatCode(() -> executeUpdate("""
+                insert into sys_staff_role (staff_id, role_id, create_by, update_by, deleted)
+                values (1, 1, 0, 0, 0)
+                """))
+            .doesNotThrowAnyException();
+    }
+
     private boolean tableExists(String tableName) {
         try (Connection connection = dataSource.getConnection();
              ResultSet tables = connection.getMetaData().getTables(connection.getCatalog(), null, tableName, new String[] {"TABLE"})) {
@@ -248,6 +260,15 @@ class FlywaySmokeTests {
             return resultSet.next() ? resultSet.getInt(1) : 0;
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to query count", exception);
+        }
+    }
+
+    private void executeUpdate(String sql) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("failed to execute update", exception);
         }
     }
 
