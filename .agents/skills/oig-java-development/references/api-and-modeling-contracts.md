@@ -17,7 +17,7 @@
 - 新增或修改公开接口时，必须在 OpenAPI 契约测试中覆盖关键路径的 `operationId`，防止生成代码导出名漂移。
 - `ReqDTO` / `RspDTO` 必须补齐 `@Schema` 注解，并为关键字段提供含义说明和示例值。
 - 分页使用 `PageReqDTO` 和 `PageResult<T>`。
-- 分页接口默认提供 `list` 和 `list-all` 两个端点；`list-all` 请求 DTO 不得继承 `PageReqDTO`。
+- 是否提供 `list-all` 取决于业务场景；仅当确实存在无分页全量选择诉求时才提供 `list-all`，且其请求 DTO 不得继承 `PageReqDTO`。
 - 全局异常统一转换为标准 `R<T>` 响应。
 - 日期格式使用 `yyyy-MM-dd HH:mm:ss` 和 `yyyy-MM-dd`。
 
@@ -26,25 +26,25 @@
 - 成功响应固定为 `code = 200`、`msg = ok`。
 - 默认失败响应使用 `CommonErrorCode.FAILED(500, "操作失败")`。
 - 参数错误、未登录、无权限、资源不存在、限流使用公共 HTTP 语义码：`400 / 401 / 403 / 404 / 429`。
-- 模块私有业务码使用独立号段，例如 `track-bench-system` 使用 `3001xxx`。
+- 模块私有业务码使用独立号段，例如当前 `admin-mdm` 使用 `3001xxx`。
 - 业务异常统一使用 `BizException(ErrorCode)`。
 - `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
 
 ## 命名规范
 
-项目名为 `track-bench`，业务表和业务对象统一使用 `track` 前缀，不使用 `follow` 等近义词。
+当前仓库是 `java-admin-starter` 基础项目，不对所有业务对象强制统一前缀。命名应遵循“按实际领域语义命名”，避免把历史业务前缀误扩散到底座模块。
 
 | 层面 | 规范 | 示例 |
 |---|---|---|
-| 表名 | `tb_track_` 前缀 | `tb_track_record`、`tb_track_issue` |
-| 列名 | 有明确业务语义的列使用 `track_` 前缀 | `track_no`、`track_dimension`、`track_type` |
-| Java 类名 | `Track` 前缀 | `TrackRecord`、`TrackIssue` |
-| 枚举 | `Track` 前缀 | `TrackRecordStatus`、`TrackIssueStatus` |
-| REST 路径 | `/track-` 前缀 | `/api/postloan/track-record` |
-| 错误码 | `TRACK_` 前缀 | `TRACK_RECORD_NOT_FOUND` |
-| 索引/约束 | 跟随表名 | `idx_tb_track_record_customer_status` |
+| 平台/通用业务表 | 使用领域语义命名，不强制历史业务前缀 | `sys_dict_type_global`、`sys_export_record_global` |
+| 列名 | 直接表达当前业务语义 | `dict_type_code`、`export_biz_code` |
+| Java 类名 | 使用完整业务语义，不强制 `Track` 前缀 | `GlobalDictTypeEntity`、`ExportRecordEntity` |
+| 枚举 | 使用完整业务语义 | `EnableStatusEnum`、`ExportRecordStatus` |
+| REST 路径 | 按模块语义组织 | `/api/mdm/dict/global`、`/api/mdm/export` |
+| 错误码 | 按模块或领域语义命名 | `GLOBAL_DICT_TYPE_NOT_FOUND` |
+| 索引/约束 | 跟随真实表名与语义 | `uk_sys_dict_type_global_code` |
 
-例外：数仓同步表字段名保持数仓侧命名不变，例如 `follow_up_code`。
+例外：对接外部系统、数仓或上游表时，可保持上游约定命名不变，但不要把上游前缀扩散为当前仓库的默认规范。
 
 ## 枚举规范
 
@@ -63,7 +63,7 @@
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.trackbench.core.enums.BaseEnum;
+import com.example.admin.core.enums.BaseEnum;
 
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum EnableStatusEnum implements BaseEnum {
@@ -125,7 +125,7 @@ private EnableStatusEnum status;
 - 所有业务表必须包含 `create_time`、`update_time`、`create_by`、`update_by`、`deleted`。
 - `create_time` / `update_time` 禁止在业务 service 中手工赋值；建表时提供 `default current_timestamp`，并由 `MetaObjectHandler` 兜底填充。
 - `create_by` / `update_by` 通过 `MetaObjectHandler` 自动填充，优先从 `OperatorContext` 读取 `X-User-Id`，缺失时回退 `0L`。
-- 逻辑删除字段统一为 `deleted`。
+- 逻辑删除字段统一为 `deleted`；未删除值使用 `0`，删除值使用数据库时间戳表达式，避免软删后唯一索引冲突。
 - 本仓库不要求业务表包含 `tenant_id`，不校验 `X-Tenant-Id`。
 
 ## 对象模型

@@ -1,30 +1,81 @@
 # 验证与完成标准
 
-## 默认验证
+## 验证目标
 
-每次修改后至少执行：
+- 验证应按改动范围选择“最小充分验证”。
+- 不要机械执行重复三连跑，也不要把所有改动都提升到全仓全量测试。
+- 目标是用尽量少的命令覆盖当前改动的真实风险面。
+
+## 决策表
+
+| 场景 | 适用范围 | 最低验证要求 |
+|---|---|---|
+| 文档改动 | `README`、`docs/**`、`.agents/**`、注释、纯文本配置 | 文本级自检，不强制跑 Maven |
+| 单模块改动 | 只改一个模块，且不影响启动装配、Flyway、OpenAPI、跨模块契约 | 跑对应模块编译 + 对应模块测试或指定测试类 |
+| 跨模块改动 | 改了共享契约、公共模块，或影响多个模块联动 | 先 `mvn clean install -DskipTests`，再跑受影响模块测试；如影响启动层，再跑 `admin-boot` 集成测试 |
+| 提交前 | 准备提交中大改动，或自己不能确定影响面 | 跑 `mvn test`；涉及迁移再补 Flyway / 真实 MySQL 验证 |
+
+## 对应命令
+
+### 文档改动
+
+- 做文本级自检，确认内容、路径、命令、模块名与当前仓库一致。
+- 不强制跑 Maven。
+
+### 单模块改动
+
+示例：
 
 ```bash
-mvn clean test
+mvn compile -pl admin-core
+mvn test -pl admin-core -Dtest=指定测试类
+```
+
+### 跨模块改动
+
+修改非启动模块后，例如 `admin-core`、`admin-system`、`admin-mdm`，在单独测试 `admin-boot` 前必须先执行：
+
+```bash
+mvn clean install -DskipTests
+mvn test -pl admin-boot -Dtest=要跑的测试类
+```
+
+原因：`admin-boot` 的测试依赖其他兄弟模块安装到本地 Maven 仓库中的 jar。不先 install 会导致测试使用旧 jar，出现幽灵编译错误，或测试通过但实际运行不一致。
+
+### 提交前
+
+示例：
+
+```bash
 mvn test
-mvn compile
 ```
 
-## 跨模块测试
+## 升级条件
 
-修改非启动模块后，例如 `track-bench-postloan`、`track-bench-system`、`track-bench-core`，在测试 `track-bench-boot` 前必须先执行：
+出现以下任一情况时，不再按“单模块改动”处理，至少升级到“跨模块改动”：
+
+- 改了 `admin-core` 中被多个模块依赖的公共契约、SPI、上下文、基础配置。
+- 改了 `OpenApiConfig`、`SpringDocOperationIdConfig`、`EnumModelConverter` 等启动装配或 OpenAPI 生成逻辑。
+- 改了 Controller DTO、动态查询 schema、公共错误码、公共枚举，且可能影响其他模块或前端契约。
+- 改了 Flyway migration、数据库表结构、索引、约束。
+- 改了 `pom.xml`、模块依赖关系、插件配置、父子模块构建行为。
+- 自己无法明确判断影响面时，直接升级到“提交前”档。
+
+## 常见命令模板
 
 ```bash
+# 只验证单模块编译
+mvn compile -pl admin-core
+
+# 只验证单模块测试
+mvn test -pl admin-system -Dtest=指定测试类
+
+# 非启动模块改动后验证启动层集成测试
 mvn clean install -DskipTests
-```
+mvn test -pl admin-boot -Dtest=指定测试类
 
-原因：`track-bench-boot` 的测试依赖其他模块安装到本地 Maven 仓库中的 jar。不先 install 会导致测试使用旧 jar，出现幽灵编译错误，或测试通过但实际运行不一致。
-
-正确流程：
-
-```bash
-mvn clean install -DskipTests
-mvn test -pl track-bench-boot -Dtest=要跑的测试类
+# 需要提交跨模块较大改动时
+mvn test
 ```
 
 ## 数据库变更验证
