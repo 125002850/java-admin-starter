@@ -2,12 +2,12 @@
 
 ## 版本化迁移
 
-- Flyway 版本化迁移文件统一放在 `track-bench-boot/src/main/resources/db/migration/`。
-- 文件名必须匹配 `V*__*.sql`，例如 `V7__add_xxx.sql`。
+- Flyway 版本化迁移文件统一放在 `admin-boot/src/main/resources/db/migration/`。
+- 文件名必须匹配 `V*__*.sql`，新增迁移统一使用时间戳版本号，例如 `V20260709173500__add_xxx.sql`。
 - 新增迁移不得复用已有版本号。
 - 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名。
 - 数据库结构变更必须新增版本号更高的迁移脚本。
-- 当前分支使用单一初始化迁移 `V1__init_all_tables.sql` 一次性建立所有表结构。
+- 当前仓库已存在 `V1` 到 `V8` 多个历史迁移脚本；后续新增迁移统一切换为时间戳版本号，避免团队协作时发生顺序号冲突。
 
 ## SQL 方言
 
@@ -51,6 +51,6 @@ lefthook run pre-commit
 - 如需单独执行迁移：
 
 ```bash
-cd track-bench-boot
+cd admin-boot
 mvn flyway:migrate
 ```

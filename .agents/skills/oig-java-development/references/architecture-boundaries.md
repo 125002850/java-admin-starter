@@ -4,11 +4,11 @@
 
 | 模块 | 职责 | 约束 |
 |---|---|---|
-| `track-bench-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
-| `track-bench-core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
-| `track-bench-system` | 传统后台系统管理能力，承载字典、导出中心、员工信息、文件存储等平台能力 | 可承载跨业务复用的系统管理业务；外部厂商 SDK 只能出现在对应 provider 适配层 |
-| `track-bench-postloan` | 贷后跟踪工作台业务 | 读写分治：读侧 QueryModel 平铺，写侧战术 DDD 只用于有状态机的聚合根 |
-| `demo-{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
+| `admin-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
+| `admin-core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
+| `admin-system` | 外部系统集成能力，当前承载 `file`、`staff` 等对接型能力 | 只做外部服务/厂商适配；外部 SDK 只能出现在对应 provider 或 client 适配层 |
+| `admin-mdm` | 通用业务服务，当前承载全局字典、导出中心等跨业务复用的平台型能力 | 可承载带明确业务语义的共享能力；不承载仅属于单一业务域的实现 |
+| `admin-{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
 
 ## 调用链路
 
@@ -21,14 +21,14 @@ Controller -> AppService -> Domain/Service -> Infra/Mapper
 - `controller` 禁止绕过 `AppService` 直接调用 `service`、`infra` 或 `mapper`。
 - `AppService` 是事务边界所在层。
 - `AppService` 禁止直接面向 Web DTO 编写持久化逻辑，持久化访问统一下沉到 `service` / `infra`。
-- 业务链路对外部厂商能力的调用必须通过 `track-bench-system` 内对应 provider 适配层。
+- 业务链路对外部厂商能力的调用必须通过 `admin-system` 内对应 provider / client 适配层。
 
 ## 分包规范
 
 标准业务模块包结构：
 
 ```text
-com.trackbench.{module}
+com.example.admin.{module}
 ├── controller
 │   └── dto
 ├── app
@@ -49,25 +49,26 @@ com.trackbench.{module}
 
 ## 网关 SSO 与操作人上下文
 
-- 网关完成登录、Token/JWT 校验、权限判断；本仓库只消费透传 header。
+- 本 reference 当前以 `feature/sso` 分支的网关透传模型为准；如果后续分支重新引入本地 IAM，必须先以仓库根目录 `README.md` 和当前分支真实代码为准，再更新本 reference。
+- 当前基础仓库由网关完成登录、Token/JWT 校验、权限判断；应用侧只消费透传 header。
 - 生产环境写操作的操作人来自 `X-User-Id`；`X-User-Name` 仅用于日志/排障。
 - 本仓库不接收 `X-Tenant-Id`、`X-User-Roles`、`X-User-Permissions`、`Authorization`、`Cookie`。
 - 开发/测试环境无网关时允许缺失 `X-User-Id`，审计字段回退为 `0L`。
 - 业务代码获取当前操作人时调用 `OperatorContext.getOperatorId()`、`getOperatorName()`、`getOperatorPhone()`，禁止 Controller 解析 header 后层层透传。
 - `create_by` / `update_by` 由 MyBatis-Plus `MetaObjectHandler` 自动从 `OperatorContext` 填充，Service 层不要手工赋值。
 
-## 系统管理模块
+## 当前模块能力映射
 
-- 系统管理能力位于 `track-bench-system`，典型子域包括 `dict`、`export`、`staff`、`file`。
-- 全局字典接口统一暴露 `/api/system/dict/**`。
-- 导出中心接口统一暴露 `/api/system/export/**`。
-- 员工信息当前代理外部 SSO 服务，接口暴露 `/api/staff/**`。
+- 全局字典能力位于 `admin-mdm/dict`，接口统一暴露 `/api/mdm/dict/global/**`。
+- 导出中心能力位于 `admin-mdm/export`，接口统一暴露 `/api/mdm/export/**`。
+- 员工信息查询能力位于 `admin-system/staff`，接口统一暴露 `/api/staff/**`。
+- 文件存储能力位于 `admin-system/file`，接口统一暴露 `/api/file/storage/**`。
 
 ## 文件存储模块
 
-- 文件能力位于 `track-bench-system`，对外统一暴露 `/api/file/storage/**`。
+- 文件能力位于 `admin-system/file`，对外统一暴露 `/api/file/storage/**`。
 - provider 通过 `platform.file.storage.type=local|qiniu|minio` 切换。
-- `qiniu` / `minio` SDK 只允许出现在 `track-bench-system` 的 file provider 适配层。
+- `qiniu` / `minio` SDK 只允许出现在 `admin-system` 的 file provider 适配层。
 - 业务链路保持 `Controller -> AppService -> Service -> Provider`。
 - 当前阶段对象元信息只存在于对象存储，不新增数据库表。
 - 七牛真实网络集成测试使用 `qiniu-it` profile 和 `FILE_STORAGE_QINIU_*` 环境变量。
@@ -75,11 +76,11 @@ com.trackbench.{module}
 
 ## 导出与下载中心
 
-- 与具体业务解耦的导出原生抽象放在 `track-bench-core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
-- 外部文件落盘与访问能力放在 `track-bench-system/file`，导出框架不得直接依赖厂商 SDK。
-- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `track-bench-system/export`。
+- 与具体业务解耦的导出原生抽象放在 `admin-core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
+- 外部文件落盘与访问能力放在 `admin-system/file`，导出框架不得直接依赖厂商 SDK。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `admin-mdm/export`。
 - 具体业务导出实现放在具体业务模块，例如参数组装、数据查询、列定义、导出内容构建。
-- 协作链路：业务模块声明导出场景并提供 handler，`track-bench-system/export` 编排与记录生命周期，`track-bench-system/file` 负责文件存储，`track-bench-core` 负责抽象契约。
+- 协作链路：业务模块声明导出场景并提供 handler，`admin-mdm/export` 编排与记录生命周期，`admin-system/file` 负责文件存储，`admin-core` 负责抽象契约。
 
 ## 不提前做
 

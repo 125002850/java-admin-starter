@@ -61,7 +61,7 @@ def copy_template(source_root: Path, target_dir: Path) -> None:
 def rename_module_directories(project_root: Path, project_name: str) -> dict[str, str]:
     mapping: dict[str, str] = {}
     for suffix in MODULE_SUFFIXES:
-        old_name = f"demo-{suffix}"
+        old_name = f"admin-{suffix}"
         new_name = f"{project_name}-{suffix}"
         source = project_root / old_name
         target = project_root / new_name
@@ -103,7 +103,7 @@ def move_package_tree(module_dir: Path, source_package: str, target_package: str
 
 def rename_boot_application(project_root: Path, package_name: str, boot_module_name: str) -> None:
     boot_dir = project_root / boot_module_name / "src/main/java" / package_to_path(package_name) / "boot"
-    source = boot_dir / "DemoBootApplication.java"
+    source = boot_dir / "AdminBootApplication.java"
     if source.exists():
         source.rename(boot_dir / "BootApplication.java")
 
@@ -111,22 +111,22 @@ def rename_boot_application(project_root: Path, package_name: str, boot_module_n
 def build_replacements(
     project_name: str,
     package_name: str,
-    module_mapping: dict[str, str],
 ) -> list[tuple[str, str]]:
     database_name = project_name.replace("-", "_")
-    replacements = [
-        ("java-demo-feature-sso", project_name),
-        ("java_demo_sso", database_name),
-        ("java_demo_test", f"{database_name}_test"),
-        ("DemoBootApplication", "BootApplication"),
-        ("com.demo", package_name),
-        ("java-demo", project_name),
+    environment_prefix = database_name.upper()
+    package_path = package_name.replace(".", "/")
+    return [
+        ("java-admin-starter-feature-sso", project_name),
+        ("java_admin_starter_sso", database_name),
+        ("JAVA_ADMIN_STARTER", environment_prefix),
+        ("java_admin_starter", database_name),
+        ("admin_", f"{database_name}_"),
+        ("AdminBootApplication", "BootApplication"),
+        ("com/example/admin", package_path),
+        ("com.example.admin", package_name),
+        ("java-admin-starter", project_name),
+        ("admin-", f"{project_name}-"),
     ]
-
-    for old_name, new_name in module_mapping.items():
-        replacements.append((old_name, new_name))
-
-    return replacements
 
 
 def is_skipped_path(path: Path) -> bool:
@@ -134,6 +134,11 @@ def is_skipped_path(path: Path) -> bool:
 
 
 def replace_text_content(project_root: Path, replacements: list[tuple[str, str]]) -> None:
+    replacement_map = dict(replacements)
+    replacement_pattern = re.compile(
+        "|".join(re.escape(source) for source in sorted(replacement_map, key=len, reverse=True))
+    )
+
     for path in project_root.rglob("*"):
         if not path.is_file() or is_skipped_path(path):
             continue
@@ -143,9 +148,10 @@ def replace_text_content(project_root: Path, replacements: list[tuple[str, str]]
         except UnicodeDecodeError:
             continue
 
-        updated = content
-        for source, target in replacements:
-            updated = updated.replace(source, target)
+        updated = replacement_pattern.sub(
+            lambda match: replacement_map[match.group(0)],
+            content,
+        )
 
         if updated != content:
             path.write_text(updated, encoding="utf-8")
@@ -173,10 +179,10 @@ def main() -> int:
 
     module_mapping = rename_module_directories(target_dir, project_name)
     for module_dir_name in module_mapping.values():
-        move_package_tree(target_dir / module_dir_name, "com.demo", args.package)
+        move_package_tree(target_dir / module_dir_name, "com.example.admin", args.package)
 
-    rename_boot_application(target_dir, args.package, module_mapping["demo-boot"])
-    replace_text_content(target_dir, build_replacements(project_name, args.package, module_mapping))
+    rename_boot_application(target_dir, args.package, module_mapping["admin-boot"])
+    replace_text_content(target_dir, build_replacements(project_name, args.package))
     init_git_repository(target_dir)
 
     print(f"项目已初始化: {target_dir}")

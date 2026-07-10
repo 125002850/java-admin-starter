@@ -3,6 +3,8 @@ target/
 
 # Compiled
 *.class
+__pycache__/
+*.py[cod]
 
 # Package Files
 *.jar

@@ -1,13 +1,13 @@
 ---
 name: oig-java-development
-description: Use when modifying OIG Java/Spring Boot backend repositories, including track-bench code, REST APIs, DTOs, enums, MyBatis/Flyway persistence, dynamic query DSL scenes, module boundaries, file/export capabilities, tests, or developer documentation.
+description: Use when modifying OIG Java/Spring Boot backend repositories, including java-admin-starter foundation code, REST APIs, DTOs, enums, MyBatis/Flyway persistence, dynamic query DSL scenes, module boundaries, file/export capabilities, tests, or developer documentation.
 ---
 
 # OIG Java Development
 
 ## Overview
 
-本 skill 是 OIG Java/Spring Boot 后端项目的开发操作手册，当前覆盖 `track-bench` 仓库。它把 README 中的项目开发规范拆成可按需加载的 reference，避免 README 变成超长规范清单。
+本 skill 是 OIG Java/Spring Boot 后端项目的开发操作手册，当前覆盖 `java-admin-starter` 基础仓库，并以当前 `feature/sso` 基座约束为准。它把 README 中的项目开发规范拆成可按需加载的 reference，避免 README 变成超长规范清单。
 
 ## Required Workflow
 
