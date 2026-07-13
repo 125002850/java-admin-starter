@@ -18,6 +18,7 @@ public enum IamErrorCode implements ErrorCode {
     STAFF_NOT_FOUND(2002003, "员工不存在"),
     STAFF_SUPER_ADMIN_REQUIRED(2002004, "系统必须至少保留一个启用的超级管理员员工"),
     STAFF_OUT_OF_DATA_SCOPE(2002005, "目标员工不在当前用户的数据权限范围内"),
+    STAFF_SUPER_ADMIN_PROTECTED(2002006, "SUPER_ADMIN 仅允许绑定系统内置超级管理员员工，且不可通过普通角色分配流程变更"),
 
     DEPT_NOT_FOUND(2003001, "部门不存在"),
     DEPT_CODE_DUPLICATED(2003002, "部门编码重复"),
