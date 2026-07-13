@@ -1,0 +1,4 @@
+interface:
+  display_name: "OIG Java Development"
+  short_description: "Apply java-admin-starter SSO conventions."
+  default_prompt: "Use $oig-java-development to implement a feature/sso change that follows the repository's architecture, API, migration, dynamic-query, and verification conventions."
