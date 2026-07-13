@@ -15,11 +15,11 @@ public abstract class AuditRspDTO {
     @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
-    @Schema(description = "创建人ID")
-    private Long createBy;
+    @Schema(description = "创建人用户名", example = "admin")
+    private String createBy;
 
-    @Schema(description = "更新人ID")
-    private Long updateBy;
+    @Schema(description = "更新人用户名", example = "admin")
+    private String updateBy;
 
     public LocalDateTime getCreateTime() {
         return createTime;
@@ -37,19 +37,19 @@ public abstract class AuditRspDTO {
         this.updateTime = updateTime;
     }
 
-    public Long getCreateBy() {
+    public String getCreateBy() {
         return createBy;
     }
 
-    public void setCreateBy(Long createBy) {
+    public void setCreateBy(String createBy) {
         this.createBy = createBy;
     }
 
-    public Long getUpdateBy() {
+    public String getUpdateBy() {
         return updateBy;
     }
 
-    public void setUpdateBy(Long updateBy) {
+    public void setUpdateBy(String updateBy) {
         this.updateBy = updateBy;
     }
 }

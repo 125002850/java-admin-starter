@@ -430,8 +430,10 @@ public final class IamStaffDTO {
         private List<IamAuthDTO.RoleSummaryRspDTO> roles = new ArrayList<>();
         private LocalDateTime createTime;
         private LocalDateTime updateTime;
-        private Long createBy;
-        private Long updateBy;
+        @Schema(description = "创建人用户名", example = "admin")
+        private String createBy;
+        @Schema(description = "更新人用户名", example = "admin")
+        private String updateBy;
 
         public Long getStaffId() {
             return staffId;
@@ -553,19 +555,19 @@ public final class IamStaffDTO {
             this.updateTime = updateTime;
         }
 
-        public Long getCreateBy() {
+        public String getCreateBy() {
             return createBy;
         }
 
-        public void setCreateBy(Long createBy) {
+        public void setCreateBy(String createBy) {
             this.createBy = createBy;
         }
 
-        public Long getUpdateBy() {
+        public String getUpdateBy() {
             return updateBy;
         }
 
-        public void setUpdateBy(Long updateBy) {
+        public void setUpdateBy(String updateBy) {
             this.updateBy = updateBy;
         }
     }

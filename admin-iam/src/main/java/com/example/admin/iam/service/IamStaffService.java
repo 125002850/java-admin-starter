@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.admin.core.exception.BizException;
 import com.example.admin.core.operator.OperatorContext;
+import com.example.admin.core.operator.OperatorUsernameResolver;
 import com.example.admin.iam.dto.IamStaffDTO.StaffCreateReqDTO;
 import com.example.admin.iam.dto.IamStaffDTO.StaffPageReqDTO;
 import com.example.admin.iam.dto.IamStaffDTO.StaffUpdateReqDTO;
@@ -20,17 +21,19 @@ import com.example.admin.iam.infra.mapper.IamStaffMapper;
 import com.example.admin.iam.infra.mapper.IamStaffRoleMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
-public class IamStaffService {
+public class IamStaffService implements OperatorUsernameResolver {
 
     private final IamStaffMapper staffMapper;
     private final IamDeptMapper deptMapper;
@@ -110,6 +113,28 @@ public class IamStaffService {
             throw new BizException(IamErrorCode.STAFF_NOT_FOUND);
         }
         return staff;
+    }
+
+    @Override
+    public Map<Long, String> resolveUsernames(Collection<Long> staffIds) {
+        if (staffIds == null || staffIds.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> normalizedIds = staffIds.stream()
+                .filter(Objects::nonNull)
+                .filter(staffId -> staffId > 0L)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (normalizedIds.isEmpty()) {
+            return Map.of();
+        }
+        return staffMapper.selectBatchIds(normalizedIds).stream()
+                .filter(staff -> StringUtils.hasText(staff.getUsername()))
+                .collect(Collectors.toMap(
+                        IamStaffEntity::getId,
+                        staff -> staff.getUsername().trim(),
+                        (left, ignored) -> left,
+                        LinkedHashMap::new
+                ));
     }
 
     public void assertUsernameAvailable(String username, Long excludeId) {

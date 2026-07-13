@@ -161,6 +161,103 @@ class IamManagementIntegrationTests {
     }
 
     @Test
+    void rolePageShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String roleCode = "AUDIT_" + suffix;
+
+        JsonNode createResponse = postJson("/api/iam/role/create", """
+                {
+                  "roleCode": "%s",
+                  "roleName": "审计角色%s",
+                  "status": "ENABLED",
+                  "dataScopeType": "ALL"
+                }
+                """.formatted(roleCode, suffix), token, 200);
+        assertThat(createResponse.path("code").asInt()).isEqualTo(200);
+
+        JsonNode pageResponse = postJson("/api/iam/role/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "keyword": "%s"
+                }
+                """.formatted(roleCode), token, 200);
+
+        assertThat(pageResponse.path("code").asInt()).isEqualTo(200);
+        assertThat(pageResponse.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode role = pageResponse.path("data").path("list").get(0);
+        assertThat(role.path("createBy").isTextual()).isTrue();
+        assertThat(role.path("createBy").asText()).isEqualTo("admin");
+        assertThat(role.path("updateBy").isTextual()).isTrue();
+        assertThat(role.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void staffPageShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String username = "audit_staff_" + suffix;
+        createStaff(token, username, "AU_" + suffix, 1L);
+
+        JsonNode pageResponse = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "username": "%s"
+                }
+                """.formatted(username), token, 200);
+
+        assertThat(pageResponse.path("code").asInt()).isEqualTo(200);
+        assertThat(pageResponse.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode staff = pageResponse.path("data").path("list").get(0);
+        assertThat(staff.path("createBy").isTextual()).isTrue();
+        assertThat(staff.path("createBy").asText()).isEqualTo("admin");
+        assertThat(staff.path("updateBy").isTextual()).isTrue();
+        assertThat(staff.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void deptTreeShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String deptCode = "AUDIT_DEPT_" + suffix;
+        createDept(token, 1L, deptCode, "审计部门" + suffix, "ENABLED");
+
+        JsonNode treeResponse = postJson("/api/iam/dept/tree", """
+                {"keyword": "%s"}
+                """.formatted(deptCode), token, 200);
+
+        assertThat(treeResponse.path("code").asInt()).isEqualTo(200);
+        JsonNode dept = treeResponse.path("data").get(0);
+        assertThat(dept.path("deptCode").asText()).isEqualTo(deptCode);
+        assertThat(dept.path("createBy").isTextual()).isTrue();
+        assertThat(dept.path("createBy").asText()).isEqualTo("admin");
+        assertThat(dept.path("updateBy").isTextual()).isTrue();
+        assertThat(dept.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void menuTreeShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String menuCode = "audit_menu_" + suffix;
+        createMenu(token, 1000L, menuCode, "审计菜单" + suffix);
+
+        JsonNode treeResponse = postJson("/api/iam/menu/tree", """
+                {"keyword": "%s"}
+                """.formatted(menuCode), token, 200);
+
+        assertThat(treeResponse.path("code").asInt()).isEqualTo(200);
+        JsonNode menu = treeResponse.path("data").get(0);
+        assertThat(menu.path("menuCode").asText()).isEqualTo(menuCode);
+        assertThat(menu.path("createBy").isTextual()).isTrue();
+        assertThat(menu.path("createBy").asText()).isEqualTo("admin");
+        assertThat(menu.path("updateBy").isTextual()).isTrue();
+        assertThat(menu.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
     void pageFiltersShouldSupportPrdFields() throws Exception {
         String token = adminAccessToken();
         String suffix = suffix();
