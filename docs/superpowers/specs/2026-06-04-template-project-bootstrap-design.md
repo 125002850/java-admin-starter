@@ -6,7 +6,7 @@
 
 - 复制模板仓库到指定新项目目录
 - 将新目录初始化为干净的新 Git 仓库，不继承模板历史
-- 根据目标目录名替换项目名、应用名、模块名、数据库名、本地存储目录
+- 根据显式传入的项目名替换 Maven 坐标、应用名、模块名、数据库名、本地存储目录
 - 根据显式传入的包名参数替换 Java 包名，并迁移源码/测试目录结构
 - 将启动类统一固定为 `BootApplication`
 
@@ -43,13 +43,15 @@ scripts/init_template_project.py
 
 ```bash
 python3 scripts/init_template_project.py \
-  --target ~/work/track-bench \
+  --project-name track-bench \
+  --project-path ~/work/generated-project \
   --package com.trackbench
 ```
 
 参数约束：
 
-- `--target`：必填，目标项目目录。脚本以目录 basename 作为项目名，例如 `~/work/track-bench` 的项目名为 `track-bench`
+- `--project-name`：必填，目标项目名，必须使用小写 kebab-case，例如 `track-bench`；该值写入 Maven POM 及其他项目标识
+- `--project-path`：必填，目标项目目录；目录名与项目名相互独立，例如项目可以生成到 `~/work/generated-project`
 - `--package`：必填，合法 Java 包名，例如 `com.trackbench`
 - 首版不提供 `--force`；目标目录已存在且非空时直接失败，避免误覆盖
 
@@ -65,7 +67,7 @@ python3 scripts/init_template_project.py \
 ### 5.1 项目名
 
 - 源项目名：`java-admin-starter`
-- 新项目名：取 `--target` 目录名，例如 `track-bench`
+- 新项目名：取 `--project-name`，例如 `track-bench`
 
 ### 5.2 模块目录与 Maven 模块名
 
@@ -152,7 +154,7 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
    - `.git`
    - `target`
    - `.DS_Store`
-   - `.claude`
+   - `.claude` 中除 `skills` 软链外的本地状态
    - `.playwright-mcp`
    - `.vscode`
 3. 在目标目录内先做顶层模块目录重命名
@@ -160,9 +162,9 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
    - `.../src/main/java/com/example/admin` -> `.../src/main/java/<package-path>`
    - `.../src/test/java/com/example/admin` -> `.../src/test/java/<package-path>`
 5. 将 `AdminBootApplication.java` 重命名为 `BootApplication.java`
-6. 执行文本内容替换
+6. 执行文本内容替换，并将生成项目 README 与 skill 中的当前分支文案规范化为 `main`
 7. 删除任何复制残留的 Git 元数据（理论上复制阶段已排除）
-8. 在目标目录执行 `git init`
+8. 在目标目录执行 `git init --initial-branch=main`
 
 ## 8. 配置映射规则
 
