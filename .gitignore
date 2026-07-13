@@ -48,7 +48,8 @@ Thumbs.db
 .env.*.local
 
 # AI / IDE tooling
-.claude/
+.claude/*
+!.claude/skills
 .playwright-mcp/
 
 # Build artifacts

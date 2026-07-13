@@ -23,6 +23,7 @@ java-admin-starter/
 ├── lefthook.yml                                     # Git Hook 配置
 ├── compose.yaml                                     # 当前分支本地开发 MySQL 编排
 ├── scripts/
+│   ├── init_template_project.py                     # 新项目初始化脚本
 │   └── check-migrations.sh                          # Flyway migration 约束检查脚本
 │
 ├── docs/                                            # 项目文档
@@ -132,6 +133,19 @@ com.example.admin.{module}
 
 - `src/test/java` 与 `src/test/resources` 默认随模块创建，用于模块级单测、冒烟测试和测试专用配置。
 - 以下目录只在需要时创建：`service/query`、`openapi`、`convert`。
+
+## 模板项目初始化
+
+项目名、输出路径和 Java 根包名均为必填参数。输出目录名可以与项目名不同；项目名会写入根 POM、子模块坐标及应用配置。
+
+```bash
+python3 scripts/init_template_project.py \
+  --project-name sample-service \
+  --project-path ~/work/generated-project \
+  --package com.acme.sample
+```
+
+目标目录必须为空，且不能位于当前模板仓库内部。脚本会复制模板、迁移包路径和模块目录，并初始化一个不含历史提交、初始分支固定为 `main` 的新 Git 仓库。生成项目会保留 `.agents/skills` 与 `.claude/skills` 软链，但不会复制 Claude 本地配置。
 
 ## 技术栈
 
