@@ -103,9 +103,7 @@ class FlywaySmokeTests {
                 "idx_sys_export_record_global_biz_code_time"
             );
 
-        assertThat(tableExists("sys_user_cache")).isTrue();
-        assertThat(tableColumns("sys_user_cache"))
-            .contains("user_id", "user_name", "user_phone", "real_name", "user_code", "create_time", "update_time");
+        assertThat(tableExists("sys_user_cache")).isFalse();
 
         assertThat(tableExists("sys_staff")).isTrue();
         assertThat(tableColumns("sys_staff"))
