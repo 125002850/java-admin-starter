@@ -1,6 +1,5 @@
 package com.demo.core.operator;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -8,13 +7,14 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-public class CacheUserService {
+public class CacheUserService implements OperatorUsernameResolver {
 
     private static final Logger log = LoggerFactory.getLogger(CacheUserService.class);
 
@@ -22,11 +22,6 @@ public class CacheUserService {
 
     public CacheUserService(CacheUserMapper cacheUserMapper) {
         this.cacheUserMapper = cacheUserMapper;
-    }
-
-    @PostConstruct
-    void init() {
-        CacheUserHolder.setService(this);
     }
 
     public void upsert(Long userId, String userName, String userPhone, String realName, String userCode) {
@@ -57,29 +52,8 @@ public class CacheUserService {
                 userId, normalizedUserName, normalizedRealName, normalizedUserCode);
     }
 
-    public String getUserName(Long userId) {
-        if (userId == null || userId == 0L) {
-            return null;
-        }
-        CacheUserEntity entity = cacheUserMapper.selectById(userId);
-        if (entity == null) {
-            return null;
-        }
-        return entity.getUserName();
-    }
-
-    public String getRealName(Long userId) {
-        if (userId == null || userId == 0L) {
-            return null;
-        }
-        CacheUserEntity entity = cacheUserMapper.selectById(userId);
-        if (entity == null) {
-            return null;
-        }
-        return entity.getRealName();
-    }
-
-    public Map<Long, String> getRealNameMap(Collection<Long> userIds) {
+    @Override
+    public Map<Long, String> resolveUsernames(Collection<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return Map.of();
         }
@@ -90,13 +64,20 @@ public class CacheUserService {
         if (normalizedUserIds.isEmpty()) {
             return Map.of();
         }
-        return cacheUserMapper.selectBatchIds(normalizedUserIds).stream()
-                .filter(entity -> StringUtils.hasText(entity.getRealName()))
+        Map<Long, String> usernames = cacheUserMapper.selectBatchIds(normalizedUserIds).stream()
+                .filter(entity -> StringUtils.hasText(entity.getUserName()))
                 .collect(Collectors.toMap(
                         CacheUserEntity::getUserId,
-                        entity -> entity.getRealName().trim(),
-                        (left, ignored) -> left
+                        entity -> entity.getUserName().trim(),
+                        (left, ignored) -> left,
+                        LinkedHashMap::new
                 ));
+        Long currentOperatorId = OperatorContext.getOperatorId();
+        String currentUsername = normalize(OperatorContext.getOperatorName());
+        if (currentUsername != null && normalizedUserIds.contains(currentOperatorId)) {
+            usernames.put(currentOperatorId, currentUsername);
+        }
+        return usernames;
     }
 
     private static String normalize(String value) {

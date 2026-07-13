@@ -237,10 +237,33 @@ class DynamicQueryContractIntegrationTests {
                 .andExpect(jsonPath("$.data.list[0].dictTypeCode").value("user_status"));
     }
 
+    @Test
+    void auditFieldsShouldResolveUsernamesFromSsoCache() throws Exception {
+        jdbcTemplate.update("""
+                insert into sys_user_cache (
+                  user_id, user_name, real_name, create_time, update_time
+                ) values (?, ?, ?, current_timestamp, current_timestamp)
+                """, 901L, "audit_admin", "审计管理员");
+        jdbcTemplate.update("""
+                insert into sys_dict_type_global (
+                  id, dict_type_code, dict_type_name, create_time, update_time, create_by, update_by, deleted
+                ) values (?, ?, ?, current_timestamp, current_timestamp, ?, ?, ?)
+                """, 901L, "audit_type", "审计字典", 901L, 901L, 0L);
+
+        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pageNo\":1,\"pageSize\":10}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.list[0].createBy").value("audit_admin"))
+                .andExpect(jsonPath("$.data.list[0].updateBy").value("audit_admin"));
+    }
+
     private void cleanTables() {
         jdbcTemplate.update("delete from sys_export_record_global");
         jdbcTemplate.update("delete from sys_dict_item_global");
         jdbcTemplate.update("delete from sys_dict_type_global");
+        jdbcTemplate.update("delete from sys_user_cache");
     }
 
     private void insertGlobalDictType(

@@ -13,7 +13,7 @@
 | Header | 必需 | 类型 | 用途 |
 |--------|------|------|------|
 | `X-User-Id` | 是（生产环境） | 数值型 Long | 审计字段 `create_by` / `update_by` 的唯一来源 |
-| `X-User-Name` | 否 | 字符串 | 仅用于日志/排障，不参与业务判定 |
+| `X-User-Name` | 否 | 字符串 | 用于日志/排障，并缓存为审计字段的展示用户名；不参与业务判定 |
 
 以下 header **不会**被本仓库接收或消费：
 
@@ -32,6 +32,10 @@ GatewayOperatorFilter → OperatorContext.set(userId, userName)
                        → filterChain.doFilter()
                        → OperatorContext.clear()
 ```
+
+`GatewayOperatorFilter` 同时将网关透传的用户展示信息写入 `sys_user_cache`。对外响应中的
+`createBy` / `updateBy` 由应用服务显式批量解析为 `user_name`：当前操作人优先使用本次请求的
+`X-User-Name`，其他操作人从缓存批量读取。数据库实体和内部任务对象仍保持 `Long` ID。
 
 ### CommonMetaObjectHandler
 

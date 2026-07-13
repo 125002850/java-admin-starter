@@ -1,16 +1,8 @@
 package com.demo.core.jackson;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
-import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -43,26 +35,8 @@ public class JacksonConfig {
         javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(dateTimeFormatter));
         javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(dateTimeFormatter));
 
-        SimpleModule auditModule = new SimpleModule();
-        auditModule.setSerializerModifier(new BeanSerializerModifier() {
-            @Override
-            public List<BeanPropertyWriter> changeProperties(SerializationConfig config,
-                                                             BeanDescription beanDesc,
-                                                             List<BeanPropertyWriter> beanProperties) {
-                for (BeanPropertyWriter writer : beanProperties) {
-                    String name = writer.getName();
-                    if (("createBy".equals(name) || "updateBy".equals(name))
-                            && Long.class.isAssignableFrom(writer.getType().getRawClass())) {
-                        writer.assignSerializer(new AuditUserIdSerializer());
-                    }
-                }
-                return beanProperties;
-            }
-        });
-
         List<Module> modules = new ArrayList<>(moduleProvider.orderedStream().toList());
         modules.add(javaTimeModule);
-        modules.add(auditModule);
 
         return builder
                 .createXmlMapper(false)
