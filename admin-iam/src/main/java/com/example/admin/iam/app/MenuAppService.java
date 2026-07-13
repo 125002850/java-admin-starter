@@ -10,11 +10,13 @@ import com.example.admin.iam.enums.OperationLogAction;
 import com.example.admin.iam.enums.OperationLogModule;
 import com.example.admin.iam.infra.entity.IamMenuEntity;
 import com.example.admin.iam.service.IamMenuService;
+import com.example.admin.iam.service.IamStaffService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,19 +24,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class MenuAppService {
 
     private final IamMenuService menuService;
+    private final IamStaffService staffService;
 
-    public MenuAppService(IamMenuService menuService) {
+    public MenuAppService(IamMenuService menuService, IamStaffService staffService) {
         this.menuService = menuService;
+        this.staffService = staffService;
     }
 
     @Transactional(readOnly = true)
     public List<MenuRspDTO> tree(MenuTreeReqDTO reqDTO) {
-        return buildTree(menuService.listAll(reqDTO == null ? null : reqDTO.keyword));
+        List<IamMenuEntity> menus = menuService.listAll(reqDTO == null ? null : reqDTO.keyword);
+        return buildTree(menus, auditUsernames(menus));
     }
 
     @Transactional(readOnly = true)
     public MenuRspDTO detail(Long menuId) {
-        return toRsp(menuService.requireById(menuId));
+        IamMenuEntity menu = menuService.requireById(menuId);
+        return toRsp(menu, auditUsernames(List.of(menu)));
     }
 
     @Transactional
@@ -61,12 +67,12 @@ public class MenuAppService {
         menuService.updateStatus(reqDTO.menuId, reqDTO.status);
     }
 
-    private List<MenuRspDTO> buildTree(List<IamMenuEntity> menus) {
+    private List<MenuRspDTO> buildTree(List<IamMenuEntity> menus, Map<Long, String> auditUsernames) {
         Map<Long, MenuRspDTO> byId = new LinkedHashMap<>();
         menus.stream()
                 .sorted(Comparator.comparing((IamMenuEntity item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
                         .thenComparing(IamMenuEntity::getId))
-                .forEach(menu -> byId.put(menu.getId(), toRsp(menu)));
+                .forEach(menu -> byId.put(menu.getId(), toRsp(menu, auditUsernames)));
         List<MenuRspDTO> roots = new ArrayList<>();
         for (IamMenuEntity menu : menus) {
             MenuRspDTO node = byId.get(menu.getId());
@@ -79,7 +85,7 @@ public class MenuAppService {
         return roots;
     }
 
-    private MenuRspDTO toRsp(IamMenuEntity entity) {
+    private MenuRspDTO toRsp(IamMenuEntity entity, Map<Long, String> auditUsernames) {
         MenuRspDTO dto = new MenuRspDTO();
         dto.menuId = entity.getId();
         dto.parentId = entity.getParentId();
@@ -98,8 +104,18 @@ public class MenuAppService {
         dto.remark = entity.getRemark();
         dto.createTime = entity.getCreateTime();
         dto.updateTime = entity.getUpdateTime();
-        dto.createBy = entity.getCreateBy();
-        dto.updateBy = entity.getUpdateBy();
+        dto.createBy = auditUsername(auditUsernames, entity.getCreateBy());
+        dto.updateBy = auditUsername(auditUsernames, entity.getUpdateBy());
         return dto;
+    }
+
+    private Map<Long, String> auditUsernames(List<IamMenuEntity> menus) {
+        return staffService.resolveUsernames(menus.stream()
+                .flatMap(menu -> Stream.of(menu.getCreateBy(), menu.getUpdateBy()))
+                .toList());
+    }
+
+    private String auditUsername(Map<Long, String> usernames, Long staffId) {
+        return staffId == null ? null : usernames.get(staffId);
     }
 }

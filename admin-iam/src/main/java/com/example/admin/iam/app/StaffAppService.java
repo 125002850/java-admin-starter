@@ -25,6 +25,8 @@ import com.example.admin.iam.service.PermissionSnapshot;
 import com.example.admin.iam.service.PermissionSnapshotMapper;
 import com.example.admin.iam.service.RefreshTokenService;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -56,14 +58,19 @@ public class StaffAppService {
                 .map(principal -> principal.getSnapshot())
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException("not authenticated"));
         Page<IamStaffEntity> page = staffService.page(reqDTO, snapshot);
-        return new PageResult<>(page.getRecords().stream().map(this::toRsp).toList(), page.getTotal());
+        Map<Long, String> usernames = auditUsernames(page.getRecords());
+        List<StaffRspDTO> records = page.getRecords().stream()
+                .map(entity -> toRsp(entity, usernames))
+                .toList();
+        return new PageResult<>(records, page.getTotal());
     }
 
     @Transactional(readOnly = true)
     public StaffRspDTO detail(Long staffId) {
         PermissionSnapshot snapshot = currentSnapshot();
         staffService.assertInDataScope(staffId, snapshot);
-        return toRsp(staffService.requireById(staffId));
+        IamStaffEntity entity = staffService.requireById(staffId);
+        return toRsp(entity, auditUsernames(List.of(entity)));
     }
 
     @Transactional
@@ -124,7 +131,7 @@ public class StaffAppService {
         staffService.assignRoles(reqDTO.getStaffId(), reqDTO.getRoleIds());
     }
 
-    private StaffRspDTO toRsp(IamStaffEntity entity) {
+    private StaffRspDTO toRsp(IamStaffEntity entity, Map<Long, String> usernames) {
         StaffRspDTO dto = new StaffRspDTO();
         IamDeptEntity dept = staffService.findDept(entity.getDeptId());
         DeptSummaryRspDTO deptSummary = PermissionSnapshotMapper.toDeptSummary(dept);
@@ -143,9 +150,20 @@ public class StaffAppService {
         dto.setRoles(roleSummaries(entity.getId()));
         dto.setCreateTime(entity.getCreateTime());
         dto.setUpdateTime(entity.getUpdateTime());
-        dto.setCreateBy(entity.getCreateBy());
-        dto.setUpdateBy(entity.getUpdateBy());
+        dto.setCreateBy(auditUsername(usernames, entity.getCreateBy()));
+        dto.setUpdateBy(auditUsername(usernames, entity.getUpdateBy()));
         return dto;
+    }
+
+    private Map<Long, String> auditUsernames(List<IamStaffEntity> staff) {
+        List<Long> staffIds = staff.stream()
+                .flatMap(entity -> Stream.of(entity.getCreateBy(), entity.getUpdateBy()))
+                .toList();
+        return staffService.resolveUsernames(staffIds);
+    }
+
+    private String auditUsername(Map<Long, String> usernames, Long staffId) {
+        return staffId == null ? null : usernames.get(staffId);
     }
 
     private PermissionSnapshot currentSnapshot() {

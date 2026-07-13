@@ -92,7 +92,9 @@ public final class IamRoleDTO {
         public List<Long> dataScopeDeptIds = new ArrayList<>();
         public LocalDateTime createTime;
         public LocalDateTime updateTime;
-        public Long createBy;
-        public Long updateBy;
+        @Schema(description = "创建人用户名", example = "admin")
+        public String createBy;
+        @Schema(description = "更新人用户名", example = "admin")
+        public String updateBy;
     }
 }

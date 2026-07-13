@@ -49,8 +49,8 @@ public class ExportRecordRspDTO {
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
 
-    @Schema(description = "创建人")
-    private Long createBy;
+    @Schema(description = "创建人用户名", example = "admin")
+    private String createBy;
 
     public Long getRecordId() {
         return recordId;
@@ -164,11 +164,11 @@ public class ExportRecordRspDTO {
         this.createTime = createTime;
     }
 
-    public Long getCreateBy() {
+    public String getCreateBy() {
         return createBy;
     }
 
-    public void setCreateBy(Long createBy) {
+    public void setCreateBy(String createBy) {
         this.createBy = createBy;
     }
 

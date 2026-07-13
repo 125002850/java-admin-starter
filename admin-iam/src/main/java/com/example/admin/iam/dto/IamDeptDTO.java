@@ -87,9 +87,9 @@ public final class IamDeptDTO {
         public LocalDateTime createTime;
         @Schema(description = "更新时间")
         public LocalDateTime updateTime;
-        @Schema(description = "创建人")
-        public Long createBy;
-        @Schema(description = "更新人")
-        public Long updateBy;
+        @Schema(description = "创建人用户名", example = "admin")
+        public String createBy;
+        @Schema(description = "更新人用户名", example = "admin")
+        public String updateBy;
     }
 }
