@@ -19,10 +19,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest
 @ActiveProfiles("test")
 class FlywaySmokeTests {
+
+    @DynamicPropertySource
+    static void isolateDefaultH2Database(DynamicPropertyRegistry registry) {
+        String datasourceUrl = System.getenv("JAVA_ADMIN_STARTER_DATASOURCE_URL");
+        if (datasourceUrl == null || datasourceUrl.isBlank()) {
+            registry.add(
+                    "spring.datasource.url",
+                    () -> "jdbc:h2:mem:flyway-smoke;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false"
+            );
+        }
+    }
 
     private static final Set<String> AUDIT_COLUMNS = Set.of(
         "create_time",
