@@ -4,7 +4,7 @@
 
 **Goal:** 在不新增顶层模块的前提下，为仓库落地文件导出中心能力，支持异步导出记录、生命周期管理、下载地址获取、手动删除、过期清理，以及可扩展的导出 SPI。
 
-**Architecture:** `demo-core` 新增导出抽象契约，`demo-system` 提供基于现有文件能力的导出文件落盘适配，`demo-mdm` 承载导出记录表、状态机、编排与下载中心接口，`demo-{biz}` 未来通过 `ExportHandler` 接入具体导出场景。首期不接真实业务导出，而是在测试侧提供假场景完成端到端验证。
+**Architecture:** `admin-core` 新增导出抽象契约，`admin-system` 提供基于现有文件能力的导出文件落盘适配，`admin-mdm` 承载导出记录表、状态机、编排与下载中心接口，`admin-{biz}` 未来通过 `ExportHandler` 接入具体导出场景。首期不接真实业务导出，而是在测试侧提供假场景完成端到端验证。
 
 **Tech Stack:** Java 17, Spring Boot 3.3, MyBatis-Plus, Flyway, Apache POI, JUnit 5, MockMvc, H2, MySQL 8
 
@@ -12,83 +12,83 @@
 
 ## 1. 文件结构与职责
 
-### `demo-core`
+### `admin-core`
 
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportScene.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportFileType.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportHandler.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/TableExportPayload.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/RenderedFile.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/StoredExportFile.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/FileRenderer.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportFileSink.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportFileLifecycle.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportScene.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportFileType.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportHandler.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/TableExportPayload.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/RenderedFile.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/StoredExportFile.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/FileRenderer.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportFileSink.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportFileLifecycle.java`
 
-### `demo-system`
+### `admin-system`
 
-- Modify: `demo-system/src/main/java/com/demo/file/service/FileService.java`
-- Create: `demo-system/src/main/java/com/demo/file/export/FileStorageExportFileSink.java`
-- Create: `demo-system/src/main/java/com/demo/file/export/FileStorageExportFileLifecycle.java`
-- Test: `demo-system/src/test/java/com/demo/file/FileStorageExportFileSinkTests.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/service/FileService.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/export/FileStorageExportFileSink.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/export/FileStorageExportFileLifecycle.java`
+- Test: `admin-system/src/test/java/com/example/admin/file/FileStorageExportFileSinkTests.java`
 
-### `demo-mdm`
+### `admin-mdm`
 
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportCenterErrorCode.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportRecordStatus.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportDeleteReason.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/config/ExportCenterProperties.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/config/ExportExecutionConfig.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/infra/entity/ExportRecordEntity.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/infra/mapper/ExportRecordMapper.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportRecordService.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportSceneRegistry.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExcelFileRenderer.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionDispatcher.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionWorker.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportCleanupScheduler.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/app/command/ExportSubmitCommand.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/app/ExportCoordinatorAppService.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/app/DownloadCenterAppService.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/ExportRecordController.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordPageReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordPageRspDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDetailReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDetailRspDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDeleteReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDownloadUrlReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDownloadUrlRspDTO.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportRecordServiceTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportSceneRegistryTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExcelFileRendererTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportCoordinatorAppServiceTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/DownloadCenterAppServiceTests.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportCenterErrorCode.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportRecordStatus.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportDeleteReason.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/config/ExportCenterProperties.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/config/ExportExecutionConfig.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/infra/entity/ExportRecordEntity.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/infra/mapper/ExportRecordMapper.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportRecordService.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportSceneRegistry.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExcelFileRenderer.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionDispatcher.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionWorker.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportCleanupScheduler.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/app/command/ExportSubmitCommand.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/app/ExportCoordinatorAppService.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/app/DownloadCenterAppService.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/ExportRecordController.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordPageReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordPageRspDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDetailReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDetailRspDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDeleteReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDownloadUrlReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDownloadUrlRspDTO.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportRecordServiceTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportSceneRegistryTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExcelFileRendererTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportCoordinatorAppServiceTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/DownloadCenterAppServiceTests.java`
 
-### `demo-boot`
+### `admin-boot`
 
-- Modify: `demo-boot/src/main/java/com/demo/boot/DemoBootApplication.java`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Modify: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- Create: `demo-boot/src/main/resources/db/migration/V7__add_export_record_table.sql`
-- Create: `demo-boot/src/test/java/com/demo/boot/export/TestExportSceneConfig.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/export/TestExportController.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/export/FileExportCenterModuleSmokeTests.java`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/AdminBootApplication.java`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- Create: `admin-boot/src/main/resources/db/migration/V7__add_export_record_table.sql`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/export/TestExportSceneConfig.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/export/TestExportController.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/export/FileExportCenterModuleSmokeTests.java`
 
 ## 2. 任务拆分
 
 ### Task 1: 导出记录表与状态机
 
 **Files:**
-- Create: `demo-boot/src/main/resources/db/migration/V7__add_export_record_table.sql`
-- Modify: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportCenterErrorCode.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportRecordStatus.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportDeleteReason.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/infra/entity/ExportRecordEntity.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/infra/mapper/ExportRecordMapper.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportRecordService.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportRecordServiceTests.java`
+- Create: `admin-boot/src/main/resources/db/migration/V7__add_export_record_table.sql`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportCenterErrorCode.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportRecordStatus.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportDeleteReason.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/infra/entity/ExportRecordEntity.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/infra/mapper/ExportRecordMapper.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportRecordService.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportRecordServiceTests.java`
 
 - [ ] **Step 1: 先写 Flyway 与状态流转红灯**
 
@@ -113,7 +113,7 @@ void markSuccess_should_reject_non_processing_record() {
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-mdm,demo-boot -am test -Dtest=FlywaySmokeTests,ExportRecordServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm,admin-boot -am test -Dtest=FlywaySmokeTests,ExportRecordServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，缺少 `V7` 迁移、`ExportRecordService`、状态枚举和错误码。
 
@@ -224,38 +224,38 @@ public class ExportRecordService {
 
 - [ ] **Step 4: 运行测试确认转绿**
 
-Run: `mvn -q -pl demo-mdm,demo-boot -am test -Dtest=FlywaySmokeTests,ExportRecordServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm,admin-boot -am test -Dtest=FlywaySmokeTests,ExportRecordServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-boot/src/main/resources/db/migration/V7__add_export_record_table.sql \
-  demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/enums \
-  demo-mdm/src/main/java/com/demo/mdm/export/infra \
-  demo-mdm/src/main/java/com/demo/mdm/export/service/ExportRecordService.java \
-  demo-mdm/src/test/java/com/demo/mdm/export/ExportRecordServiceTests.java
+git add admin-boot/src/main/resources/db/migration/V7__add_export_record_table.sql \
+  admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/enums \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/infra \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportRecordService.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/export/ExportRecordServiceTests.java
 git commit -m "feat: add export record schema and state machine"
 ```
 
 ### Task 2: 导出抽象与文件落盘适配
 
 **Files:**
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportScene.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportFileType.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportHandler.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/TableExportPayload.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/RenderedFile.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/StoredExportFile.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/FileRenderer.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportFileSink.java`
-- Create: `demo-core/src/main/java/com/demo/core/export/ExportFileLifecycle.java`
-- Modify: `demo-system/src/main/java/com/demo/file/service/FileService.java`
-- Create: `demo-system/src/main/java/com/demo/file/export/FileStorageExportFileSink.java`
-- Create: `demo-system/src/main/java/com/demo/file/export/FileStorageExportFileLifecycle.java`
-- Test: `demo-system/src/test/java/com/demo/file/FileStorageExportFileSinkTests.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportScene.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportFileType.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportHandler.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/TableExportPayload.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/RenderedFile.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/StoredExportFile.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/FileRenderer.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportFileSink.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/export/ExportFileLifecycle.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/service/FileService.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/export/FileStorageExportFileSink.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/export/FileStorageExportFileLifecycle.java`
+- Test: `admin-system/src/test/java/com/example/admin/file/FileStorageExportFileSinkTests.java`
 
 - [ ] **Step 1: 写 sink 红灯**
 
@@ -279,13 +279,13 @@ void store_should_delegate_to_file_service_and_return_stored_export_file() {
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=FileStorageExportFileSinkTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=FileStorageExportFileSinkTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，缺少导出抽象、`ExportFileSink` 实现，且 `FileService` 只有 `MultipartFile` 上传入口。
 
 - [ ] **Step 3: 写最小实现**
 
-`demo-core` 只放抽象，`demo-system` 补一个非 Web 上传入口并实现 sink：
+`admin-core` 只放抽象，`admin-system` 补一个非 Web 上传入口并实现 sink：
 
 ```java
 @Target(ElementType.TYPE)
@@ -380,36 +380,36 @@ public class FileStorageExportFileLifecycle implements ExportFileLifecycle {
 
 - [ ] **Step 4: 运行测试确认转绿**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=FileStorageExportFileSinkTests,LocalFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=FileStorageExportFileSinkTests,LocalFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/export \
-  demo-system/src/main/java/com/demo/file/service/FileService.java \
-  demo-system/src/main/java/com/demo/file/export/FileStorageExportFileSink.java \
-  demo-system/src/main/java/com/demo/file/export/FileStorageExportFileLifecycle.java \
-  demo-system/src/test/java/com/demo/file/FileStorageExportFileSinkTests.java
+git add admin-core/src/main/java/com/example/admin/core/export \
+  admin-system/src/main/java/com/example/admin/file/service/FileService.java \
+  admin-system/src/main/java/com/example/admin/file/export/FileStorageExportFileSink.java \
+  admin-system/src/main/java/com/example/admin/file/export/FileStorageExportFileLifecycle.java \
+  admin-system/src/test/java/com/example/admin/file/FileStorageExportFileSinkTests.java
 git commit -m "feat: add export abstractions and file sink"
 ```
 
 ### Task 3: 导出场景注册、Excel 渲染与异步执行链路
 
 **Files:**
-- Modify: `demo-mdm/pom.xml`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/config/ExportCenterProperties.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/config/ExportExecutionConfig.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/app/command/ExportSubmitCommand.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportSceneRegistry.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExcelFileRenderer.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionDispatcher.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionWorker.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/app/ExportCoordinatorAppService.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportSceneRegistryTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExcelFileRendererTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportCoordinatorAppServiceTests.java`
+- Modify: `admin-mdm/pom.xml`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/config/ExportCenterProperties.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/config/ExportExecutionConfig.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/app/command/ExportSubmitCommand.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportSceneRegistry.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExcelFileRenderer.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionDispatcher.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionWorker.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/app/ExportCoordinatorAppService.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportSceneRegistryTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExcelFileRendererTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportCoordinatorAppServiceTests.java`
 
 - [ ] **Step 1: 写注册与编排红灯**
 
@@ -432,13 +432,13 @@ void submit_should_create_processing_record_and_mark_success_after_async_executi
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=ExportSceneRegistryTests,ExcelFileRendererTests,ExportCoordinatorAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=ExportSceneRegistryTests,ExcelFileRendererTests,ExportCoordinatorAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，缺少 POI 依赖、注册器、渲染器、提交命令和异步执行链路。
 
 - [ ] **Step 3: 写最小实现**
 
-在 `demo-mdm` 中补齐执行链路，首期只支持 Excel：
+在 `admin-mdm` 中补齐执行链路，首期只支持 Excel：
 
 ```xml
 <dependency>
@@ -510,41 +510,41 @@ public class ExportCoordinatorAppService {
 
 - [ ] **Step 4: 运行测试确认转绿**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=ExportSceneRegistryTests,ExcelFileRendererTests,ExportCoordinatorAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=ExportSceneRegistryTests,ExcelFileRendererTests,ExportCoordinatorAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-mdm/pom.xml \
-  demo-mdm/src/main/java/com/demo/mdm/export/config \
-  demo-mdm/src/main/java/com/demo/mdm/export/app/command/ExportSubmitCommand.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/app/ExportCoordinatorAppService.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/service/ExportSceneRegistry.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/service/ExcelFileRenderer.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionDispatcher.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionWorker.java \
-  demo-mdm/src/test/java/com/demo/mdm/export/ExportSceneRegistryTests.java \
-  demo-mdm/src/test/java/com/demo/mdm/export/ExcelFileRendererTests.java \
-  demo-mdm/src/test/java/com/demo/mdm/export/ExportCoordinatorAppServiceTests.java
+git add admin-mdm/pom.xml \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/config \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/app/command/ExportSubmitCommand.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/app/ExportCoordinatorAppService.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportSceneRegistry.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExcelFileRenderer.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionDispatcher.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionWorker.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/export/ExportSceneRegistryTests.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/export/ExcelFileRendererTests.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/export/ExportCoordinatorAppServiceTests.java
 git commit -m "feat: add export execution pipeline"
 ```
 
 ### Task 4: 下载中心接口、权限和过期清理
 
 **Files:**
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/ExportRecordController.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordPageReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordPageRspDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDetailReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDetailRspDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDeleteReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDownloadUrlReqDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDownloadUrlRspDTO.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/app/DownloadCenterAppService.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportCleanupScheduler.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/DownloadCenterAppServiceTests.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/ExportRecordController.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordPageReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordPageRspDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDetailReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDetailRspDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDeleteReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDownloadUrlReqDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDownloadUrlRspDTO.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/app/DownloadCenterAppService.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportCleanupScheduler.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/DownloadCenterAppServiceTests.java`
 
 - [ ] **Step 1: 写列表/下载/删除/过期红灯**
 
@@ -589,7 +589,7 @@ void delete_should_mark_deleted_when_sink_file_missing() {
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DownloadCenterAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DownloadCenterAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，缺少下载中心 AppService、Controller DTO 和过期清理任务。
 
@@ -691,30 +691,30 @@ public class ExportCleanupScheduler {
 
 - [ ] **Step 4: 运行测试确认转绿**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DownloadCenterAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DownloadCenterAppServiceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-mdm/src/main/java/com/demo/mdm/export/controller \
-  demo-mdm/src/main/java/com/demo/mdm/export/app/DownloadCenterAppService.java \
-  demo-mdm/src/main/java/com/demo/mdm/export/service/ExportCleanupScheduler.java \
-  demo-mdm/src/test/java/com/demo/mdm/export/DownloadCenterAppServiceTests.java
+git add admin-mdm/src/main/java/com/example/admin/mdm/export/controller \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/app/DownloadCenterAppService.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportCleanupScheduler.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/export/DownloadCenterAppServiceTests.java
 git commit -m "feat: add download center api"
 ```
 
 ### Task 5: Boot 接线、契约测试与端到端集成
 
 **Files:**
-- Modify: `demo-boot/src/main/java/com/demo/boot/DemoBootApplication.java`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/export/TestExportSceneConfig.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/export/TestExportController.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/export/FileExportCenterModuleSmokeTests.java`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/AdminBootApplication.java`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/export/TestExportSceneConfig.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/export/TestExportController.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/export/FileExportCenterModuleSmokeTests.java`
 
 - [ ] **Step 1: 先写端到端红灯**
 
@@ -752,7 +752,7 @@ void submit_export_should_create_record_then_expose_download_url_and_delete_flow
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,FileExportCenterModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,FileExportCenterModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，缺少 Boot 侧导出记录接线、测试场景 bean、OpenAPI 路径和调度/异步开关。
 
@@ -761,15 +761,15 @@ Expected: FAIL，缺少 Boot 侧导出记录接线、测试场景 bean、OpenAPI
 补 Boot 接线和测试专用场景：
 
 ```java
-@SpringBootApplication(scanBasePackages = "com.demo")
+@SpringBootApplication(scanBasePackages = "com.example.admin")
 @MapperScan({
-    "com.demo.mdm.infra.mapper",
-    "com.demo.mdm.export.infra.mapper"
+    "com.example.admin.mdm.infra.mapper",
+    "com.example.admin.mdm.export.infra.mapper"
 })
-public class DemoBootApplication {
+public class AdminBootApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(DemoBootApplication.class, args);
+        SpringApplication.run(AdminBootApplication.class, args);
     }
 }
 ```
@@ -816,18 +816,18 @@ class TestExportController {
 
 - [ ] **Step 4: 运行测试确认转绿**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,FileExportCenterModuleSmokeTests,FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,FileExportCenterModuleSmokeTests,FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-boot/src/main/java/com/demo/boot/DemoBootApplication.java \
-  demo-boot/src/main/resources/application.yml \
-  demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java \
-  demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java \
-  demo-boot/src/test/java/com/demo/boot/export
+git add admin-boot/src/main/java/com/example/admin/boot/AdminBootApplication.java \
+  admin-boot/src/main/resources/application.yml \
+  admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java \
+  admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java \
+  admin-boot/src/test/java/com/example/admin/boot/export
 git commit -m "feat: wire export center into boot"
 ```
 
@@ -838,7 +838,7 @@ git commit -m "feat: wire export center into boot"
 
 - [ ] **Step 1: 跑模块级回归**
 
-Run: `mvn -q -pl demo-core,demo-system,demo-mdm,demo-boot -am test`
+Run: `mvn -q -pl admin-core,admin-system,admin-mdm,admin-boot -am test`
 
 Expected: PASS。
 
@@ -856,7 +856,7 @@ Run: `docker compose up -d`
 
 Expected: MySQL 容器启动成功。
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests,FileExportCenterModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false -Dspring.datasource.url=jdbc:mysql://127.0.0.1:3307/java_demo_export_it?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true -Dspring.datasource.username=root -Dspring.datasource.password=root`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests,FileExportCenterModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false -Dspring.datasource.url=jdbc:mysql://127.0.0.1:3307/java_admin_starter_export_it?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true -Dspring.datasource.username=root -Dspring.datasource.password=root`
 
 Expected: PASS，`V7` 迁移在真实 MySQL 8 上可执行。
 
@@ -869,7 +869,7 @@ Expected: 无输出并返回 `0`。
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-core demo-system demo-mdm demo-boot
+git add admin-core admin-system admin-mdm admin-boot
 git commit -m "feat: deliver file export center"
 ```
 

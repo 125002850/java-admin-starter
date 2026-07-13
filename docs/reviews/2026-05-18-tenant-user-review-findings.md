@@ -16,8 +16,8 @@
 对应定向验证命令在当前 `HEAD` 上均通过：
 
 ```bash
-mvn -q -pl demo-system -am test -Dtest=AuthFlowTests,UserManagementTests,TenantManagementTests -Dsurefire.failIfNoSpecifiedTests=false
-mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false
+mvn -q -pl admin-system -am test -Dtest=AuthFlowTests,UserManagementTests,TenantManagementTests -Dsurefire.failIfNoSpecifiedTests=false
+mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 ## 当前仍成立的缺陷
@@ -28,7 +28,7 @@ mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests 
 
 **现象：**
 
-在当前机器环境上执行仓库级 `mvn -q test` 失败，失败点不是租户/用户业务逻辑，而是 `demo-core` 的 `TenantFilterTests` 依赖 Mockito mock maker 自附着能力；当前 JDK/OS 组合下无法完成初始化。
+在当前机器环境上执行仓库级 `mvn -q test` 失败，失败点不是租户/用户业务逻辑，而是 `admin-core` 的 `TenantFilterTests` 依赖 Mockito mock maker 自附着能力；当前 JDK/OS 组合下无法完成初始化。
 
 **复现命令：**
 
@@ -38,10 +38,10 @@ mvn -q test
 
 **复现结果摘要：**
 
-- `demo-core` 模块失败
+- `admin-core` 模块失败
 - 失败用例：
-  - `com.demo.core.tenant.TenantFilterTests.should_delegate_tenant_resolution_and_clear_context_after_request`
-  - `com.demo.core.tenant.TenantFilterTests.should_serialize_error_response_when_invalid_tenant_message_contains_quotes`
+  - `com.example.admin.core.tenant.TenantFilterTests.should_delegate_tenant_resolution_and_clear_context_after_request`
+  - `com.example.admin.core.tenant.TenantFilterTests.should_serialize_error_response_when_invalid_tenant_message_contains_quotes`
 - 关键错误：
 
 ```text
@@ -52,13 +52,13 @@ Could not self-attach to current VM using external process
 
 **影响：**
 
-- 与 [README.md](/Users/youdingte/studys/java-demo/README.md:219) 中“每次修改后至少执行 `mvn test`”的完成标准冲突
+- 与 [README.md](/Users/youdingte/studys/java-admin-starter/README.md:219) 中“每次修改后至少执行 `mvn test`”的完成标准冲突
 - 当前功能即使定向测试全部通过，也无法在本机完成仓库级完整验证
 
 **定位线索：**
 
-- [TenantFilterTests.java](/Users/youdingte/studys/java-demo/demo-core/src/test/java/com/demo/core/tenant/TenantFilterTests.java:27)
-- [TenantFilterTests.java](/Users/youdingte/studys/java-demo/demo-core/src/test/java/com/demo/core/tenant/TenantFilterTests.java:44)
+- [TenantFilterTests.java](/Users/youdingte/studys/java-admin-starter/admin-core/src/test/java/com/example/admin/core/tenant/TenantFilterTests.java:27)
+- [TenantFilterTests.java](/Users/youdingte/studys/java-admin-starter/admin-core/src/test/java/com/example/admin/core/tenant/TenantFilterTests.java:44)
 
 **备注：**
 
@@ -91,9 +91,9 @@ Could not self-attach to current VM using external process
 
 **定位线索：**
 
-- [TenantService.java](/Users/youdingte/studys/java-demo/demo-system/src/main/java/com/demo/system/service/TenantService.java:45)
-- [UserService.java](/Users/youdingte/studys/java-demo/demo-system/src/main/java/com/demo/system/service/UserService.java:28)
-- [AuthService.java](/Users/youdingte/studys/java-demo/demo-system/src/main/java/com/demo/system/service/AuthService.java:24)
+- [TenantService.java](/Users/youdingte/studys/java-admin-starter/admin-system/src/main/java/com/example/admin/system/service/TenantService.java:45)
+- [UserService.java](/Users/youdingte/studys/java-admin-starter/admin-system/src/main/java/com/example/admin/system/service/UserService.java:28)
+- [AuthService.java](/Users/youdingte/studys/java-admin-starter/admin-system/src/main/java/com/example/admin/system/service/AuthService.java:24)
 
 ### F3. `V5` migration 的存量查重提示与实际唯一约束语义不一致
 
@@ -117,6 +117,6 @@ Could not self-attach to current VM using external process
 
 **定位线索：**
 
-- [V5__add_tenant_user_management.sql](/Users/youdingte/studys/java-demo/demo-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql:1)
-- [V5__add_tenant_user_management.sql](/Users/youdingte/studys/java-demo/demo-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql:14)
-- [V5__add_tenant_user_management.sql](/Users/youdingte/studys/java-demo/demo-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql:29)
+- [V5__add_tenant_user_management.sql](/Users/youdingte/studys/java-admin-starter/admin-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql:1)
+- [V5__add_tenant_user_management.sql](/Users/youdingte/studys/java-admin-starter/admin-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql:14)
+- [V5__add_tenant_user_management.sql](/Users/youdingte/studys/java-admin-starter/admin-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql:29)

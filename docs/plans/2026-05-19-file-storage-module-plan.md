@@ -2,11 +2,11 @@
 
 > **For Claude:** Use `${SUPERPOWERS_SKILLS_ROOT}/skills/collaboration/executing-plans/SKILL.md` to implement this plan task-by-task.
 >
-> **注：** 仓库后续已将模块目录与 Maven `artifactId` 从 `demo-file` 调整为 `demo-system`，当前实现代码位于 `demo-system/src/main/java/com/demo/file`；下文保留当时的命名，便于追溯实施过程。
+> **注：** 仓库后续已将模块目录与 Maven `artifactId` 从 `admin-file` 调整为 `admin-system`，当前实现代码位于 `admin-system/src/main/java/com/example/admin/file`；下文保留当时的命名，便于追溯实施过程。
 
 **Goal:** 为当前仓库新增一个不泄漏厂商语义、支持 `local` 与 `qiniu` 切换的文件存储模块，首期交付服务端上传、删除、临时访问地址和直传凭证四类能力。
 
-**Architecture:** 新建独立业务模块 `demo-file`，对外只暴露统一的文件存储 API 与 DTO；Controller 严格走 `AppService -> Service -> Provider` 链路，不直接接触七牛 SDK。`local` 作为默认与测试基线实现，`qiniu` 作为可选 provider；厂商相关配置、异常和 URL 组装全部收敛在 `infra/provider/qiniu`，避免 `qiniu-java-sdk`、七牛 token、七牛异常或固定区域配置渗透到业务层。provider 基础能力与“直传凭证”扩展能力拆分为独立接口，避免后续 `minio` / `s3` 接入时 capability 判断继续膨胀；对象键日期生成显式使用可配置时区，而不是依赖部署机默认时区。
+**Architecture:** 新建独立业务模块 `admin-file`，对外只暴露统一的文件存储 API 与 DTO；Controller 严格走 `AppService -> Service -> Provider` 链路，不直接接触七牛 SDK。`local` 作为默认与测试基线实现，`qiniu` 作为可选 provider；厂商相关配置、异常和 URL 组装全部收敛在 `infra/provider/qiniu`，避免 `qiniu-java-sdk`、七牛 token、七牛异常或固定区域配置渗透到业务层。provider 基础能力与“直传凭证”扩展能力拆分为独立接口，避免后续 `minio` / `s3` 接入时 capability 判断继续膨胀；对象键日期生成显式使用可配置时区，而不是依赖部署机默认时区。
 
 **Tech Stack:** Java 17, Spring Boot 3.3, Spring MVC Multipart, OpenAPI 3, JUnit 5, MockMvc, qiniu-java-sdk
 
@@ -14,8 +14,8 @@
 
 ## 1. 现状判断
 
-- 当前仓库只有 `demo-boot`、`demo-core`、`demo-mdm` 三个模块，没有文件存储模块，也没有统一的上传抽象。
-- 仓库规范要求 `demo-core` 保持“薄核心”，只放全局共享基础设施；对外接口必须统一走 `R.ok(...) / R.fail(...)`，业务异常必须统一使用 `BizException(ErrorCode)`。
+- 当前仓库只有 `admin-boot`、`admin-core`、`admin-mdm` 三个模块，没有文件存储模块，也没有统一的上传抽象。
+- 仓库规范要求 `admin-core` 保持“薄核心”，只放全局共享基础设施；对外接口必须统一走 `R.ok(...) / R.fail(...)`，业务异常必须统一使用 `BizException(ErrorCode)`。
 - `README.md` 已明确“文件存储先做本地实现，有需要再补 MinIO，通过配置切换”，因此首期设计必须具备 provider 切换能力，不能把业务直接绑定到单一云厂商。
 - 参考的 `qiniu-starter` 仓库虽然思路可借鉴，但存在以下边界问题，不适合直接引入：
   - 自动注册了固定路径的 `QiniuController`，会把 `/api/framework/qiniu/**` 暴露到当前应用。
@@ -40,7 +40,7 @@
   - 七牛配置、对象键规则、URL 规则和异常翻译容易散落到 Controller / AppService / Service。
   - 当前仓库已经要求“先本地实现再按需切换”，直接在业务代码里使用 SDK 会把这个扩展点提前堵死。
 
-### 方案 C：新建独立 `demo-file` 模块，统一接口 + provider 适配
+### 方案 C：新建独立 `admin-file` 模块，统一接口 + provider 适配
 
 - 优点：
   - 完全符合当前仓库的分层与 API 规范。
@@ -54,7 +54,7 @@
 
 ### 本期范围
 
-- 新增独立模块 `demo-file`。
+- 新增独立模块 `admin-file`。
 - 提供统一 API：
   - `POST /api/file/storage/object/upload`
   - `POST /api/file/storage/object/delete`
@@ -79,14 +79,14 @@
 
 ### 4.1 新模块与职责
 
-- 根 `pom.xml` 新增 `demo-file` 模块，并统一锁定七牛 SDK 版本属性。
-- `demo-boot` 依赖 `demo-file`，新增 `file-storage` OpenAPI 分组。
-- `demo-file` 只依赖 `demo-core` 与 Spring Web/Validation/OpenAPI，不依赖 `demo-mdm`、`demo-boot`。
-- `demo-file` 结构如下：
+- 根 `pom.xml` 新增 `admin-file` 模块，并统一锁定七牛 SDK 版本属性。
+- `admin-boot` 依赖 `admin-file`，新增 `file-storage` OpenAPI 分组。
+- `admin-file` 只依赖 `admin-core` 与 Spring Web/Validation/OpenAPI，不依赖 `admin-mdm`、`admin-boot`。
+- `admin-file` 结构如下：
 
 ```text
-demo-file/
-├── src/main/java/com/demo/file/
+admin-file/
+├── src/main/java/com/example/admin/file/
 │   ├── controller/
 │   │   ├── FileStorageController.java
 │   │   └── dto/
@@ -107,7 +107,7 @@ demo-file/
 │   │   └── LocalFileStorageWebConfig.java
 │   └── enums/
 │       └── FileErrorCode.java
-└── src/test/java/com/demo/file/
+└── src/test/java/com/example/admin/file/
 ```
 
 ### 4.2 对外 API 约定
@@ -149,7 +149,7 @@ demo:
       type: local
       zone-id: Asia/Shanghai
       local:
-        root-dir: ${java.io.tmpdir}/java-demo/uploads
+        root-dir: ${java.io.tmpdir}/java-admin-starter/uploads
         base-url: /local-files
       qiniu:
         access-key:
@@ -168,43 +168,43 @@ demo:
 ### 根模块与启动模块
 
 - Modify: `pom.xml`
-- Modify: `demo-boot/pom.xml`
-- Modify: `demo-boot/src/main/java/com/demo/boot/config/OpenApiConfig.java`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Modify: `demo-boot/src/main/resources/application-dev.yml`
-- Modify: `demo-boot/src/main/resources/application-test.yml`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/file/FileStorageModuleSmokeTests.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/file/QiniuFileStorageProviderIT.java`
+- Modify: `admin-boot/pom.xml`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/config/OpenApiConfig.java`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Modify: `admin-boot/src/main/resources/application-dev.yml`
+- Modify: `admin-boot/src/main/resources/application-test.yml`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/file/FileStorageModuleSmokeTests.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/file/QiniuFileStorageProviderIT.java`
 
-### 新模块 `demo-file`
+### 新模块 `admin-file`
 
-- Create: `demo-file/pom.xml`
-- Create: `demo-file/src/main/java/com/demo/file/controller/FileStorageController.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/UploadFileReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/DeleteFileReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchTempUrlReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchDirectUploadCredentialReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/StoredFileRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchTempUrlRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchDirectUploadCredentialRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/app/FileAppService.java`
-- Create: `demo-file/src/main/java/com/demo/file/service/FileService.java`
-- Create: `demo-file/src/main/java/com/demo/file/service/StoredFile.java`
-- Create: `demo-file/src/main/java/com/demo/file/service/DirectUploadCredential.java`
-- Create: `demo-file/src/main/java/com/demo/file/enums/FileErrorCode.java`
-- Create: `demo-file/src/main/java/com/demo/file/config/StorageType.java`
-- Create: `demo-file/src/main/java/com/demo/file/config/FileStorageProperties.java`
-- Create: `demo-file/src/main/java/com/demo/file/config/LocalFileStorageWebConfig.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/FileStorageProvider.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/local/LocalFileStorageProvider.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/qiniu/QiniuOperations.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/qiniu/DefaultQiniuOperations.java`
-- Create: `demo-file/src/test/java/com/demo/file/LocalFileStorageProviderTests.java`
-- Create: `demo-file/src/test/java/com/demo/file/QiniuFileStorageProviderTests.java`
+- Create: `admin-file/pom.xml`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/FileStorageController.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/UploadFileReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/DeleteFileReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchDirectUploadCredentialReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/StoredFileRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchDirectUploadCredentialRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/app/FileAppService.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/service/FileService.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/service/StoredFile.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/service/DirectUploadCredential.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/enums/FileErrorCode.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/config/StorageType.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/config/FileStorageProperties.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/config/LocalFileStorageWebConfig.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/FileStorageProvider.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/local/LocalFileStorageProvider.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/qiniu/QiniuOperations.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/qiniu/DefaultQiniuOperations.java`
+- Create: `admin-file/src/test/java/com/example/admin/file/LocalFileStorageProviderTests.java`
+- Create: `admin-file/src/test/java/com/example/admin/file/QiniuFileStorageProviderTests.java`
 
 ### 文档
 
@@ -217,21 +217,21 @@ demo:
 
 **Files:**
 - Modify: `pom.xml`
-- Modify: `demo-boot/pom.xml`
-- Modify: `demo-boot/src/main/java/com/demo/boot/config/OpenApiConfig.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`
-- Create: `demo-file/pom.xml`
-- Create: `demo-file/src/main/java/com/demo/file/controller/FileStorageController.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/UploadFileReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/DeleteFileReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchTempUrlReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchDirectUploadCredentialReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/StoredFileRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchTempUrlRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchDirectUploadCredentialRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/app/FileAppService.java`
+- Modify: `admin-boot/pom.xml`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/config/OpenApiConfig.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`
+- Create: `admin-file/pom.xml`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/FileStorageController.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/UploadFileReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/DeleteFileReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchDirectUploadCredentialReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/StoredFileRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchDirectUploadCredentialRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/app/FileAppService.java`
 
 - [ ] **Step 1: 先写契约红灯**
 
@@ -246,33 +246,33 @@ demo:
 
 在 `ModuleBoundaryTests.java` 增加边界约束：
 
-- `demo-file` 只能依赖 `demo-core`，不能依赖 `demo-boot`、`demo-mdm`
-- `demo-core`、`demo-mdm` 不能依赖 `com.demo.file..`
+- `admin-file` 只能依赖 `admin-core`，不能依赖 `admin-boot`、`admin-mdm`
+- `admin-core`、`admin-mdm` 不能依赖 `com.example.admin.file..`
 - 不允许任何 Controller 暴露 `/api/framework/qiniu/**`
 
-在 `ErrorCodeContractTests.java` 把源码扫描根目录补充 `demo-file/src/main/java`，确保新模块也受“错误码唯一”和“禁止直接 new R / throw RuntimeException”约束。
+在 `ErrorCodeContractTests.java` 把源码扫描根目录补充 `admin-file/src/main/java`，确保新模块也受“错误码唯一”和“禁止直接 new R / throw RuntimeException”约束。
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
 
-Expected: FAIL，当前仓库还不存在 `demo-file` 模块、OpenAPI 分组和新增路径。
+Expected: FAIL，当前仓库还不存在 `admin-file` 模块、OpenAPI 分组和新增路径。
 
 - [ ] **Step 3: 搭模块骨架并完成 Boot 装配**
 
 改动要求：
 
 - 根 `pom.xml`
-  - 新增 `<module>demo-file</module>`
+  - 新增 `<module>admin-file</module>`
   - 新增明确版本属性，例如 `qiniu.sdk.version`
-- `demo-boot/pom.xml`
-  - 新增对 `demo-file` 的依赖
+- `admin-boot/pom.xml`
+  - 新增对 `admin-file` 的依赖
 - `OpenApiConfig.java`
   - 新增 `GroupedOpenApi fileStorageApi()`，分组名固定为 `file-storage`
-  - `packagesToScan("com.demo.file.controller")`
+  - `packagesToScan("com.example.admin.file.controller")`
   - `pathsToMatch("/api/file/storage/**")`
-- `demo-file/pom.xml`
-  - 依赖 `demo-core`
+- `admin-file/pom.xml`
+  - 依赖 `admin-core`
   - 依赖 `spring-boot-starter-web`
   - 依赖 `spring-boot-starter-validation`
   - 依赖 `swagger-annotations-jakarta`
@@ -285,7 +285,7 @@ Expected: FAIL，当前仓库还不存在 `demo-file` 模块、OpenAPI 分组和
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，新增模块已被 Maven 与 Boot 识别，OpenAPI 分组与架构边界测试通过。
 
@@ -296,44 +296,44 @@ Commit message: `feat: scaffold file storage module`
 ### Task 2: 落地本地 provider 与统一上传/删除/临时地址链路
 
 **Files:**
-- Modify: `demo-file/src/main/java/com/demo/file/controller/FileStorageController.java`
-- Modify: `demo-file/src/main/java/com/demo/file/controller/dto/UploadFileReqDTO.java`
-- Modify: `demo-file/src/main/java/com/demo/file/controller/dto/DeleteFileReqDTO.java`
-- Modify: `demo-file/src/main/java/com/demo/file/controller/dto/FetchTempUrlReqDTO.java`
-- Modify: `demo-file/src/main/java/com/demo/file/controller/dto/StoredFileRspDTO.java`
-- Modify: `demo-file/src/main/java/com/demo/file/controller/dto/FetchTempUrlRspDTO.java`
-- Modify: `demo-file/src/main/java/com/demo/file/app/FileAppService.java`
-- Create: `demo-file/src/main/java/com/demo/file/service/FileService.java`
-- Create: `demo-file/src/main/java/com/demo/file/service/StoredFile.java`
-- Create: `demo-file/src/main/java/com/demo/file/enums/FileErrorCode.java`
-- Create: `demo-file/src/main/java/com/demo/file/config/StorageType.java`
-- Create: `demo-file/src/main/java/com/demo/file/config/FileStorageProperties.java`
-- Create: `demo-file/src/main/java/com/demo/file/config/LocalFileStorageWebConfig.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/FileStorageProvider.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/DirectUploadCapable.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/local/LocalFileStorageProvider.java`
-- Create: `demo-file/src/test/java/com/demo/file/LocalFileStorageProviderTests.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/file/FileStorageModuleSmokeTests.java`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Modify: `demo-boot/src/main/resources/application-dev.yml`
-- Modify: `demo-boot/src/main/resources/application-test.yml`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/FileStorageController.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/dto/UploadFileReqDTO.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/dto/DeleteFileReqDTO.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlReqDTO.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/dto/StoredFileRspDTO.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlRspDTO.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/app/FileAppService.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/service/FileService.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/service/StoredFile.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/enums/FileErrorCode.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/config/StorageType.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/config/FileStorageProperties.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/config/LocalFileStorageWebConfig.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/FileStorageProvider.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/DirectUploadCapable.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/local/LocalFileStorageProvider.java`
+- Create: `admin-file/src/test/java/com/example/admin/file/LocalFileStorageProviderTests.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/file/FileStorageModuleSmokeTests.java`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Modify: `admin-boot/src/main/resources/application-dev.yml`
+- Modify: `admin-boot/src/main/resources/application-test.yml`
 
 - [ ] **Step 1: 先写本地模式失败测试**
 
-`demo-boot/src/test/java/com/demo/boot/file/FileStorageModuleSmokeTests.java` 至少覆盖以下场景：
+`admin-boot/src/test/java/com/example/admin/boot/file/FileStorageModuleSmokeTests.java` 至少覆盖以下场景：
 
 - `object/upload` 在 `local` 模式下可成功保存文件，并返回 `objectKey` 与 `originUrl`
 - `object/temp-url/fetch` 在 `local` 模式下返回 `base-url/objectKey`
 - `object/delete` 删除成功后，物理文件不存在
 - `object/upload` 对空文件、非法 `bizPath` 返回业务错误
 
-这些烟雾测试必须放在 `demo-boot`，因为它是当前仓库唯一装配完整 Spring 上下文的模块；不要把 `MockMvc + @SpringBootTest` 放在 `demo-file/src/test` 里赌配置类自动发现。
+这些烟雾测试必须放在 `admin-boot`，因为它是当前仓库唯一装配完整 Spring 上下文的模块；不要把 `MockMvc + @SpringBootTest` 放在 `admin-file/src/test` 里赌配置类自动发现。
 
 建议用 `MockMvc` + 临时目录做烟雾测试，测试属性固定为：
 
 ```properties
 demo.file.storage.type=local
-demo.file.storage.local.root-dir=${java.io.tmpdir}/java-demo-file-tests
+demo.file.storage.local.root-dir=${java.io.tmpdir}/java-admin-starter-file-tests
 demo.file.storage.local.base-url=/local-files
 ```
 
@@ -345,11 +345,11 @@ demo.file.storage.local.base-url=/local-files
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，端到端上传链路尚未实现。
 
-Run: `mvn -q -pl demo-file -am test -Dtest=LocalFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-file -am test -Dtest=LocalFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，provider 与配置尚未实现。
 
@@ -401,11 +401,11 @@ String generatedObjectKey =
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，本地模式下端到端上传、临时地址、删除与错误返回测试通过。
 
-Run: `mvn -q -pl demo-file -am test -Dtest=LocalFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-file -am test -Dtest=LocalFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，本地 provider 的路径安全测试全部通过。
 
@@ -416,18 +416,18 @@ Commit message: `feat: add local file storage provider`
 ### Task 3: 落地七牛 provider 与直传凭证抽象
 
 **Files:**
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchDirectUploadCredentialReqDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/controller/dto/FetchDirectUploadCredentialRspDTO.java`
-- Create: `demo-file/src/main/java/com/demo/file/service/DirectUploadCredential.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/qiniu/QiniuOperations.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/qiniu/DefaultQiniuOperations.java`
-- Create: `demo-file/src/main/java/com/demo/file/infra/provider/DirectUploadCapable.java`
-- Create: `demo-file/src/test/java/com/demo/file/QiniuFileStorageProviderTests.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/file/QiniuFileStorageProviderIT.java`
-- Modify: `demo-file/src/main/java/com/demo/file/service/FileService.java`
-- Modify: `demo-file/src/main/java/com/demo/file/config/FileStorageProperties.java`
-- Modify: `demo-file/src/main/java/com/demo/file/controller/FileStorageController.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchDirectUploadCredentialReqDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/controller/dto/FetchDirectUploadCredentialRspDTO.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/service/DirectUploadCredential.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/qiniu/QiniuOperations.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/qiniu/DefaultQiniuOperations.java`
+- Create: `admin-file/src/main/java/com/example/admin/file/infra/provider/DirectUploadCapable.java`
+- Create: `admin-file/src/test/java/com/example/admin/file/QiniuFileStorageProviderTests.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/file/QiniuFileStorageProviderIT.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/service/FileService.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/config/FileStorageProperties.java`
+- Modify: `admin-file/src/main/java/com/example/admin/file/controller/FileStorageController.java`
 
 - [ ] **Step 1: 先写七牛模式失败测试**
 
@@ -451,7 +451,7 @@ Commit message: `feat: add local file storage provider`
 
 - `direct-upload/credential/fetch` 在 `local` 模式下返回 `3002xxx` 业务错误，而不是 `500`
 
-再补一条手动真实网络集成测试 `demo-boot/src/test/java/com/demo/boot/file/QiniuFileStorageProviderIT.java`：
+再补一条手动真实网络集成测试 `admin-boot/src/test/java/com/example/admin/boot/file/QiniuFileStorageProviderIT.java`：
 
 - `@SpringBootTest`
 - `@ActiveProfiles("qiniu-it")`
@@ -465,11 +465,11 @@ Commit message: `feat: add local file storage provider`
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-file -am test -Dtest=QiniuFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-file -am test -Dtest=QiniuFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前还没有七牛 provider、直传凭证 DTO 与错误翻译。
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，本地模式下直传凭证错误语义尚未收敛。
 
@@ -507,15 +507,15 @@ private Region resolveRegion(String region) {
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-file -am test -Dtest=QiniuFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-file -am test -Dtest=QiniuFileStorageProviderTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，七牛 provider 的单元测试通过。
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FileStorageModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，本地模式下直传凭证不支持的错误语义正确。
 
-Run: `RUN_QINIU_IT=true mvn -q -pl demo-boot -am test -Dtest=QiniuFileStorageProviderIT -Dsurefire.failIfNoSpecifiedTests=false -Dspring.profiles.active=qiniu-it`
+Run: `RUN_QINIU_IT=true mvn -q -pl admin-boot -am test -Dtest=QiniuFileStorageProviderIT -Dsurefire.failIfNoSpecifiedTests=false -Dspring.profiles.active=qiniu-it`
 
 Expected: PASS，真实七牛环境下上传、临时地址、删除链路通过。
 
@@ -527,18 +527,18 @@ Commit message: `feat: add qiniu file storage provider`
 
 **Files:**
 - Modify: `README.md`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Modify: `demo-boot/src/main/resources/application-dev.yml`
-- Modify: `demo-boot/src/main/resources/application-test.yml`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Modify: `admin-boot/src/main/resources/application-dev.yml`
+- Modify: `admin-boot/src/main/resources/application-test.yml`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`
 
 - [ ] **Step 1: 补 README 与默认配置**
 
 README 必须补齐：
 
-- 新模块 `demo-file` 的职责说明
+- 新模块 `admin-file` 的职责说明
 - `local` / `qiniu` provider 切换方式
 - 本期不落库、不新增 migration 的原因
 - 四个新增接口的用途
@@ -561,7 +561,7 @@ README 必须补齐：
 
 - [ ] **Step 2: 跑 OpenAPI 与契约回归**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests,ModuleBoundaryTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，新增接口已进入 OpenAPI，架构边界与错误码契约仍成立。
 
@@ -569,7 +569,7 @@ Expected: PASS，新增接口已进入 OpenAPI，架构边界与错误码契约�
 
 Run: `mvn -q test`
 
-Expected: PASS，全仓没有因为 `demo-file` 引入新的架构违规、配置缺失或测试污染。
+Expected: PASS，全仓没有因为 `admin-file` 引入新的架构违规、配置缺失或测试污染。
 
 - [ ] **Step 4: Commit**
 
@@ -584,12 +584,12 @@ Commit message: `docs: document file storage module`
 - `direct-upload/credential/fetch` 是否是“中性凭证接口”，而不是把字段命名成 `qiniuTokenRsp`
 - 上传接口在 Swagger UI 中是否把 `file` 渲染为文件上传控件，而不是普通 string
 - 对象键日期是否显式使用 `demo.file.storage.zone-id`，而不是依赖系统默认时区
-- `ErrorCodeContractTests` 是否已经把 `demo-file` 纳入扫描
+- `ErrorCodeContractTests` 是否已经把 `admin-file` 纳入扫描
 - `README` 与 OpenAPI 是否准确描述了“本期不落库”的设计决定
 
 ## 8. 最终验收清单
 
-- `demo-file` 模块独立存在，且不依赖 `demo-boot` / `demo-mdm`
+- `admin-file` 模块独立存在，且不依赖 `admin-boot` / `admin-mdm`
 - 本地模式下，上传、删除、临时地址获取可用
 - 七牛模式下，上传、删除、临时地址、直传凭证由 provider 提供，且不需要真实网络即可通过单测
 - 七牛模式下，存在可手动启用的真实网络集成测试，并作为上线前验收项执行通过

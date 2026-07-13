@@ -5,7 +5,7 @@
 当前分支不再依赖数据库启动脚本，而是直接由分支自身维护数据库配置文件：
 
 - 仓库根目录 `compose.yaml`
-- `demo-boot/src/main/resources/application-dev.yml`
+- `admin-boot/src/main/resources/application-dev.yml`
 
 这样开发者切回当前分支时，数据库容器配置和 Spring Boot 的开发连接地址会随 Git 分支一起切换，不需要再额外执行分支识别脚本。
 
@@ -15,9 +15,9 @@
 
 | 项目 | 值 |
 |------|----|
-| Compose 项目标识 | `java-demo-feature-sso` |
+| Compose 项目标识 | `java-admin-starter-feature-sso` |
 | MySQL 端口 | `3307` |
-| 数据库名 | `java_demo_sso` |
+| 数据库名 | `java_admin_starter_sso` |
 | 用户名 | `root` |
 | 密码 | `root` |
 
@@ -61,14 +61,14 @@ docker compose up -d
 数据库启动后，直接本地运行服务：
 
 ```bash
-cd demo-boot
+cd admin-boot
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-当前分支的 [application-dev.yml](/Users/youdingte/studys/java-demo/demo-boot/src/main/resources/application-dev.yml:1) 已固定连接到：
+当前分支的 [application-dev.yml](/Users/youdingte/studys/java-admin-starter/admin-boot/src/main/resources/application-dev.yml:1) 已固定连接到：
 
 ```text
-jdbc:mysql://127.0.0.1:3307/java_demo_sso
+jdbc:mysql://127.0.0.1:3307/java_admin_starter_sso
 ```
 
 因此不再需要额外导出环境变量。
@@ -87,7 +87,7 @@ jdbc:mysql://127.0.0.1:3307/java_demo_sso
 如果 `main` 分支也要保持独立数据库，应在 `main` 分支内分别维护它自己的：
 
 - `compose.yaml`
-- `demo-boot/src/main/resources/application-dev.yml`
+- `admin-boot/src/main/resources/application-dev.yml`
 
 并保证它们使用不同的：
 

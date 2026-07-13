@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 `demo-core` / `demo-system` / `demo-boot` 的响应体、错误码、业务异常和全局异常处理与 [docs/api-response-body-model.md](/Users/youdingte/studys/java-demo/docs/api-response-body-model.md:1) 一致，并补齐可防退化的测试与文档。
+**Goal:** 让 `admin-core` / `admin-system` / `admin-boot` 的响应体、错误码、业务异常和全局异常处理与 [docs/api-response-body-model.md](/Users/youdingte/studys/java-admin-starter/docs/api-response-body-model.md:1) 一致，并补齐可防退化的测试与文档。
 
 **Architecture:** 本计划按“行为约束优先”实现 spec：`ErrorCode` 统一提供 `getCode()/getMsg()`，`BizException` 只持有 `ErrorCode`，全局异常处理同时输出真实 HTTP Status 和统一 body。`R` 在本计划中明确实现为“`final class` + 私有构造器 + 静态工厂”，不采用 spec 示例里的 `record`，因为 Java `record` 无法满足“禁止外部直接 `new R(...)`”这一行为约束；若后续要回到 `record`，必须先同步放宽 spec 的该条约束再另起变更。错误码号段方面，本计划把 spec 第五节的分段表视为建议而非强制迁移项：公共码固定使用 `200 / 400 / 401 / 403 / 404 / 429 / 500`，业务模块继续沿用仓库现有的 7 位号段约定，例如认证 `2001xxx`、主数据 `3001xxx`、测试/保留 `9000xxx`，本次响应模型改造不做全仓重编号。
 
@@ -13,9 +13,9 @@
 ### Task 1: 锁定响应契约红灯测试
 
 **Files:**
-- Modify: `demo-core/src/test/java/com/demo/core/web/RTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/web/ValidationIntegrationTests.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
+- Modify: `admin-core/src/test/java/com/example/admin/core/web/RTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/web/ValidationIntegrationTests.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
 
 - [ ] **Step 1: 先把 spec 行为写成失败测试**
 
@@ -87,33 +87,33 @@ mockMvc.perform(post("/api/system/auth/login")
 
 - [ ] **Step 2: 运行红灯测试确认当前实现不满足 spec**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL，提示 `R.fail(ErrorCode)` / `R.fail(ErrorCode, String)` 缺失
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=ValidationIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=ValidationIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL，当前实现会返回 422/500 与 body.code 不一致
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS 或局部 FAIL；若 PASS 说明业务失败链路已基本符合 spec，可作为保护网保留
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add demo-core/src/test/java/com/demo/core/web/RTests.java \
-  demo-boot/src/test/java/com/demo/boot/web/ValidationIntegrationTests.java \
-  demo-system/src/test/java/com/demo/system/AuthFlowTests.java
+git add admin-core/src/test/java/com/example/admin/core/web/RTests.java \
+  admin-boot/src/test/java/com/example/admin/boot/web/ValidationIntegrationTests.java \
+  admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java
 git commit -m "test: lock api response body contract"
 ```
 
 ### Task 2: 重构核心错误码与响应抽象
 
 **Files:**
-- Modify: `demo-core/src/main/java/com/demo/core/exception/ErrorCode.java`
-- Modify: `demo-core/src/main/java/com/demo/core/exception/CommonErrorCode.java`
-- Modify: `demo-core/src/main/java/com/demo/core/exception/BizException.java`
-- Modify: `demo-core/src/main/java/com/demo/core/web/R.java`
-- Modify: `demo-system/src/main/java/com/demo/system/enums/AuthErrorCode.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/web/TestValidationController.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/exception/ErrorCode.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/exception/CommonErrorCode.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/exception/BizException.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/web/R.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/enums/AuthErrorCode.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/web/TestValidationController.java`
 
 - [ ] **Step 1: 统一 `ErrorCode` 接口命名**
 
@@ -275,28 +275,28 @@ public final class R<T> {
 
 - [ ] **Step 5: 运行核心测试**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/exception/ErrorCode.java \
-  demo-core/src/main/java/com/demo/core/exception/CommonErrorCode.java \
-  demo-core/src/main/java/com/demo/core/exception/BizException.java \
-  demo-core/src/main/java/com/demo/core/web/R.java \
-  demo-system/src/main/java/com/demo/system/enums/AuthErrorCode.java \
-  demo-boot/src/test/java/com/demo/boot/web/TestValidationController.java
+git add admin-core/src/main/java/com/example/admin/core/exception/ErrorCode.java \
+  admin-core/src/main/java/com/example/admin/core/exception/CommonErrorCode.java \
+  admin-core/src/main/java/com/example/admin/core/exception/BizException.java \
+  admin-core/src/main/java/com/example/admin/core/web/R.java \
+  admin-system/src/main/java/com/example/admin/system/enums/AuthErrorCode.java \
+  admin-boot/src/test/java/com/example/admin/boot/web/TestValidationController.java
 git commit -m "refactor: align response and error code abstractions"
 ```
 
 ### Task 3: 补齐全局异常映射与现有调用点
 
 **Files:**
-- Modify: `demo-core/src/main/java/com/demo/core/exception/GlobalExceptionHandler.java`
-- Modify: `demo-system/src/main/java/com/demo/system/service/AuthService.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/web/TestValidationController.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/web/ValidationIntegrationTests.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/exception/GlobalExceptionHandler.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/service/AuthService.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/web/TestValidationController.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/web/ValidationIntegrationTests.java`
 
 - [ ] **Step 1: 新增 Logger 字段并补齐异常映射**
 
@@ -390,38 +390,38 @@ public R<Void> fail() {
 
 - [ ] **Step 3: 运行异常链路测试**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=ValidationIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=ValidationIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/exception/GlobalExceptionHandler.java \
-  demo-system/src/main/java/com/demo/system/service/AuthService.java \
-  demo-boot/src/test/java/com/demo/boot/web/TestValidationController.java \
-  demo-boot/src/test/java/com/demo/boot/web/ValidationIntegrationTests.java
+git add admin-core/src/main/java/com/example/admin/core/exception/GlobalExceptionHandler.java \
+  admin-system/src/main/java/com/example/admin/system/service/AuthService.java \
+  admin-boot/src/test/java/com/example/admin/boot/web/TestValidationController.java \
+  admin-boot/src/test/java/com/example/admin/boot/web/ValidationIntegrationTests.java
 git commit -m "feat: map api response errors by spec"
 ```
 
 ### Task 4: 增加错误码与防退化测试
 
 **Files:**
-- Create: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`
-- Modify: `demo-boot/pom.xml`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`
+- Modify: `admin-boot/pom.xml`
 
 - [ ] **Step 1: 在聚合启动模块中增加契约测试**
 
-`ErrorCodeContractTests.java` 用 `demo-boot` 作为扫描入口，覆盖 `demo-core`、`demo-system`、`demo-mdm`。`ErrorCode` enum 扫描使用 Spring 的 `ClassPathScanningCandidateComponentProvider`；源码反模式检查通过 `repoRoot` helper 定位模块源码目录，不能再使用依赖 working directory 的 `Files.walk(Path.of("."))`：
+`ErrorCodeContractTests.java` 用 `admin-boot` 作为扫描入口，覆盖 `admin-core`、`admin-system`、`admin-mdm`。`ErrorCode` enum 扫描使用 Spring 的 `ClassPathScanningCandidateComponentProvider`；源码反模式检查通过 `repoRoot` helper 定位模块源码目录，不能再使用依赖 working directory 的 `Files.walk(Path.of("."))`：
 
 ```java
 class ErrorCodeContractTests {
 
     @Test
     void all_error_code_enums_should_have_unique_codes_and_non_blank_msgs() {
-        Set<Class<?>> errorCodeEnums = scanErrorCodeEnums("com.demo");
+        Set<Class<?>> errorCodeEnums = scanErrorCodeEnums("com.example.admin");
         Map<Integer, String> owners = new HashMap<>();
 
         for (Class<?> errorCodeEnum : errorCodeEnums) {
@@ -437,7 +437,7 @@ class ErrorCodeContractTests {
     @Test
     void business_error_codes_should_not_reuse_common_http_codes() {
         Set<Integer> reserved = Set.of(200, 400, 401, 403, 404, 429, 500);
-        Set<Class<?>> errorCodeEnums = scanErrorCodeEnums("com.demo");
+        Set<Class<?>> errorCodeEnums = scanErrorCodeEnums("com.example.admin");
         for (Class<?> errorCodeEnum : errorCodeEnums) {
             if (errorCodeEnum == CommonErrorCode.class) {
                 continue;
@@ -485,10 +485,10 @@ class ErrorCodeContractTests {
     private static List<Path> scanMainSourceFiles() throws IOException {
         Path repoRoot = resolveRepoRoot();
         List<Path> sourceRoots = List.of(
-                repoRoot.resolve("demo-core/src/main/java"),
-                repoRoot.resolve("demo-system/src/main/java"),
-                repoRoot.resolve("demo-mdm/src/main/java"),
-                repoRoot.resolve("demo-boot/src/main/java"));
+                repoRoot.resolve("admin-core/src/main/java"),
+                repoRoot.resolve("admin-system/src/main/java"),
+                repoRoot.resolve("admin-mdm/src/main/java"),
+                repoRoot.resolve("admin-boot/src/main/java"));
         List<Path> sources = new ArrayList<>();
 
         for (Path sourceRoot : sourceRoots) {
@@ -517,8 +517,8 @@ class ErrorCodeContractTests {
                     .toURI()).toAbsolutePath().normalize();
             for (Path current = location; current != null; current = current.getParent()) {
                 if (Files.exists(current.resolve("README.md"))
-                        && Files.exists(current.resolve("demo-core/pom.xml"))
-                        && Files.exists(current.resolve("demo-boot/pom.xml"))) {
+                        && Files.exists(current.resolve("admin-core/pom.xml"))
+                        && Files.exists(current.resolve("admin-boot/pom.xml"))) {
                     return current;
                 }
             }
@@ -533,32 +533,32 @@ class ErrorCodeContractTests {
 
 这一步需要补的 import 至少包括：`java.io.IOException`、`java.net.URISyntaxException`、`java.nio.file.Files`、`java.nio.file.Path`、`java.util.*`、`java.util.stream.Collectors`、`java.util.stream.Stream`、`org.springframework.beans.factory.config.BeanDefinition`、`org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider`、`org.springframework.core.type.filter.AssignableTypeFilter`、`org.springframework.util.StringUtils`。
 
-- [ ] **Step 2: 若 `demo-boot` 的测试类路径未自动带上业务模块，补齐依赖**
+- [ ] **Step 2: 若 `admin-boot` 的测试类路径未自动带上业务模块，补齐依赖**
 
-`demo-boot/pom.xml` 保持或补齐：
+`admin-boot/pom.xml` 保持或补齐：
 
 ```xml
 <dependency>
-    <groupId>com.demo</groupId>
-    <artifactId>demo-system</artifactId>
+    <groupId>com.example.admin</groupId>
+    <artifactId>admin-system</artifactId>
     <version>${project.version}</version>
 </dependency>
 <dependency>
-    <groupId>com.demo</groupId>
-    <artifactId>demo-mdm</artifactId>
+    <groupId>com.example.admin</groupId>
+    <artifactId>admin-mdm</artifactId>
     <version>${project.version}</version>
 </dependency>
 ```
 
 - [ ] **Step 3: 运行契约测试**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java demo-boot/pom.xml
+git add admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java admin-boot/pom.xml
 git commit -m "test: add api response body contract guards"
 ```
 
@@ -579,7 +579,7 @@ git commit -m "test: add api response body contract guards"
 - 成功响应固定为 `code = 200`、`msg = ok`。
 - 默认失败响应使用 `CommonErrorCode.FAILED(500, "操作失败")`。
 - 参数错误、未登录、无权限、资源不存在、限流使用公共 HTTP 语义码：`400 / 401 / 403 / 404 / 429`。
-- 模块私有业务码使用独立号段，例如 `demo-system` 当前使用 `2001xxx`。
+- 模块私有业务码使用独立号段，例如 `admin-system` 当前使用 `2001xxx`。
 - `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
 ```
 
