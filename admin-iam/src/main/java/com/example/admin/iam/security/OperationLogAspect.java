@@ -3,6 +3,7 @@ package com.example.admin.iam.security;
 import com.example.admin.iam.annotation.OperationLog;
 import com.example.admin.iam.event.OperationLogEvent;
 import com.example.admin.iam.service.ClientRequestInfo;
+import com.example.admin.iam.service.ClientRequestInfoResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -29,10 +30,16 @@ private static final int MAX_SUMMARY_LENGTH = 2048;
 
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    private final ClientRequestInfoResolver clientRequestInfoResolver;
 
-    public OperationLogAspect(ApplicationEventPublisher eventPublisher, ObjectMapper objectMapper) {
+    public OperationLogAspect(
+            ApplicationEventPublisher eventPublisher,
+            ObjectMapper objectMapper,
+            ClientRequestInfoResolver clientRequestInfoResolver
+    ) {
         this.eventPublisher = eventPublisher;
         this.objectMapper = objectMapper;
+        this.clientRequestInfoResolver = clientRequestInfoResolver;
     }
 
     @Around("@annotation(com.example.admin.iam.annotation.OperationLog)")
@@ -61,7 +68,7 @@ private static final int MAX_SUMMARY_LENGTH = 2048;
             String errorMessage,
             long costMillis
     ) {
-        ClientRequestInfo clientRequestInfo = ClientRequestInfo.current();
+        ClientRequestInfo clientRequestInfo = clientRequestInfoResolver.current();
         HttpServletRequest request = currentRequest();
         IamPrincipal principal = CurrentIam.principal().orElse(null);
         eventPublisher.publishEvent(new OperationLogEvent(

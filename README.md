@@ -220,6 +220,19 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 - `http://127.0.0.1:8080/v3/api-docs/file-storage`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-export`
 
+### 登录日志客户端 IP
+
+默认不信任任何客户端转发头，登录日志、刷新令牌和操作日志直接记录 TCP 对端地址。应用部署在 Nginx、Ingress 或负载均衡之后时，必须把实际代理来源网段配置为可信代理：
+
+```bash
+export IAM_CLIENT_IP_TRUSTED_PROXY_CIDRS='127.0.0.1/32,10.20.30.0/24'
+```
+
+- 多个 IPv4/IPv6 CIDR 使用英文逗号分隔，只配置能够直连应用的真实代理网段。
+- 可信代理请求按 `X-Forwarded-For`、`Forwarded`、`X-Real-IP` 的优先级解析客户端地址。
+- `X-Forwarded-For` 从右向左剥离可信代理，在第一个非可信地址停止，防止客户端伪造最左侧地址。
+- 禁止配置 `0.0.0.0/0` 或 `::/0`，否则等同于重新信任任意客户端提供的转发头。
+
 当前基座业务端点范围：
 
 - `/api/iam/auth/**`
