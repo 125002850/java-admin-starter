@@ -2,7 +2,7 @@
 
 **Goal:** 以当前 `feature/sso` 分支为目标，只补齐 `~/work/track-bench` 中已经沉淀出来的基础能力，删除/排除 track-bench 业务模块，形成基于 SSO 的可运行 Java 后端基座。
 
-**Architecture:** 保持当前项目模块边界：`demo-core` 放业务无关抽象，`demo-system` 放外部系统集成，`demo-mdm` 放字典和导出中心这类平台型业务能力，`demo-boot` 只做启动装配和配置。代码从 `com.trackbench.*` 迁移为 `com.demo.*`，API 契约采用 track-bench 当前风格，同时继续满足 `R.ok(...)` / `R.fail(...)` 和 `BizException(ErrorCode)`。
+**Architecture:** 保持当前项目模块边界：`admin-core` 放业务无关抽象，`admin-system` 放外部系统集成，`admin-mdm` 放字典和导出中心这类平台型业务能力，`admin-boot` 只做启动装配和配置。代码从 `com.trackbench.*` 迁移为 `com.example.admin.*`，API 契约采用 track-bench 当前风格，同时继续满足 `R.ok(...)` / `R.fail(...)` 和 `BizException(ErrorCode)`。
 
 **Tech Stack:** JDK 17, Spring Boot 3.3.0, MyBatis-Plus 3.5.7, Flyway 10.15.0, MySQL 8, Knife4j/OpenAPI 3, local/qiniu/minio file provider, optional `oigit-appcik` SSO staff client.
 
@@ -60,10 +60,10 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 配置原则：
 
 - 不把数据库密码写入仓库。
-- `demo-boot/src/main/resources/application-dev.yml` 改为支持环境变量覆盖：
-  - `JAVA_DEMO_DATASOURCE_URL`
-  - `JAVA_DEMO_DATASOURCE_USERNAME`
-  - `JAVA_DEMO_DATASOURCE_PASSWORD`
+- `admin-boot/src/main/resources/application-dev.yml` 改为支持环境变量覆盖：
+  - `JAVA_ADMIN_STARTER_DATASOURCE_URL`
+  - `JAVA_ADMIN_STARTER_DATASOURCE_USERNAME`
+  - `JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD`
 - 本地 Docker MySQL 仍可作为 fallback，远程新库通过环境变量启用。
 
 ---
@@ -72,167 +72,167 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 ### Create
 
-- `demo-core/src/main/java/com/demo/core/enums/BaseEnum.java`
-- `demo-core/src/main/java/com/demo/core/enums/EnableStatusEnum.java`
-- `demo-core/src/main/java/com/demo/core/enums/YesNoEnum.java`
-- `demo-core/src/main/java/com/demo/core/web/EnumVO.java`
-- `demo-core/src/main/java/com/demo/core/web/AuditRspDTO.java`
-- `demo-core/src/main/java/com/demo/core/dict/DictItemNameResolver.java`
-- `demo-core/src/main/java/com/demo/core/operator/CacheUserEntity.java`
-- `demo-core/src/main/java/com/demo/core/operator/CacheUserMapper.java`
-- `demo-core/src/main/java/com/demo/core/operator/CacheUserService.java`
-- `demo-core/src/main/java/com/demo/core/operator/CacheUserHolder.java`
-- `demo-core/src/main/java/com/demo/core/operator/CacheUserProperties.java`
-- `demo-core/src/main/java/com/demo/core/operator/CacheUserAsyncConfiguration.java`
-- `demo-core/src/main/java/com/demo/core/jackson/AuditUserIdSerializer.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/ConditionAstNode.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/ConditionGroupAst.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/ConditionLeafAst.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/QueryAst.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/QueryLogicOperator.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/QueryOperator.java`
-- `demo-core/src/main/java/com/demo/core/query/ast/SortSpec.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/AbstractConditionNodeDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/BaseDynamicCriteriaReqDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/BasePagedDynamicQueryReqDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/ConditionGroupDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/DateTimeConditionDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/EnumConditionDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/SortItemDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/dto/TextConditionDTO.java`
-- `demo-core/src/main/java/com/demo/core/query/exception/DynamicQueryErrorCode.java`
-- `demo-core/src/main/java/com/demo/core/query/executor/MybatisPlusQueryExecutor.java`
-- `demo-core/src/main/java/com/demo/core/query/scene/DynamicQueryAstMapper.java`
-- `demo-core/src/main/java/com/demo/core/query/scene/SceneQueryDefinition.java`
-- `demo-core/src/main/java/com/demo/core/query/scene/SceneQueryMapper.java`
-- `demo-core/src/main/java/com/demo/core/query/support/DynamicQueryGuard.java`
-- `demo-core/src/main/java/com/demo/core/query/support/DynamicQuerySummaryRenderer.java`
-- `demo-core/src/main/java/com/demo/core/query/support/QueryComplexityScorer.java`
-- `demo-core/src/main/java/com/demo/core/query/validation/DynamicQueryLimits.java`
-- `demo-core/src/main/java/com/demo/core/export/dto/BaseExportDynamicCriteriaReqDTO.java`
-- `demo-core/src/main/java/com/demo/core/export/dto/ExportOptionsReqDTO.java`
-- `demo-core/src/main/java/com/demo/core/export/dto/ExportRangeReqDTO.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportColumn.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportMeta.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportRenderRequest.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportScope.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportStoreRequest.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportStoredFile.java`
-- `demo-core/src/main/java/com/demo/core/export/model/ExportTaskResult.java`
-- `demo-core/src/main/java/com/demo/core/export/model/RenderedExportFile.java`
-- `demo-core/src/main/java/com/demo/core/export/renderer/CsvExportRenderer.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportFileAccessor.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportFileSink.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportHandler.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportRenderer.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportRendererRegistry.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportSceneRegistry.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/ExportTaskSubmitter.java`
-- `demo-core/src/main/java/com/demo/core/export/spi/PackageableExportHandler.java`
-- `demo-core/src/main/java/com/demo/core/export/support/AbstractCsvListExportHandler.java`
-- `demo-core/src/main/java/com/demo/core/export/support/SpringExportRendererRegistry.java`
-- `demo-core/src/main/java/com/demo/core/export/support/SpringExportSceneRegistry.java`
-- `demo-system/src/main/java/com/demo/file/export/FileStorageExportGateway.java`
-- `demo-system/src/main/java/com/demo/file/controller/dto/FetchTempUrlBatchReqDTO.java`
-- `demo-system/src/main/java/com/demo/file/controller/dto/FetchTempUrlBatchRspDTO.java`
-- `demo-system/src/main/java/com/demo/file/controller/dto/FetchTempUrlItemRspDTO.java`
-- `demo-system/src/main/java/com/demo/staff/controller/StaffController.java`
-- `demo-system/src/main/java/com/demo/staff/app/StaffAppService.java`
-- `demo-system/src/main/java/com/demo/staff/config/StaffCiConfiguration.java`
-- `demo-system/src/main/java/com/demo/staff/controller/dto/StaffInfoRspDTO.java`
-- `demo-system/src/main/java/com/demo/staff/controller/dto/query/StaffListAllReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/controller/dto/query/GlobalDictItemDynamicCriteriaReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/controller/dto/query/GlobalDictItemDynamicPageReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/controller/dto/query/GlobalDictTypeDynamicCriteriaReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/controller/dto/query/GlobalDictTypeDynamicListReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/query/globaldict/GlobalDictItemSceneQueryDefinition.java`
-- `demo-mdm/src/main/java/com/demo/mdm/query/globaldict/GlobalDictItemSceneQueryMapper.java`
-- `demo-mdm/src/main/java/com/demo/mdm/query/globaldict/GlobalDictTypeSceneQueryDefinition.java`
-- `demo-mdm/src/main/java/com/demo/mdm/query/globaldict/GlobalDictTypeSceneQueryMapper.java`
-- `demo-mdm/src/main/java/com/demo/mdm/service/GlobalDictItemNameResolver.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/app/ExportCenterAppService.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/ExportCenterController.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportBatchDownloadReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportBatchDownloadRspDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportDownloadRspDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordDeleteReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordIdReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportRecordRspDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportSubmitReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/ExportSubmitRspDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/query/ExportRecordDynamicCriteriaReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/query/ExportRecordDynamicPageReqDTO.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/handler/GlobalDictTypeListExportHandler.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/query/ExportRecordSceneQueryDefinition.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/query/ExportRecordSceneQueryMapper.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportBatchDownloadService.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportDownloadService.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportExecutionService.java`
-- `demo-boot/src/main/java/com/demo/boot/config/SpringDocOperationIdConfig.java`
-- `demo-boot/src/main/java/com/demo/boot/config/EnumModelConverter.java`
-- `demo-boot/src/main/resources/db/migration/V8__backport_track_bench_foundation.sql`
+- `admin-core/src/main/java/com/example/admin/core/enums/BaseEnum.java`
+- `admin-core/src/main/java/com/example/admin/core/enums/EnableStatusEnum.java`
+- `admin-core/src/main/java/com/example/admin/core/enums/YesNoEnum.java`
+- `admin-core/src/main/java/com/example/admin/core/web/EnumVO.java`
+- `admin-core/src/main/java/com/example/admin/core/web/AuditRspDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/dict/DictItemNameResolver.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/CacheUserEntity.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/CacheUserMapper.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/CacheUserService.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/CacheUserHolder.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/CacheUserProperties.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/CacheUserAsyncConfiguration.java`
+- `admin-core/src/main/java/com/example/admin/core/jackson/AuditUserIdSerializer.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/ConditionAstNode.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/ConditionGroupAst.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/ConditionLeafAst.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/QueryAst.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/QueryLogicOperator.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/QueryOperator.java`
+- `admin-core/src/main/java/com/example/admin/core/query/ast/SortSpec.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/AbstractConditionNodeDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/BaseDynamicCriteriaReqDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/BasePagedDynamicQueryReqDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/ConditionGroupDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/DateTimeConditionDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/EnumConditionDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/SortItemDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/dto/TextConditionDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/query/exception/DynamicQueryErrorCode.java`
+- `admin-core/src/main/java/com/example/admin/core/query/executor/MybatisPlusQueryExecutor.java`
+- `admin-core/src/main/java/com/example/admin/core/query/scene/DynamicQueryAstMapper.java`
+- `admin-core/src/main/java/com/example/admin/core/query/scene/SceneQueryDefinition.java`
+- `admin-core/src/main/java/com/example/admin/core/query/scene/SceneQueryMapper.java`
+- `admin-core/src/main/java/com/example/admin/core/query/support/DynamicQueryGuard.java`
+- `admin-core/src/main/java/com/example/admin/core/query/support/DynamicQuerySummaryRenderer.java`
+- `admin-core/src/main/java/com/example/admin/core/query/support/QueryComplexityScorer.java`
+- `admin-core/src/main/java/com/example/admin/core/query/validation/DynamicQueryLimits.java`
+- `admin-core/src/main/java/com/example/admin/core/export/dto/BaseExportDynamicCriteriaReqDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/export/dto/ExportOptionsReqDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/export/dto/ExportRangeReqDTO.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportColumn.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportMeta.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportRenderRequest.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportScope.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportStoreRequest.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportStoredFile.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/ExportTaskResult.java`
+- `admin-core/src/main/java/com/example/admin/core/export/model/RenderedExportFile.java`
+- `admin-core/src/main/java/com/example/admin/core/export/renderer/CsvExportRenderer.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportFileAccessor.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportFileSink.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportHandler.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportRenderer.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportRendererRegistry.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportSceneRegistry.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/ExportTaskSubmitter.java`
+- `admin-core/src/main/java/com/example/admin/core/export/spi/PackageableExportHandler.java`
+- `admin-core/src/main/java/com/example/admin/core/export/support/AbstractCsvListExportHandler.java`
+- `admin-core/src/main/java/com/example/admin/core/export/support/SpringExportRendererRegistry.java`
+- `admin-core/src/main/java/com/example/admin/core/export/support/SpringExportSceneRegistry.java`
+- `admin-system/src/main/java/com/example/admin/file/export/FileStorageExportGateway.java`
+- `admin-system/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlBatchReqDTO.java`
+- `admin-system/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlBatchRspDTO.java`
+- `admin-system/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlItemRspDTO.java`
+- `admin-system/src/main/java/com/example/admin/staff/controller/StaffController.java`
+- `admin-system/src/main/java/com/example/admin/staff/app/StaffAppService.java`
+- `admin-system/src/main/java/com/example/admin/staff/config/StaffCiConfiguration.java`
+- `admin-system/src/main/java/com/example/admin/staff/controller/dto/StaffInfoRspDTO.java`
+- `admin-system/src/main/java/com/example/admin/staff/controller/dto/query/StaffListAllReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/query/GlobalDictItemDynamicCriteriaReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/query/GlobalDictItemDynamicPageReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/query/GlobalDictTypeDynamicCriteriaReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/query/GlobalDictTypeDynamicListReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/query/globaldict/GlobalDictItemSceneQueryDefinition.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/query/globaldict/GlobalDictItemSceneQueryMapper.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/query/globaldict/GlobalDictTypeSceneQueryDefinition.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/query/globaldict/GlobalDictTypeSceneQueryMapper.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/service/GlobalDictItemNameResolver.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/app/ExportCenterAppService.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/ExportCenterController.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportBatchDownloadReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportBatchDownloadRspDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportDownloadRspDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordDeleteReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordIdReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportRecordRspDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportSubmitReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/ExportSubmitRspDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/query/ExportRecordDynamicCriteriaReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/query/ExportRecordDynamicPageReqDTO.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/handler/GlobalDictTypeListExportHandler.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/query/ExportRecordSceneQueryDefinition.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/query/ExportRecordSceneQueryMapper.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportBatchDownloadService.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportDownloadService.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportExecutionService.java`
+- `admin-boot/src/main/java/com/example/admin/boot/config/SpringDocOperationIdConfig.java`
+- `admin-boot/src/main/java/com/example/admin/boot/config/EnumModelConverter.java`
+- `admin-boot/src/main/resources/db/migration/V8__backport_track_bench_foundation.sql`
 
 ### Modify
 
 - `pom.xml`
-- `demo-core/pom.xml`
-- `demo-system/pom.xml`
-- `demo-boot/pom.xml`
-- `demo-core/src/main/java/com/demo/core/operator/OperatorContext.java`
-- `demo-core/src/main/java/com/demo/core/operator/GatewayOperatorFilter.java`
-- `demo-core/src/main/java/com/demo/core/jackson/JacksonConfig.java`
-- `demo-core/src/main/java/com/demo/core/mybatis/MybatisPlusConfig.java`
-- `demo-core/src/main/java/com/demo/core/mybatis/BaseEntity.java`
-- `demo-system/src/main/java/com/demo/file/service/FileService.java`
-- `demo-system/src/main/java/com/demo/file/app/FileAppService.java`
-- `demo-system/src/main/java/com/demo/file/controller/FileStorageController.java`
-- `demo-system/src/main/java/com/demo/file/enums/FileErrorCode.java`
-- `demo-system/src/main/java/com/demo/file/infra/provider/FileStorageProvider.java`
-- `demo-system/src/main/java/com/demo/file/infra/provider/local/LocalFileStorageProvider.java`
-- `demo-system/src/main/java/com/demo/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
-- `demo-system/src/main/java/com/demo/file/infra/provider/minio/MinioFileStorageProvider.java`
-- `demo-mdm/src/main/java/com/demo/mdm/controller/GlobalDictController.java`
-- `demo-mdm/src/main/java/com/demo/mdm/app/DictAppService.java`
-- `demo-mdm/src/main/java/com/demo/mdm/service/DictService.java`
-- `demo-mdm/src/main/java/com/demo/mdm/infra/entity/GlobalDictTypeEntity.java`
-- `demo-mdm/src/main/java/com/demo/mdm/infra/entity/GlobalDictItemEntity.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportRecordService.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/infra/entity/ExportRecordEntity.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportRecordStatus.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportDeleteReason.java`
-- `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportCenterErrorCode.java`
-- `demo-boot/src/main/java/com/demo/boot/config/OpenApiConfig.java`
-- `demo-boot/src/main/resources/application.yml`
-- `demo-boot/src/main/resources/application-dev.yml`
-- `demo-boot/src/main/resources/application-test.yml`
+- `admin-core/pom.xml`
+- `admin-system/pom.xml`
+- `admin-boot/pom.xml`
+- `admin-core/src/main/java/com/example/admin/core/operator/OperatorContext.java`
+- `admin-core/src/main/java/com/example/admin/core/operator/GatewayOperatorFilter.java`
+- `admin-core/src/main/java/com/example/admin/core/jackson/JacksonConfig.java`
+- `admin-core/src/main/java/com/example/admin/core/mybatis/MybatisPlusConfig.java`
+- `admin-core/src/main/java/com/example/admin/core/mybatis/BaseEntity.java`
+- `admin-system/src/main/java/com/example/admin/file/service/FileService.java`
+- `admin-system/src/main/java/com/example/admin/file/app/FileAppService.java`
+- `admin-system/src/main/java/com/example/admin/file/controller/FileStorageController.java`
+- `admin-system/src/main/java/com/example/admin/file/enums/FileErrorCode.java`
+- `admin-system/src/main/java/com/example/admin/file/infra/provider/FileStorageProvider.java`
+- `admin-system/src/main/java/com/example/admin/file/infra/provider/local/LocalFileStorageProvider.java`
+- `admin-system/src/main/java/com/example/admin/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
+- `admin-system/src/main/java/com/example/admin/file/infra/provider/minio/MinioFileStorageProvider.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/controller/GlobalDictController.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/app/DictAppService.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/infra/entity/GlobalDictTypeEntity.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/infra/entity/GlobalDictItemEntity.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportRecordService.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/infra/entity/ExportRecordEntity.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportRecordStatus.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportDeleteReason.java`
+- `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportCenterErrorCode.java`
+- `admin-boot/src/main/java/com/example/admin/boot/config/OpenApiConfig.java`
+- `admin-boot/src/main/resources/application.yml`
+- `admin-boot/src/main/resources/application-dev.yml`
+- `admin-boot/src/main/resources/application-test.yml`
 - `README.md`
 
 ### Test
 
-- `demo-core/src/test/java/com/demo/core/query/dto/DynamicQueryDtoValidationTests.java`
-- `demo-core/src/test/java/com/demo/core/query/executor/MybatisPlusQueryExecutorTests.java`
-- `demo-core/src/test/java/com/demo/core/query/support/DynamicQueryGuardTests.java`
-- `demo-core/src/test/java/com/demo/core/query/support/DynamicQuerySummaryRendererTests.java`
-- `demo-core/src/test/java/com/demo/core/export/CsvExportRendererTests.java`
-- `demo-core/src/test/java/com/demo/core/export/support/AbstractCsvListExportHandlerTests.java`
-- `demo-core/src/test/java/com/demo/core/operator/CacheUserServiceTests.java`
-- `demo-core/src/test/java/com/demo/core/operator/GatewayOperatorFilterTests.java`
-- `demo-system/src/test/java/com/demo/file/FileStorageExportGatewayTests.java`
-- `demo-system/src/test/java/com/demo/staff/app/StaffAppServiceTests.java`
-- `demo-boot/src/test/java/com/demo/boot/file/FileStorageModuleSmokeTests.java`
-- `demo-boot/src/test/java/com/demo/boot/web/DynamicQueryContractIntegrationTests.java`
-- `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- `demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java`
-- `demo-mdm/src/test/java/com/demo/mdm/service/DictServiceDuplicateKeyTests.java`
-- `demo-mdm/src/test/java/com/demo/mdm/service/GlobalDictItemNameResolverTests.java`
-- `demo-mdm/src/test/java/com/demo/mdm/export/ExportCenterSmokeTests.java`
-- `demo-mdm/src/test/java/com/demo/mdm/export/ExportRecordServiceTests.java`
+- `admin-core/src/test/java/com/example/admin/core/query/dto/DynamicQueryDtoValidationTests.java`
+- `admin-core/src/test/java/com/example/admin/core/query/executor/MybatisPlusQueryExecutorTests.java`
+- `admin-core/src/test/java/com/example/admin/core/query/support/DynamicQueryGuardTests.java`
+- `admin-core/src/test/java/com/example/admin/core/query/support/DynamicQuerySummaryRendererTests.java`
+- `admin-core/src/test/java/com/example/admin/core/export/CsvExportRendererTests.java`
+- `admin-core/src/test/java/com/example/admin/core/export/support/AbstractCsvListExportHandlerTests.java`
+- `admin-core/src/test/java/com/example/admin/core/operator/CacheUserServiceTests.java`
+- `admin-core/src/test/java/com/example/admin/core/operator/GatewayOperatorFilterTests.java`
+- `admin-system/src/test/java/com/example/admin/file/FileStorageExportGatewayTests.java`
+- `admin-system/src/test/java/com/example/admin/staff/app/StaffAppServiceTests.java`
+- `admin-boot/src/test/java/com/example/admin/boot/file/FileStorageModuleSmokeTests.java`
+- `admin-boot/src/test/java/com/example/admin/boot/web/DynamicQueryContractIntegrationTests.java`
+- `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- `admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java`
+- `admin-mdm/src/test/java/com/example/admin/mdm/service/DictServiceDuplicateKeyTests.java`
+- `admin-mdm/src/test/java/com/example/admin/mdm/service/GlobalDictItemNameResolverTests.java`
+- `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportCenterSmokeTests.java`
+- `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportRecordServiceTests.java`
 
 ### Reference
 
-- `/Users/youdingte/studys/java-demo/README.md`
+- `/Users/youdingte/studys/java-admin-starter/README.md`
 - `/Users/youdingte/work/track-bench/README.md`
 - `/Users/youdingte/work/track-bench/.agents/skills/oig-java-development/SKILL.md`
 - `/Users/youdingte/work/track-bench/.agents/skills/oig-java-development/references/architecture-boundaries.md`
@@ -249,16 +249,16 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Files**
 
-- Create: `demo-boot/src/main/resources/db/migration/V8__backport_track_bench_foundation.sql`
+- Create: `admin-boot/src/main/resources/db/migration/V8__backport_track_bench_foundation.sql`
 - Modify: `pom.xml`
-- Modify: `demo-core/pom.xml`
-- Modify: `demo-system/pom.xml`
-- Modify: `demo-boot/pom.xml`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Modify: `demo-boot/src/main/resources/application-dev.yml`
-- Modify: `demo-boot/src/main/resources/application-test.yml`
+- Modify: `admin-core/pom.xml`
+- Modify: `admin-system/pom.xml`
+- Modify: `admin-boot/pom.xml`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Modify: `admin-boot/src/main/resources/application-dev.yml`
+- Modify: `admin-boot/src/main/resources/application-test.yml`
 - Modify: `README.md`
-- Test: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
+- Test: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
 
 **Shared Runtime Contracts**
 
@@ -279,7 +279,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 - `V8__backport_track_bench_foundation.sql` must be valid MySQL 8 SQL.
 - `sys_dict_type_global`, `sys_dict_item_global`, and `sys_export_record_global` must end with `id bigint primary key auto_increment` semantics after migration.
 - Existing explicit ID inserts in tests must still work on auto-increment tables.
-- `mybatis-plus.type-enums-package` must scan `com.demo`.
+- `mybatis-plus.type-enums-package` must scan `com.example.admin`.
 
 **Acceptance Criteria**
 
@@ -295,11 +295,11 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 - `profile: task-1-migration-script`
   - `sh scripts/check-migrations.sh`
 - `profile: task-1-dependency-resolve`
-  - `mvn -pl demo-system -am dependency:tree -Dincludes=com.oigit.appcik:oigit-appcik`
+  - `mvn -pl admin-system -am dependency:tree -Dincludes=com.oigit.appcik:oigit-appcik`
 - `profile: task-1-mysql-flyway`
   - `mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p -e "drop database if exists basic_platform_sso; create database basic_platform_sso character set utf8mb4 collate utf8mb4_general_ci;"`
-  - `test -n "$JAVA_DEMO_DATASOURCE_PASSWORD"`
-  - `JAVA_DEMO_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/basic_platform_sso?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' JAVA_DEMO_DATASOURCE_USERNAME=oig mvn -pl demo-boot test -Dtest=FlywaySmokeTests`
+  - `test -n "$JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD"`
+  - `JAVA_ADMIN_STARTER_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/basic_platform_sso?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' JAVA_ADMIN_STARTER_DATASOURCE_USERNAME=oig mvn -pl admin-boot test -Dtest=FlywaySmokeTests`
 - `Expected Signals:` migration script check exits `0`; Maven resolves `com.oigit.appcik:oigit-appcik`; `FlywaySmokeTests` reports `BUILD SUCCESS`; `flyway_schema_history` has successful version `8`.
 
 **Verification Strategy**
@@ -314,13 +314,13 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 - `Waiver Reason:` real remote MySQL credentials are intentionally not committed.
 - `Automated Smoke Check:` `profile: task-1-mysql-flyway`
-- `Manual Verification Steps:` export `JAVA_DEMO_DATASOURCE_PASSWORD` from local secure config, run the exact profile command, then inspect `show tables from basic_platform_sso`.
+- `Manual Verification Steps:` export `JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD` from local secure config, run the exact profile command, then inspect `show tables from basic_platform_sso`.
 - `Expected Results:` `sys_dict_type_global`, `sys_dict_item_global`, `sys_export_record_global`, `sys_user_cache`, and `flyway_schema_history` exist.
 - `Follow-up Automation:` not needed; credential injection is environment-specific.
 
 - [ ] Step 1: Add Maven versions and dependencies from track-bench that are actually needed: `h2.version`, `oigit-appcik.version`, `com.oigit.appcik:oigit-appcik`, runtime `org.apache.httpcomponents:httpclient`.
 - [ ] Step 2: Add `V8__backport_track_bench_foundation.sql` with schema diffs only: auto-increment IDs, dict `remark/status/version/sort_order`, export `version`, `sys_user_cache`, common dict seeds for `ENABLE_STATUS`, `YES_NO`, `EXPORT_RECORD_STATUS`, `EXPORT_DELETE_REASON`.
-- [ ] Step 3: Add MyBatis-Plus YAML settings for logical delete, `id-type: auto`, `type-enums-package: com.demo`, camel-case mapping, and no-logging SQL implementation.
+- [ ] Step 3: Add MyBatis-Plus YAML settings for logical delete, `id-type: auto`, `type-enums-package: com.example.admin`, camel-case mapping, and no-logging SQL implementation.
 - [ ] Step 4: Change dev datasource to env-var driven config with remote new DB support and local fallback.
 - [ ] Step 5: Update README database section to document `basic_platform_sso`, env vars, and that local login/user/role are intentionally absent on this SSO branch.
 - [ ] Step 6: Run `profile: task-1-migration-script`, `profile: task-1-dependency-resolve`, and `profile: task-1-mysql-flyway`.
@@ -334,28 +334,28 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Files**
 
-- Create: all `demo-core/src/main/java/com/demo/core/enums/**`
-- Create: all `demo-core/src/main/java/com/demo/core/query/**`
-- Create: all `demo-core/src/main/java/com/demo/core/export/**`
-- Create: `demo-core/src/main/java/com/demo/core/web/EnumVO.java`
-- Create: `demo-core/src/main/java/com/demo/core/web/AuditRspDTO.java`
-- Create: `demo-core/src/main/java/com/demo/core/dict/DictItemNameResolver.java`
-- Create: `demo-core/src/main/java/com/demo/core/operator/CacheUserEntity.java`
-- Create: `demo-core/src/main/java/com/demo/core/operator/CacheUserMapper.java`
-- Create: `demo-core/src/main/java/com/demo/core/operator/CacheUserService.java`
-- Create: `demo-core/src/main/java/com/demo/core/operator/CacheUserHolder.java`
-- Create: `demo-core/src/main/java/com/demo/core/operator/CacheUserProperties.java`
-- Create: `demo-core/src/main/java/com/demo/core/operator/CacheUserAsyncConfiguration.java`
-- Create: `demo-core/src/main/java/com/demo/core/jackson/AuditUserIdSerializer.java`
-- Modify: `demo-core/src/main/java/com/demo/core/operator/OperatorContext.java`
-- Modify: `demo-core/src/main/java/com/demo/core/operator/GatewayOperatorFilter.java`
-- Modify: `demo-core/src/main/java/com/demo/core/jackson/JacksonConfig.java`
-- Modify: `demo-core/src/main/java/com/demo/core/mybatis/MybatisPlusConfig.java`
-- Modify: `demo-core/src/main/java/com/demo/core/mybatis/BaseEntity.java`
-- Test: all `demo-core/src/test/java/com/demo/core/query/**`
-- Test: all `demo-core/src/test/java/com/demo/core/export/**`
-- Test: `demo-core/src/test/java/com/demo/core/operator/CacheUserServiceTests.java`
-- Test: `demo-core/src/test/java/com/demo/core/operator/GatewayOperatorFilterTests.java`
+- Create: all `admin-core/src/main/java/com/example/admin/core/enums/**`
+- Create: all `admin-core/src/main/java/com/example/admin/core/query/**`
+- Create: all `admin-core/src/main/java/com/example/admin/core/export/**`
+- Create: `admin-core/src/main/java/com/example/admin/core/web/EnumVO.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/web/AuditRspDTO.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/dict/DictItemNameResolver.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/operator/CacheUserEntity.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/operator/CacheUserMapper.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/operator/CacheUserService.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/operator/CacheUserHolder.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/operator/CacheUserProperties.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/operator/CacheUserAsyncConfiguration.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/jackson/AuditUserIdSerializer.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/operator/OperatorContext.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/operator/GatewayOperatorFilter.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/jackson/JacksonConfig.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/mybatis/MybatisPlusConfig.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/mybatis/BaseEntity.java`
+- Test: all `admin-core/src/test/java/com/example/admin/core/query/**`
+- Test: all `admin-core/src/test/java/com/example/admin/core/export/**`
+- Test: `admin-core/src/test/java/com/example/admin/core/operator/CacheUserServiceTests.java`
+- Test: `admin-core/src/test/java/com/example/admin/core/operator/GatewayOperatorFilterTests.java`
 
 **Shared Runtime Contracts**
 
@@ -374,7 +374,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Constraints**
 
-- Package names must be `com.demo.*`, not `com.trackbench.*`.
+- Package names must be `com.example.admin.*`, not `com.trackbench.*`.
 - `GatewayOperatorFilter` must consume `X-User-Id`, `X-User-Name`, `X-User-Phone`, `X-Real-Name`, and `X-User-Code`.
 - Cache user writes must be async and throttled by `platform.operator.cache-user.update-window-seconds`.
 - `BaseEntity` must add `@TableLogic` and `@Version` consistently with `V8`.
@@ -390,7 +390,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 **Verification Profile**
 
 - `profile: task-2-core-unit`
-  - `mvn -pl demo-core test -Dtest=GatewayOperatorFilterTests,CacheUserServiceTests,DynamicQueryDtoValidationTests,DynamicQueryGuardTests,DynamicQuerySummaryRendererTests,MybatisPlusQueryExecutorTests,CsvExportRendererTests,AbstractCsvListExportHandlerTests`
+  - `mvn -pl admin-core test -Dtest=GatewayOperatorFilterTests,CacheUserServiceTests,DynamicQueryDtoValidationTests,DynamicQueryGuardTests,DynamicQuerySummaryRendererTests,MybatisPlusQueryExecutorTests,CsvExportRendererTests,AbstractCsvListExportHandlerTests`
 - `Expected Signals:` `Tests run` count is nonzero and Maven exits with `BUILD SUCCESS`.
 
 **Verification Strategy**
@@ -417,26 +417,26 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Files**
 
-- Create: `demo-system/src/main/java/com/demo/file/export/FileStorageExportGateway.java`
-- Create: `demo-system/src/main/java/com/demo/file/controller/dto/FetchTempUrlBatchReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/file/controller/dto/FetchTempUrlBatchRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/file/controller/dto/FetchTempUrlItemRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/staff/controller/StaffController.java`
-- Create: `demo-system/src/main/java/com/demo/staff/app/StaffAppService.java`
-- Create: `demo-system/src/main/java/com/demo/staff/config/StaffCiConfiguration.java`
-- Create: `demo-system/src/main/java/com/demo/staff/controller/dto/StaffInfoRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/staff/controller/dto/query/StaffListAllReqDTO.java`
-- Modify: `demo-system/src/main/java/com/demo/file/service/FileService.java`
-- Modify: `demo-system/src/main/java/com/demo/file/app/FileAppService.java`
-- Modify: `demo-system/src/main/java/com/demo/file/controller/FileStorageController.java`
-- Modify: `demo-system/src/main/java/com/demo/file/enums/FileErrorCode.java`
-- Modify: `demo-system/src/main/java/com/demo/file/infra/provider/FileStorageProvider.java`
-- Modify: `demo-system/src/main/java/com/demo/file/infra/provider/local/LocalFileStorageProvider.java`
-- Modify: `demo-system/src/main/java/com/demo/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
-- Modify: `demo-system/src/main/java/com/demo/file/infra/provider/minio/MinioFileStorageProvider.java`
-- Test: `demo-system/src/test/java/com/demo/file/FileStorageExportGatewayTests.java`
-- Test: `demo-system/src/test/java/com/demo/staff/app/StaffAppServiceTests.java`
-- Test: `demo-boot/src/test/java/com/demo/boot/file/FileStorageModuleSmokeTests.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/export/FileStorageExportGateway.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlBatchReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlBatchRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/file/controller/dto/FetchTempUrlItemRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/staff/controller/StaffController.java`
+- Create: `admin-system/src/main/java/com/example/admin/staff/app/StaffAppService.java`
+- Create: `admin-system/src/main/java/com/example/admin/staff/config/StaffCiConfiguration.java`
+- Create: `admin-system/src/main/java/com/example/admin/staff/controller/dto/StaffInfoRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/staff/controller/dto/query/StaffListAllReqDTO.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/service/FileService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/app/FileAppService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/controller/FileStorageController.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/enums/FileErrorCode.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/infra/provider/FileStorageProvider.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/infra/provider/local/LocalFileStorageProvider.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/infra/provider/qiniu/QiniuFileStorageProvider.java`
+- Modify: `admin-system/src/main/java/com/example/admin/file/infra/provider/minio/MinioFileStorageProvider.java`
+- Test: `admin-system/src/test/java/com/example/admin/file/FileStorageExportGatewayTests.java`
+- Test: `admin-system/src/test/java/com/example/admin/staff/app/StaffAppServiceTests.java`
+- Test: `admin-boot/src/test/java/com/example/admin/boot/file/FileStorageModuleSmokeTests.java`
 
 **Shared Runtime Contracts**
 
@@ -446,7 +446,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Invariants**
 
-- Vendor SDK calls stay inside `demo-system`.
+- Vendor SDK calls stay inside `admin-system`.
 - Business/export code must use `ExportFileSink` and `ExportFileAccessor`, not direct provider SDKs.
 - `/api/file/storage/object/upload`, `/object/delete`, `/object/temp-url/fetch`, `/direct-upload/credential/fetch` keep existing behavior.
 - `/api/staff/list-all` returns data from SSO client and does not persist local users.
@@ -468,10 +468,10 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 **Verification Profile**
 
 - `profile: task-3-system-unit`
-  - `mvn -pl demo-system test -Dtest=FileStorageExportGatewayTests,StaffAppServiceTests,LocalFileStorageProviderTests,QiniuFileStorageProviderTests,MinioFileStorageProviderTests`
+  - `mvn -pl admin-system test -Dtest=FileStorageExportGatewayTests,StaffAppServiceTests,LocalFileStorageProviderTests,QiniuFileStorageProviderTests,MinioFileStorageProviderTests`
 - `profile: task-3-file-smoke`
-  - `mvn -pl demo-boot -am install -DskipTests`
-  - `mvn -pl demo-boot test -Dtest=FileStorageModuleSmokeTests`
+  - `mvn -pl admin-boot -am install -DskipTests`
+  - `mvn -pl admin-boot test -Dtest=FileStorageModuleSmokeTests`
 - `Expected Signals:` local file upload/delete/temp URL tests pass; batch temp URL test returns two items for three requested keys with one duplicate.
 
 **Verification Strategy**
@@ -493,7 +493,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 - [ ] Step 1: Add provider `download` support and byte-array upload support to file service and providers.
 - [ ] Step 2: Add batch temp URL DTOs, AppService method, Controller endpoint, and `operationId`.
 - [ ] Step 3: Add `FileStorageExportGateway` implementing `ExportFileSink` and `ExportFileAccessor`.
-- [ ] Step 4: Add staff SSO integration under `com.demo.staff`.
+- [ ] Step 4: Add staff SSO integration under `com.example.admin.staff`.
 - [ ] Step 5: Port system/file/staff tests.
 - [ ] Step 6: Run `profile: task-3-system-unit` and `profile: task-3-file-smoke`.
 - [ ] Step 7: Commit `feat: add export file gateway and sso staff lookup`.
@@ -506,30 +506,30 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Files**
 
-- Create: all `demo-mdm/src/main/java/com/demo/mdm/controller/dto/query/**`
-- Create: all `demo-mdm/src/main/java/com/demo/mdm/query/globaldict/**`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/service/GlobalDictItemNameResolver.java`
-- Create: all missing `demo-mdm/src/main/java/com/demo/mdm/export/app/**`
-- Create: all missing `demo-mdm/src/main/java/com/demo/mdm/export/controller/**`
-- Create: all missing `demo-mdm/src/main/java/com/demo/mdm/export/controller/dto/**`
-- Create: all missing `demo-mdm/src/main/java/com/demo/mdm/export/handler/**`
-- Create: all missing `demo-mdm/src/main/java/com/demo/mdm/export/query/**`
-- Create: all missing `demo-mdm/src/main/java/com/demo/mdm/export/service/**`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/controller/GlobalDictController.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/app/DictAppService.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/service/DictService.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/infra/entity/GlobalDictTypeEntity.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/infra/entity/GlobalDictItemEntity.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/export/service/ExportRecordService.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/export/infra/entity/ExportRecordEntity.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportRecordStatus.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportDeleteReason.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/export/enums/ExportCenterErrorCode.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/service/DictServiceDuplicateKeyTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/service/GlobalDictItemNameResolverTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportCenterSmokeTests.java`
-- Test: `demo-mdm/src/test/java/com/demo/mdm/export/ExportRecordServiceTests.java`
+- Create: all `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/query/**`
+- Create: all `admin-mdm/src/main/java/com/example/admin/mdm/query/globaldict/**`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/service/GlobalDictItemNameResolver.java`
+- Create: all missing `admin-mdm/src/main/java/com/example/admin/mdm/export/app/**`
+- Create: all missing `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/**`
+- Create: all missing `admin-mdm/src/main/java/com/example/admin/mdm/export/controller/dto/**`
+- Create: all missing `admin-mdm/src/main/java/com/example/admin/mdm/export/handler/**`
+- Create: all missing `admin-mdm/src/main/java/com/example/admin/mdm/export/query/**`
+- Create: all missing `admin-mdm/src/main/java/com/example/admin/mdm/export/service/**`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/controller/GlobalDictController.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/app/DictAppService.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/infra/entity/GlobalDictTypeEntity.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/infra/entity/GlobalDictItemEntity.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/export/service/ExportRecordService.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/export/infra/entity/ExportRecordEntity.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportRecordStatus.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportDeleteReason.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/export/enums/ExportCenterErrorCode.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/service/DictServiceDuplicateKeyTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/service/GlobalDictItemNameResolverTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportCenterSmokeTests.java`
+- Test: `admin-mdm/src/test/java/com/example/admin/mdm/export/ExportRecordServiceTests.java`
 
 **Shared Runtime Contracts**
 
@@ -577,9 +577,9 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 **Verification Profile**
 
 - `profile: task-4-mdm-unit`
-  - `mvn -pl demo-mdm test -Dtest=DictServiceDuplicateKeyTests,GlobalDictItemNameResolverTests,ExportRecordServiceTests`
+  - `mvn -pl admin-mdm test -Dtest=DictServiceDuplicateKeyTests,GlobalDictItemNameResolverTests,ExportRecordServiceTests`
 - `profile: task-4-export-smoke`
-  - `mvn -pl demo-mdm test -Dtest=ExportCenterSmokeTests,DictModuleSmokeTests`
+  - `mvn -pl admin-mdm test -Dtest=ExportCenterSmokeTests,DictModuleSmokeTests`
 - `Expected Signals:` export smoke proves submit, download, batch download, delete, forbidden access, and query snapshot summary; dict smoke proves create/list/update/delete and dynamic page behavior.
 
 **Verification Strategy**
@@ -606,13 +606,13 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Files**
 
-- Create: `demo-boot/src/main/java/com/demo/boot/config/SpringDocOperationIdConfig.java`
-- Create: `demo-boot/src/main/java/com/demo/boot/config/EnumModelConverter.java`
-- Modify: `demo-boot/src/main/java/com/demo/boot/config/OpenApiConfig.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/web/DynamicQueryContractIntegrationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`
+- Create: `admin-boot/src/main/java/com/example/admin/boot/config/SpringDocOperationIdConfig.java`
+- Create: `admin-boot/src/main/java/com/example/admin/boot/config/EnumModelConverter.java`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/config/OpenApiConfig.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/web/DynamicQueryContractIntegrationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`
 - Modify: `README.md`
 
 **Shared Runtime Contracts**
@@ -625,7 +625,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 
 **Invariants**
 
-- `demo-boot` stays free of business logic.
+- `admin-boot` stays free of business logic.
 - OpenAPI docs must include only current base modules: core DTOs, file DTOs, staff DTOs, mdm dict DTOs, mdm export DTOs.
 - OpenAPI dynamic query scene list must include only:
   - `GlobalDictTypeDynamicListReqDTO`
@@ -652,14 +652,14 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 **Verification Profile**
 
 - `profile: task-5-openapi-contract`
-  - `mvn -pl demo-boot -am install -DskipTests`
-  - `mvn -pl demo-boot test -Dtest=OpenApiDocumentationTests,DynamicQueryContractIntegrationTests,ModuleBoundaryTests,ErrorCodeContractTests`
+  - `mvn -pl admin-boot -am install -DskipTests`
+  - `mvn -pl admin-boot test -Dtest=OpenApiDocumentationTests,DynamicQueryContractIntegrationTests,ModuleBoundaryTests,ErrorCodeContractTests`
 - `profile: task-5-full-local`
   - `mvn clean test`
   - `mvn compile`
 - `profile: task-5-mysql-smoke`
-  - `test -n "$JAVA_DEMO_DATASOURCE_PASSWORD"`
-  - `JAVA_DEMO_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/basic_platform_sso?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' JAVA_DEMO_DATASOURCE_USERNAME=oig mvn -pl demo-boot spring-boot:run -Dspring-boot.run.profiles=dev`
+  - `test -n "$JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD"`
+  - `JAVA_ADMIN_STARTER_DATASOURCE_URL='jdbc:mysql://192.168.186.154:32425/basic_platform_sso?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' JAVA_ADMIN_STARTER_DATASOURCE_USERNAME=oig mvn -pl admin-boot spring-boot:run -Dspring-boot.run.profiles=dev`
   - In another shell: `curl -s http://127.0.0.1:8080/actuator/health`
 - `Expected Signals:` OpenAPI contract tests pass; full Maven build exits `BUILD SUCCESS`; health endpoint returns JSON containing `"status":"UP"`.
 

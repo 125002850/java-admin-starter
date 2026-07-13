@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在 `demo-system` 增补平台级租户增删改接口，以及租户内用户注册、启用/禁用、修改密码、修改用户信息、删除接口，并补齐数据库、错误码、OpenAPI 与测试闭环。
+**Goal:** 在 `admin-system` 增补平台级租户增删改接口，以及租户内用户注册、启用/禁用、修改密码、修改用户信息、删除接口，并补齐数据库、错误码、OpenAPI 与测试闭环。
 
 **Architecture:** 租户管理落在全局表 `sys_tenant_global`，继续走平台级接口，不受租户拦截器影响；用户管理继续落在租户表 `sys_user`，统一通过 `X-Tenant-Id -> TenantResolver -> TenantContext` 收口租户上下文，避免在业务层自行信任请求体里的租户标识。删除全部采用逻辑删除；租户删除前必须校验无未删除用户；用户启停通过状态枚举控制，并回灌到登录链路。
 
@@ -34,48 +34,48 @@
 
 ## 文件结构与职责
 
-### `demo-system` 模块
+### `admin-system` 模块
 
-- Create: `demo-system/src/main/java/com/demo/system/controller/TenantController.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/UserController.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantCreateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantCreateRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantDeleteReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserRegisterReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserRegisterRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserStatusUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserPasswordUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserProfileUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserDeleteReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/app/TenantAppService.java`
-- Create: `demo-system/src/main/java/com/demo/system/app/UserAppService.java`
-- Create: `demo-system/src/main/java/com/demo/system/service/TenantService.java`
-- Create: `demo-system/src/main/java/com/demo/system/service/UserService.java`
-- Create: `demo-system/src/main/java/com/demo/system/infra/entity/SysTenantGlobalEntity.java`
-- Modify: `demo-system/src/main/java/com/demo/system/infra/entity/SysUserEntity.java`
-- Create: `demo-system/src/main/java/com/demo/system/infra/mapper/SysTenantGlobalMapper.java`
-- Modify: `demo-system/src/main/java/com/demo/system/infra/mapper/SysUserMapper.java`
-- Modify: `demo-system/src/main/java/com/demo/system/service/AuthService.java`
-- Create: `demo-system/src/main/java/com/demo/system/enums/TenantErrorCode.java`
-- Create: `demo-system/src/main/java/com/demo/system/enums/UserErrorCode.java`
-- Create: `demo-system/src/main/java/com/demo/system/enums/UserStatusEnum.java`
-- Modify: `demo-system/src/main/java/com/demo/system/enums/AuthErrorCode.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/TenantController.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/UserController.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantCreateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantCreateRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantDeleteReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserRegisterReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserRegisterRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserStatusUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserPasswordUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserProfileUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserDeleteReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/app/TenantAppService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/app/UserAppService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/service/TenantService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/service/UserService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/infra/entity/SysTenantGlobalEntity.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/infra/entity/SysUserEntity.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysTenantGlobalMapper.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysUserMapper.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/service/AuthService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/enums/TenantErrorCode.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/enums/UserErrorCode.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/enums/UserStatusEnum.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/enums/AuthErrorCode.java`
 
-### `demo-boot` 模块
+### `admin-boot` 模块
 
-- Create: `demo-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql`
-- Modify: `demo-boot/src/main/java/com/demo/boot/config/OpenApiConfig.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`（通常只跑回归，不需要改文件；若断言提示需要补说明，再决定是否修改）
+- Create: `admin-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/config/OpenApiConfig.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`（通常只跑回归，不需要改文件；若断言提示需要补说明，再决定是否修改）
 
 ### 文档与回归测试
 
 - Modify: `README.md`
-- Create: `demo-system/src/test/java/com/demo/system/TenantManagementTests.java`
-- Create: `demo-system/src/test/java/com/demo/system/UserManagementTests.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/TenantManagementTests.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/UserManagementTests.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
 
 ## 数据模型调整
 
@@ -83,7 +83,7 @@
 
 - 保持平台级全局表，不新增 `tenant_id`。
 - 新增唯一约束：`tenant_name` 唯一，避免出现重名租户。
-- Java 实体新增 `IdType.ASSIGN_ID`，与 `demo-mdm` 现有实体风格对齐，避免创建接口无法生成主键。
+- Java 实体新增 `IdType.ASSIGN_ID`，与 `admin-mdm` 现有实体风格对齐，避免创建接口无法生成主键。
 
 ### `sys_user`
 
@@ -117,12 +117,12 @@
 ### Task 1: 锁定表结构与接口契约
 
 **Files:**
-- Create: `demo-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql`
-- Modify: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
-- Create: `demo-system/src/test/java/com/demo/system/TenantManagementTests.java`
-- Create: `demo-system/src/test/java/com/demo/system/UserManagementTests.java`
+- Create: `admin-boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/TenantManagementTests.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/UserManagementTests.java`
 
 - [ ] **Step 1: 先补失败测试，锁定这批需求的外部契约**
 
@@ -136,11 +136,11 @@
 
 - [ ] **Step 2: 运行红灯，确认需求尚未实现**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=TenantManagementTests,UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=TenantManagementTests,UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，租户/用户管理接口、用户状态控制尚不存在。
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，尚无 `V5` migration，新接口也未出现在 OpenAPI 文档中。
 
@@ -177,7 +177,7 @@ having cnt > 1;
 
 - [ ] **Step 4: 跑 migration 与契约回归，确认新基线成立**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，`V5` 应用成功，新增列与唯一约束生效。
 
@@ -188,17 +188,17 @@ Commit message: `feat: add tenant and user management schema baseline`
 ### Task 2: 新增平台级租户增删改接口
 
 **Files:**
-- Create: `demo-system/src/main/java/com/demo/system/controller/TenantController.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantCreateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantCreateRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/TenantDeleteReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/app/TenantAppService.java`
-- Create: `demo-system/src/main/java/com/demo/system/service/TenantService.java`
-- Create: `demo-system/src/main/java/com/demo/system/infra/entity/SysTenantGlobalEntity.java`
-- Create: `demo-system/src/main/java/com/demo/system/infra/mapper/SysTenantGlobalMapper.java`
-- Create: `demo-system/src/main/java/com/demo/system/enums/TenantErrorCode.java`
-- Create: `demo-system/src/test/java/com/demo/system/TenantManagementTests.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/TenantController.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantCreateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantCreateRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/TenantDeleteReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/app/TenantAppService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/service/TenantService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/infra/entity/SysTenantGlobalEntity.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysTenantGlobalMapper.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/enums/TenantErrorCode.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/TenantManagementTests.java`
 
 - [ ] **Step 1: 先把租户接口行为锁成失败测试**
 
@@ -212,7 +212,7 @@ Commit message: `feat: add tenant and user management schema baseline`
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=TenantManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=TenantManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前仓库没有租户管理控制器、服务和错误码。
 
@@ -230,7 +230,7 @@ Expected: FAIL，当前仓库没有租户管理控制器、服务和错误码。
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=TenantManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=TenantManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，租户创建、修改、删除和异常路径全部符合契约。
 
@@ -241,16 +241,16 @@ Commit message: `feat: add tenant management apis`
 ### Task 3: 新增租户内用户创建（注册）接口
 
 **Files:**
-- Create: `demo-system/src/main/java/com/demo/system/controller/UserController.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserRegisterReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserRegisterRspDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/app/UserAppService.java`
-- Create: `demo-system/src/main/java/com/demo/system/service/UserService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/infra/entity/SysUserEntity.java`
-- Modify: `demo-system/src/main/java/com/demo/system/infra/mapper/SysUserMapper.java`
-- Create: `demo-system/src/main/java/com/demo/system/enums/UserErrorCode.java`
-- Create: `demo-system/src/main/java/com/demo/system/enums/UserStatusEnum.java`
-- Create: `demo-system/src/test/java/com/demo/system/UserManagementTests.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/UserController.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserRegisterReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserRegisterRspDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/app/UserAppService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/service/UserService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/infra/entity/SysUserEntity.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysUserMapper.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/enums/UserErrorCode.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/enums/UserStatusEnum.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/UserManagementTests.java`
 
 - [ ] **Step 1: 写失败测试，先锁定注册接口和租户 header 语义**
 
@@ -264,7 +264,7 @@ Commit message: `feat: add tenant management apis`
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=UserManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=UserManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前没有用户注册接口，也没有用户资料字段和状态字段。
 
@@ -282,7 +282,7 @@ Expected: FAIL，当前没有用户注册接口，也没有用户资料字段和
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=UserManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=UserManagementTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，注册成功、重复用户名失败、跨租户重名允许、密码加密存储成立。
 
@@ -293,14 +293,14 @@ Commit message: `feat: add tenant scoped user registration`
 ### Task 4: 新增用户启用/禁用并接入登录链路
 
 **Files:**
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserStatusUpdateReqDTO.java`
-- Modify: `demo-system/src/main/java/com/demo/system/app/UserAppService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/service/UserService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/service/AuthService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/infra/mapper/SysUserMapper.java`
-- Modify: `demo-system/src/main/java/com/demo/system/enums/AuthErrorCode.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
-- Modify: `demo-system/src/test/java/com/demo/system/UserManagementTests.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserStatusUpdateReqDTO.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/app/UserAppService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/service/UserService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/service/AuthService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysUserMapper.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/enums/AuthErrorCode.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/UserManagementTests.java`
 
 - [ ] **Step 1: 先写失败测试，锁定禁用用户的管理和登录表现**
 
@@ -312,7 +312,7 @@ Commit message: `feat: add tenant scoped user registration`
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前 `sys_user` 没有状态字段，登录链路也不会拦截禁用用户。
 
@@ -328,7 +328,7 @@ Expected: FAIL，当前 `sys_user` 没有状态字段，登录链路也不会拦
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，状态切换成功，禁用用户被拦截，重新启用后可恢复登录。
 
@@ -339,14 +339,14 @@ Commit message: `feat: add user enable disable flow`
 ### Task 5: 新增用户改密、改资料、删除接口
 
 **Files:**
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserPasswordUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserProfileUpdateReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/UserDeleteReqDTO.java`
-- Modify: `demo-system/src/main/java/com/demo/system/app/UserAppService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/service/UserService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/infra/mapper/SysUserMapper.java`
-- Modify: `demo-system/src/test/java/com/demo/system/UserManagementTests.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserPasswordUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserProfileUpdateReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/UserDeleteReqDTO.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/app/UserAppService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/service/UserService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysUserMapper.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/UserManagementTests.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
 
 - [ ] **Step 1: 先补失败测试**
 
@@ -359,7 +359,7 @@ Commit message: `feat: add user enable disable flow`
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前没有改密、改资料、删除接口，也没有相应 service 方法。
 
@@ -376,7 +376,7 @@ Expected: FAIL，当前没有改密、改资料、删除接口，也没有相应
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=UserManagementTests,AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，改密、改资料、删除及登录回归全部通过。
 
@@ -387,11 +387,11 @@ Commit message: `feat: add user lifecycle management apis`
 ### Task 6: 补齐 OpenAPI、README 与总回归
 
 **Files:**
-- Modify: `demo-boot/src/main/java/com/demo/boot/config/OpenApiConfig.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-boot/src/main/java/com/example/admin/boot/config/OpenApiConfig.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
 - Modify: `README.md`
-- Modify: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/contract/ErrorCodeContractTests.java`（只跑不改；如失败再补）
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/contract/ErrorCodeContractTests.java`（只跑不改；如失败再补）
 
 - [ ] **Step 1: 先补失败测试，锁定文档分组和公开路径**
 
@@ -403,7 +403,7 @@ Commit message: `feat: add user lifecycle management apis`
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前 OpenAPI 只有 `system-auth` 和 `mdm-dict` 分组。
 

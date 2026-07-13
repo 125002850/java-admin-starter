@@ -2,9 +2,9 @@
 
 > **For Claude:** Use `${SUPERPOWERS_SKILLS_ROOT}/skills/collaboration/executing-plans/SKILL.md` to implement this plan task-by-task.
 
-**Goal:** 基于当时的建模规范文档（原 `docs/create.md`，现已废弃）搭建一个可启动、可测试、可迁移数据库、具备多租户基础设施的 Java 模块化单体底座，完成 `demo-boot`、`demo-core`、`demo-system`、`demo-mdm` 四个模块的最小可用实现。
+**Goal:** 基于当时的建模规范文档（原 `docs/create.md`，现已废弃）搭建一个可启动、可测试、可迁移数据库、具备多租户基础设施的 Java 模块化单体底座，完成 `admin-boot`、`admin-core`、`admin-system`、`admin-mdm` 四个模块的最小可用实现。
 
-**Architecture:** 工程采用 Maven 多模块单体架构，业务链路固定为 `Controller -> AppService -> Domain/Service -> Infra/Mapper`。`demo-core` 仅承载跨模块稳定复用的基础设施，包括统一响应、异常、校验、TraceId、日志、租户、MyBatis-Plus、密码编码器和测试支撑；业务能力放在 `demo-system` 和 `demo-mdm` 中。默认所有业务数据表必须包含 `tenant_id`，平台级全局表必须显式标记为非租户表，并纳入 `TenantLineHandler` 忽略清单。
+**Architecture:** 工程采用 Maven 多模块单体架构，业务链路固定为 `Controller -> AppService -> Domain/Service -> Infra/Mapper`。`admin-core` 仅承载跨模块稳定复用的基础设施，包括统一响应、异常、校验、TraceId、日志、租户、MyBatis-Plus、密码编码器和测试支撑；业务能力放在 `admin-system` 和 `admin-mdm` 中。默认所有业务数据表必须包含 `tenant_id`，平台级全局表必须显式标记为非租户表，并纳入 `TenantLineHandler` 忽略清单。
 
 **Tech Stack:** JDK 17, Spring Boot 3.x, Maven, MyBatis-Plus, Flyway, MySQL 8, Jackson, Hibernate Validator, HikariCP, Knife4j, Spring Boot Actuator, JUnit 5, Spring Boot Test
 
@@ -20,10 +20,10 @@
 
 **Files:**
 - Create: `pom.xml`
-- Create: `demo-boot/pom.xml`
-- Create: `demo-core/pom.xml`
-- Create: `demo-system/pom.xml`
-- Create: `demo-mdm/pom.xml`
+- Create: `admin-boot/pom.xml`
+- Create: `admin-core/pom.xml`
+- Create: `admin-system/pom.xml`
+- Create: `admin-mdm/pom.xml`
 
 **Step 1: 验证当前工程还没有 Maven 根工程**
 
@@ -39,8 +39,8 @@ Expected: FAIL，提示当前目录没有可用的 `pom.xml`
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.demo</groupId>
-    <artifactId>java-demo</artifactId>
+    <groupId>com.example.admin</groupId>
+    <artifactId>java-admin-starter</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
@@ -53,10 +53,10 @@ Expected: FAIL，提示当前目录没有可用的 `pom.xml`
     </properties>
 
     <modules>
-        <module>demo-boot</module>
-        <module>demo-core</module>
-        <module>demo-system</module>
-        <module>demo-mdm</module>
+        <module>admin-boot</module>
+        <module>admin-core</module>
+        <module>admin-system</module>
+        <module>admin-mdm</module>
     </modules>
 </project>
 ```
@@ -85,31 +85,31 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add pom.xml demo-boot/pom.xml demo-core/pom.xml demo-system/pom.xml demo-mdm/pom.xml
+git add pom.xml admin-boot/pom.xml admin-core/pom.xml admin-system/pom.xml admin-mdm/pom.xml
 git commit -m "chore: initialize multi-module maven project"
 ```
 
 ### Task 2: 创建启动模块和多环境配置
 
 **Files:**
-- Modify: `demo-boot/pom.xml`
-- Create: `demo-boot/src/main/java/com/demo/boot/DemoBootApplication.java`
-- Create: `demo-boot/src/main/resources/application.yml`
-- Create: `demo-boot/src/main/resources/application-dev.yml`
-- Create: `demo-boot/src/main/resources/application-test.yml`
+- Modify: `admin-boot/pom.xml`
+- Create: `admin-boot/src/main/java/com/example/admin/boot/AdminBootApplication.java`
+- Create: `admin-boot/src/main/resources/application.yml`
+- Create: `admin-boot/src/main/resources/application-dev.yml`
+- Create: `admin-boot/src/main/resources/application-test.yml`
 
 **Step 1: 先写最小启动验证**
 
-Create: `demo-boot/src/test/java/com/demo/boot/DemoBootApplicationTests.java`
+Create: `admin-boot/src/test/java/com/example/admin/boot/AdminBootApplicationTests.java`
 
 ```java
-package com.demo.boot;
+package com.example.admin.boot;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class DemoBootApplicationTests {
+class AdminBootApplicationTests {
 
     @Test
     void contextLoads() {
@@ -119,12 +119,12 @@ class DemoBootApplicationTests {
 
 **Step 2: 运行测试，确认当前一定失败**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=DemoBootApplicationTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=AdminBootApplicationTests`
 Expected: FAIL，提示启动类或 Spring Boot 依赖缺失
 
 **Step 3: 写最小可启动实现**
 
-`demo-boot/pom.xml` 至少引入：
+`admin-boot/pom.xml` 至少引入：
 
 ```xml
 <dependency>
@@ -145,16 +145,16 @@ Expected: FAIL，提示启动类或 Spring Boot 依赖缺失
 启动类：
 
 ```java
-package com.demo.boot;
+package com.example.admin.boot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = "com.demo")
-public class DemoBootApplication {
+@SpringBootApplication(scanBasePackages = "com.example.admin")
+public class AdminBootApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(DemoBootApplication.class, args);
+        SpringApplication.run(AdminBootApplication.class, args);
     }
 }
 ```
@@ -164,7 +164,7 @@ public class DemoBootApplication {
 ```yaml
 spring:
   application:
-    name: java-demo
+    name: java-admin-starter
   profiles:
     active: dev
 
@@ -179,29 +179,29 @@ management:
 
 **Step 4: 重新运行测试**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=DemoBootApplicationTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=AdminBootApplicationTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-boot/pom.xml demo-boot/src/main demo-boot/src/test
+git add admin-boot/pom.xml admin-boot/src/main admin-boot/src/test
 git commit -m "feat: add boot module and profiles"
 ```
 
-### Task 3: 搭建 `demo-core` 包结构和统一响应模型
+### Task 3: 搭建 `admin-core` 包结构和统一响应模型
 
 **Files:**
-- Modify: `demo-core/pom.xml`
-- Create: `demo-core/src/main/java/com/demo/core/web/R.java`
-- Create: `demo-core/src/main/java/com/demo/core/web/PageReqDTO.java`
-- Create: `demo-core/src/main/java/com/demo/core/web/PageResult.java`
-- Create: `demo-core/src/test/java/com/demo/core/web/RTests.java`
+- Modify: `admin-core/pom.xml`
+- Create: `admin-core/src/main/java/com/example/admin/core/web/R.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/web/PageReqDTO.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/web/PageResult.java`
+- Create: `admin-core/src/test/java/com/example/admin/core/web/RTests.java`
 
 **Step 1: 写统一响应对象的失败测试**
 
 ```java
-package com.demo.core.web;
+package com.example.admin.core.web;
 
 import org.junit.jupiter.api.Test;
 
@@ -221,7 +221,7 @@ class RTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-core test -Dtest=RTests`
+Run: `mvn -q -pl admin-core test -Dtest=RTests`
 Expected: FAIL，提示 `R` 类不存在
 
 **Step 3: 写最小实现**
@@ -229,7 +229,7 @@ Expected: FAIL，提示 `R` 类不存在
 `R.java` 至少包含：
 
 ```java
-package com.demo.core.web;
+package com.example.admin.core.web;
 
 public class R<T> {
     private int code;
@@ -268,33 +268,33 @@ public class PageResult<T> {
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-core test -Dtest=RTests`
+Run: `mvn -q -pl admin-core test -Dtest=RTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-core/pom.xml demo-core/src/main demo-core/src/test
+git add admin-core/pom.xml admin-core/src/main admin-core/src/test
 git commit -m "feat: add core web response models"
 ```
 
 ### Task 4: 实现异常、参数校验和 Jackson 统一配置
 
 **Files:**
-- Modify: `demo-core/pom.xml`
-- Create: `demo-core/src/main/java/com/demo/core/exception/GlobalExceptionHandler.java`
-- Create: `demo-core/src/main/java/com/demo/core/exception/BizException.java`
-- Create: `demo-core/src/main/java/com/demo/core/validation/ValidationConfig.java`
-- Create: `demo-core/src/main/java/com/demo/core/jackson/JacksonConfig.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/web/ValidationIntegrationTests.java`
-- Create: `demo-boot/src/test/java/com/demo/boot/web/TestValidationController.java`
+- Modify: `admin-core/pom.xml`
+- Create: `admin-core/src/main/java/com/example/admin/core/exception/GlobalExceptionHandler.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/exception/BizException.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/validation/ValidationConfig.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/jackson/JacksonConfig.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/web/ValidationIntegrationTests.java`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/web/TestValidationController.java`
 
 **Step 1: 写参数校验失败的集成测试**
 
 `ValidationIntegrationTests.java`：
 
 ```java
-package com.demo.boot.web;
+package com.example.admin.boot.web;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -328,7 +328,7 @@ class ValidationIntegrationTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=ValidationIntegrationTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=ValidationIntegrationTests`
 Expected: FAIL，提示 Controller、异常处理器或校验配置缺失
 
 **Step 3: 写最小实现**
@@ -355,30 +355,30 @@ Jackson 配置至少显式注册 `LocalDateTime` 与 `LocalDate` 格式。
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=ValidationIntegrationTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=ValidationIntegrationTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/exception demo-core/src/main/java/com/demo/core/validation demo-core/src/main/java/com/demo/core/jackson demo-boot/src/test/java/com/demo/boot/web
+git add admin-core/src/main/java/com/example/admin/core/exception admin-core/src/main/java/com/example/admin/core/validation admin-core/src/main/java/com/example/admin/core/jackson admin-boot/src/test/java/com/example/admin/boot/web
 git commit -m "feat: add validation and global exception handling"
 ```
 
 ### Task 5: 实现 TraceId、日志配置和健康检查
 
 **Files:**
-- Create: `demo-core/src/main/java/com/demo/core/trace/TraceIdFilter.java`
-- Create: `demo-boot/src/main/resources/logback-spring.xml`
-- Modify: `demo-boot/src/main/resources/application.yml`
-- Create: `demo-boot/src/test/java/com/demo/boot/trace/TraceIdFilterTests.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/trace/TraceIdFilter.java`
+- Create: `admin-boot/src/main/resources/logback-spring.xml`
+- Modify: `admin-boot/src/main/resources/application.yml`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/trace/TraceIdFilterTests.java`
 
 **Step 1: 写 TraceId 透传测试**
 
 说明：业务 API 统一使用 `POST` 的约束只适用于业务接口；`/actuator/health` 属于 Spring Boot 平台健康检查端点，使用 `GET` 不视为违反业务 API 规范。
 
 ```java
-package com.demo.boot.trace;
+package com.example.admin.boot.trace;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -406,7 +406,7 @@ class TraceIdFilterTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=TraceIdFilterTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=TraceIdFilterTests`
 Expected: FAIL，响应头中没有 `X-Trace-Id`
 
 **Step 3: 写最小实现**
@@ -439,31 +439,31 @@ management:
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=TraceIdFilterTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=TraceIdFilterTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/trace demo-boot/src/main/resources/logback-spring.xml demo-boot/src/main/resources/application.yml demo-boot/src/test/java/com/demo/boot/trace
+git add admin-core/src/main/java/com/example/admin/core/trace admin-boot/src/main/resources/logback-spring.xml admin-boot/src/main/resources/application.yml admin-boot/src/test/java/com/example/admin/boot/trace
 git commit -m "feat: add trace id filter and logging config"
 ```
 
 ### Task 6: 实现租户基础设施和 MyBatis-Plus 基础配置
 
 **Files:**
-- Modify: `demo-core/pom.xml`
-- Create: `demo-core/src/main/java/com/demo/core/tenant/TenantContext.java`
-- Create: `demo-core/src/main/java/com/demo/core/tenant/TenantIgnoreTables.java`
-- Create: `demo-core/src/main/java/com/demo/core/mybatis/MybatisPlusConfig.java`
-- Create: `demo-core/src/main/java/com/demo/core/mybatis/CommonMetaObjectHandler.java`
-- Create: `demo-core/src/test/java/com/demo/core/tenant/TenantIgnoreTablesTests.java`
-- Create: `demo-core/src/test/java/com/demo/core/tenant/TenantContextTests.java`
+- Modify: `admin-core/pom.xml`
+- Create: `admin-core/src/main/java/com/example/admin/core/tenant/TenantContext.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/tenant/TenantIgnoreTables.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/mybatis/MybatisPlusConfig.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/mybatis/CommonMetaObjectHandler.java`
+- Create: `admin-core/src/test/java/com/example/admin/core/tenant/TenantIgnoreTablesTests.java`
+- Create: `admin-core/src/test/java/com/example/admin/core/tenant/TenantContextTests.java`
 
 **Step 1: 写非租户表忽略清单的失败测试**
 
 ```java
-package com.demo.core.tenant;
+package com.example.admin.core.tenant;
 
 import org.junit.jupiter.api.Test;
 
@@ -482,7 +482,7 @@ class TenantIgnoreTablesTests {
 再补一个 `TenantContext` 最小行为测试：
 
 ```java
-package com.demo.core.tenant;
+package com.example.admin.core.tenant;
 
 import org.junit.jupiter.api.Test;
 
@@ -502,7 +502,7 @@ class TenantContextTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-core test -Dtest=TenantIgnoreTablesTests`
+Run: `mvn -q -pl admin-core test -Dtest=TenantIgnoreTablesTests`
 Expected: FAIL，提示 `TenantIgnoreTables` 不存在
 
 **Step 3: 写最小实现**
@@ -551,31 +551,31 @@ public GlobalConfig globalConfig() {
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-core test -Dtest=TenantIgnoreTablesTests`
+Run: `mvn -q -pl admin-core test -Dtest=TenantIgnoreTablesTests`
 Expected: PASS
 
-Run: `mvn -q -pl demo-core test -Dtest=TenantContextTests`
+Run: `mvn -q -pl admin-core test -Dtest=TenantContextTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/tenant demo-core/src/main/java/com/demo/core/mybatis demo-core/src/test/java/com/demo/core/tenant
+git add admin-core/src/main/java/com/example/admin/core/tenant admin-core/src/main/java/com/example/admin/core/mybatis admin-core/src/test/java/com/example/admin/core/tenant
 git commit -m "feat: add tenant and mybatis-plus base config"
 ```
 
 ### Task 7: 建立测试基础设施和数据库迁移
 
 **Files:**
-- Modify: `demo-boot/pom.xml`
-- Create: `demo-boot/src/test/resources/application-test.yml`
-- Create: `demo-boot/src/main/resources/db/migration/V1__init_platform_tables.sql`
-- Create: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
+- Modify: `admin-boot/pom.xml`
+- Create: `admin-boot/src/test/resources/application-test.yml`
+- Create: `admin-boot/src/main/resources/db/migration/V1__init_platform_tables.sql`
+- Create: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
 
 **Step 1: 写数据库迁移冒烟测试**
 
 ```java
-package com.demo.boot.flyway;
+package com.example.admin.boot.flyway;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -591,12 +591,12 @@ class FlywaySmokeTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests`
 Expected: FAIL，提示数据源、Flyway 或迁移脚本缺失
 
 **Step 3: 写最小实现**
 
-`demo-boot/pom.xml` 增加：
+`admin-boot/pom.xml` 增加：
 
 ```xml
 <dependency>
@@ -661,34 +661,34 @@ spring:
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-boot/pom.xml demo-boot/src/main/resources/db/migration demo-boot/src/test/resources/application-test.yml demo-boot/src/test/java/com/demo/boot/flyway
+git add admin-boot/pom.xml admin-boot/src/main/resources/db/migration admin-boot/src/test/resources/application-test.yml admin-boot/src/test/java/com/example/admin/boot/flyway
 git commit -m "feat: add flyway and database bootstrap"
 ```
 
-### Task 8: 实现 `demo-system` 的登录闭环
+### Task 8: 实现 `admin-system` 的登录闭环
 
 **Files:**
-- Modify: `demo-system/pom.xml`
-- Create: `demo-system/src/main/java/com/demo/system/controller/AuthController.java`
-- Create: `demo-system/src/main/java/com/demo/system/app/AuthAppService.java`
-- Create: `demo-system/src/main/java/com/demo/system/service/AuthService.java`
-- Create: `demo-system/src/main/java/com/demo/system/infra/entity/SysUserEntity.java`
-- Create: `demo-system/src/main/java/com/demo/system/infra/mapper/SysUserMapper.java`
-- Create: `demo-system/src/main/java/com/demo/system/security/PasswordConfig.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/LoginReqDTO.java`
-- Create: `demo-system/src/main/java/com/demo/system/controller/dto/LoginRspDTO.java`
-- Create: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
+- Modify: `admin-system/pom.xml`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/AuthController.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/app/AuthAppService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/service/AuthService.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/infra/entity/SysUserEntity.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/infra/mapper/SysUserMapper.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/security/PasswordConfig.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/LoginReqDTO.java`
+- Create: `admin-system/src/main/java/com/example/admin/system/controller/dto/LoginRspDTO.java`
+- Create: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
 
 **Step 1: 写登录失败测试**
 
 ```java
-package com.demo.system;
+package com.example.admin.system;
 
 import org.junit.jupiter.api.Test;
 
@@ -707,7 +707,7 @@ class AuthFlowTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests`
 Expected: FAIL，提示 `PasswordEncoder` 配置和 system 模块实现缺失
 
 **Step 3: 写最小实现**
@@ -747,33 +747,33 @@ private String password;
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-system/pom.xml demo-system/src/main demo-system/src/test
+git add admin-system/pom.xml admin-system/src/main admin-system/src/test
 git commit -m "feat: add minimal system auth flow"
 ```
 
-### Task 9: 实现 `demo-mdm` 的最小主数据能力
+### Task 9: 实现 `admin-mdm` 的最小主数据能力
 
 **Files:**
-- Modify: `demo-mdm/pom.xml`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/controller/DictController.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/app/DictAppService.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/service/DictService.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/infra/entity/DictTypeEntity.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/infra/entity/DictItemEntity.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/infra/mapper/DictTypeMapper.java`
-- Create: `demo-mdm/src/main/java/com/demo/mdm/infra/mapper/DictItemMapper.java`
-- Create: `demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java`
+- Modify: `admin-mdm/pom.xml`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/controller/DictController.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/app/DictAppService.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/infra/entity/DictTypeEntity.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/infra/entity/DictItemEntity.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/infra/mapper/DictTypeMapper.java`
+- Create: `admin-mdm/src/main/java/com/example/admin/mdm/infra/mapper/DictItemMapper.java`
+- Create: `admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java`
 
 **Step 1: 写最小主数据模块冒烟测试**
 
 ```java
-package com.demo.mdm;
+package com.example.admin.mdm;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -789,7 +789,7 @@ class DictModuleSmokeTests {
 
 **Step 2: 运行测试确认失败**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests`
 Expected: FAIL，提示 mdm 模块实现缺失
 
 **Step 3: 写最小实现**
@@ -817,13 +817,13 @@ private Long deleted;
 
 **Step 4: 运行测试确认通过**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add demo-mdm/pom.xml demo-mdm/src/main demo-mdm/src/test
+git add admin-mdm/pom.xml admin-mdm/src/main admin-mdm/src/test
 git commit -m "feat: add minimal mdm dictionary module"
 ```
 
@@ -862,7 +862,7 @@ Expected: PASS
 - `Controller -> AppService -> Domain/Service -> Infra/Mapper` 是否被遵守
 - 默认业务表是否包含 `tenant_id`
 - 平台级全局表是否加入 `TenantLineHandler` 忽略清单
-- `demo-core` 是否仍然保持薄核心
+- `admin-core` 是否仍然保持薄核心
 - 是否没有提前引入文件存储 SPI、翻译引擎实现、完整 `OperationLog` 落库链路
 
 **Step 4: 更新文档**

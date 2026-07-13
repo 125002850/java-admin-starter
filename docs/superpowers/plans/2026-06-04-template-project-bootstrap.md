@@ -192,7 +192,7 @@ MODULE_SUFFIXES = ("boot", "core", "mdm", "system")
 def rename_module_directories(project_root: Path, project_name: str) -> dict[str, str]:
     mapping: dict[str, str] = {}
     for suffix in MODULE_SUFFIXES:
-        old_name = f"demo-{suffix}"
+        old_name = f"admin-{suffix}"
         new_name = f"{project_name}-{suffix}"
         (project_root / old_name).rename(project_root / new_name)
         mapping[old_name] = new_name
@@ -218,7 +218,7 @@ def move_package_tree(module_dir: Path, source_package: str, target_package: str
 
 def rename_boot_application(project_root: Path, package_name: str, module_name: str) -> None:
     boot_dir = project_root / module_name / "src/main/java" / package_to_path(package_name) / "boot"
-    source = boot_dir / "DemoBootApplication.java"
+    source = boot_dir / "AdminBootApplication.java"
     if source.exists():
         source.rename(boot_dir / "BootApplication.java")
 ```
@@ -232,13 +232,13 @@ TEXT_FILE_SUFFIXES = {".md", ".xml", ".yml", ".yaml", ".java", ".properties", ".
 def build_replacements(project_name: str, package_name: str, module_mapping: dict[str, str]) -> dict[str, str]:
     database_name = project_name.replace("-", "_")
     replacements = {
-        "java-demo-feature-sso": project_name,
-        "java_demo_sso": database_name,
-        "java-demo": project_name,
-        "com.demo": package_name,
-        "DemoBootApplication": "BootApplication",
-        "${user.home}/.java-demo/uploads": f"${{user.home}}/.{project_name}/uploads",
-        "${java.io.tmpdir}/java-demo/test-uploads": f"${{java.io.tmpdir}}/{project_name}/test-uploads",
+        "java-admin-starter-feature-sso": project_name,
+        "java_admin_starter_sso": database_name,
+        "java-admin-starter": project_name,
+        "com.example.admin": package_name,
+        "AdminBootApplication": "BootApplication",
+        "${user.home}/.java-admin-starter/uploads": f"${{user.home}}/.{project_name}/uploads",
+        "${java.io.tmpdir}/java-admin-starter/test-uploads": f"${{java.io.tmpdir}}/{project_name}/test-uploads",
     }
     replacements.update(module_mapping)
     return replacements
@@ -273,8 +273,8 @@ def main() -> int:
     copy_template(source_root, target_dir)
     module_mapping = rename_module_directories(target_dir, project_name)
     for module_name in module_mapping.values():
-        move_package_tree(target_dir / module_name, "com.demo", args.package)
-    rename_boot_application(target_dir, args.package, module_mapping["demo-boot"])
+        move_package_tree(target_dir / module_name, "com.example.admin", args.package)
+    rename_boot_application(target_dir, args.package, module_mapping["admin-boot"])
     replace_text_content(target_dir, build_replacements(project_name, args.package, module_mapping))
     init_git_repository(target_dir)
     print(f"项目已初始化: {target_dir}")

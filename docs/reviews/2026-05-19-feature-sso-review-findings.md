@@ -11,36 +11,36 @@
 ### 复现命令
 
 ```bash
-git worktree add /private/tmp/java-demo-review-6803403 --detach 6803403
-cd /private/tmp/java-demo-review-6803403
-mvn -pl demo-boot -am test-compile -DskipTests
+git worktree add /private/tmp/java-admin-starter-review-6803403 --detach 6803403
+cd /private/tmp/java-admin-starter-review-6803403
+mvn -pl admin-boot -am test-compile -DskipTests
 ```
 
 ### 当前仍成立的缺陷
 
-#### F1. `Task 1-3` 基线无法通过 `demo-boot` 测试源码编译
+#### F1. `Task 1-3` 基线无法通过 `admin-boot` 测试源码编译
 
 **严重级别：** 高
 
 **现象：**
 
-`6803403` 已删除 `DictTypeEntity`、`DictItemEntity` 和整个 `demo-system` 模块，但 `demo-boot` 里的 `AuditFieldMetadataTests` 仍静态引用这些已删除类，导致干净构建下 `demo-boot:testCompile` 直接失败。
+`6803403` 已删除 `DictTypeEntity`、`DictItemEntity` 和整个 `admin-system` 模块，但 `admin-boot` 里的 `AuditFieldMetadataTests` 仍静态引用这些已删除类，导致干净构建下 `admin-boot:testCompile` 直接失败。
 
 **失败位置：**
 
-- `6803403:demo-boot/src/test/java/com/demo/boot/mybatis/AuditFieldMetadataTests.java:5-9`
-- `6803403:demo-boot/src/test/java/com/demo/boot/mybatis/AuditFieldMetadataTests.java:21-27`
+- `6803403:admin-boot/src/test/java/com/example/admin/boot/mybatis/AuditFieldMetadataTests.java:5-9`
+- `6803403:admin-boot/src/test/java/com/example/admin/boot/mybatis/AuditFieldMetadataTests.java:21-27`
 
 **复现结果摘要：**
 
 ```text
 [ERROR] 找不到符号
   符号:   类 DictItemEntity
-  位置: 程序包 com.demo.mdm.infra.entity
+  位置: 程序包 com.example.admin.mdm.infra.entity
 [ERROR] 找不到符号
   符号:   类 DictTypeEntity
-  位置: 程序包 com.demo.mdm.infra.entity
-[ERROR] 程序包com.demo.system.infra.entity不存在
+  位置: 程序包 com.example.admin.mdm.infra.entity
+[ERROR] 程序包com.example.admin.system.infra.entity不存在
 ```
 
 **影响：**
@@ -58,9 +58,9 @@ mvn -pl demo-boot -am test-compile -DskipTests
 
 - `6803403:README.md:134-136`
 - `6803403:docs/architecture/2026-05-19-gateway-sso-boundary.md:18-46`
-- `6803403:demo-core/src/main/java/com/demo/core/mybatis/CommonMetaObjectHandler.java:13-33`
-- `6803403:demo-core/src/main/java/com/demo/core/tenant/HeaderTenantResolver.java:15-24`
-- `6803403:demo-core/src/main/java/com/demo/core/tenant/TenantFilter.java:35-53`
+- `6803403:admin-core/src/main/java/com/example/admin/core/mybatis/CommonMetaObjectHandler.java:13-33`
+- `6803403:admin-core/src/main/java/com/example/admin/core/tenant/HeaderTenantResolver.java:15-24`
+- `6803403:admin-core/src/main/java/com/example/admin/core/tenant/TenantFilter.java:35-53`
 
 **具体偏差：**
 
@@ -88,7 +88,7 @@ mvn -pl demo-boot -am test-compile -DskipTests
 
 **定位位置：**
 
-- `6803403:demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java:24-59`
+- `6803403:admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java:24-59`
 
 **影响：**
 
@@ -100,11 +100,11 @@ mvn -pl demo-boot -am test-compile -DskipTests
 ### 复现命令
 
 ```bash
-git worktree add /private/tmp/java-demo-review-head --detach 0936e61
-cd /private/tmp/java-demo-review-head
+git worktree add /private/tmp/java-admin-starter-review-head --detach 0936e61
+cd /private/tmp/java-admin-starter-review-head
 
 # 局部 gate
-mvn -pl demo-boot -am test -Dtest=ModuleBoundaryTests,OpenApiDocumentationTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false
+mvn -pl admin-boot -am test -Dtest=ModuleBoundaryTests,OpenApiDocumentationTests,ErrorCodeContractTests -Dsurefire.failIfNoSpecifiedTests=false
 
 # 全量 gate
 mvn -q test
@@ -113,7 +113,7 @@ mvn -q test
 ### 验证结论
 
 - 局部 gate 通过：`ModuleBoundaryTests`、`OpenApiDocumentationTests`、`ErrorCodeContractTests`
-- 全量 `mvn -q test` 失败：失败点为 `demo-core` 的 `CommonMetaObjectHandlerTests`
+- 全量 `mvn -q test` 失败：失败点为 `admin-core` 的 `CommonMetaObjectHandlerTests`
 
 ### 当前仍成立的缺陷
 
@@ -127,8 +127,8 @@ mvn -q test
 
 **定位位置：**
 
-- `demo-core/src/test/java/com/demo/core/mybatis/CommonMetaObjectHandlerTests.java:20-28`
-- `demo-core/pom.xml:70-77`
+- `admin-core/src/test/java/com/example/admin/core/mybatis/CommonMetaObjectHandlerTests.java:20-28`
+- `admin-core/pom.xml:70-77`
 
 **复现结果摘要：**
 
@@ -151,8 +151,8 @@ Could not self-attach to current VM using external process
 
 当前 `ModuleBoundaryTests` 只检查模块间依赖和已删除包依赖：
 
-- 禁止依赖 `com.demo.system..`
-- 禁止依赖 `com.demo.core.tenant..`
+- 禁止依赖 `com.example.admin.system..`
+- 禁止依赖 `com.example.admin.core.tenant..`
 - 禁止 `core -> mdm/boot`、`mdm -> boot`
 
 但它没有落实计划里要求的这两条关键门禁：
@@ -162,7 +162,7 @@ Could not self-attach to current VM using external process
 
 **定位位置：**
 
-- `demo-boot/src/test/java/com/demo/boot/archunit/ModuleBoundaryTests.java:24-76`
+- `admin-boot/src/test/java/com/example/admin/boot/archunit/ModuleBoundaryTests.java:24-76`
 
 **影响：**
 
@@ -185,7 +185,7 @@ Could not self-attach to current VM using external process
 
 **定位位置：**
 
-- `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java:24-59`
+- `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java:24-59`
 
 **影响：**
 

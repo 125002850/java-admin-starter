@@ -13,13 +13,13 @@
 ### Task 1: 标准化租户上下文异常语义
 
 **Files:**
-- Modify: `demo-core/src/main/java/com/demo/core/tenant/TenantFilter.java`
-- Modify: `demo-core/src/main/java/com/demo/core/tenant/TenantContext.java`
-- Modify: `demo-core/src/main/java/com/demo/core/exception/GlobalExceptionHandler.java`
-- Create: `demo-core/src/main/java/com/demo/core/tenant/InvalidTenantHeaderException.java`
-- Create: `demo-core/src/main/java/com/demo/core/tenant/MissingTenantContextException.java`
-- Modify: `demo-core/src/test/java/com/demo/core/tenant/TenantContextTests.java`
-- Modify: `demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/tenant/TenantFilter.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/tenant/TenantContext.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/exception/GlobalExceptionHandler.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/tenant/InvalidTenantHeaderException.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/tenant/MissingTenantContextException.java`
+- Modify: `admin-core/src/test/java/com/example/admin/core/tenant/TenantContextTests.java`
+- Modify: `admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java`
 
 - [ ] **Step 1: 先把当前错误语义锁成失败测试**
 
@@ -63,11 +63,11 @@ void listTypes_should_return_400_when_tenant_header_is_not_numeric() throws Exce
 
 - [ ] **Step 2: 运行红灯，确认当前实现会把这些场景打成 `500`**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=TenantContextTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=TenantContextTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前 `TenantContext.requireTenantId()` 仍抛 `IllegalStateException`
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，缺少或非法 `X-Tenant-Id` 目前会落到 `500 / 操作失败`
 
@@ -134,32 +134,32 @@ public ResponseEntity<R<Void>> handleMissingTenantContext(MissingTenantContextEx
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=TenantContextTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=TenantContextTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，新增的缺 header / 非数字 header 用例返回 `400`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/tenant/TenantFilter.java \
-  demo-core/src/main/java/com/demo/core/tenant/TenantContext.java \
-  demo-core/src/main/java/com/demo/core/exception/GlobalExceptionHandler.java \
-  demo-core/src/main/java/com/demo/core/tenant/InvalidTenantHeaderException.java \
-  demo-core/src/main/java/com/demo/core/tenant/MissingTenantContextException.java \
-  demo-core/src/test/java/com/demo/core/tenant/TenantContextTests.java \
-  demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java
+git add admin-core/src/main/java/com/example/admin/core/tenant/TenantFilter.java \
+  admin-core/src/main/java/com/example/admin/core/tenant/TenantContext.java \
+  admin-core/src/main/java/com/example/admin/core/exception/GlobalExceptionHandler.java \
+  admin-core/src/main/java/com/example/admin/core/tenant/InvalidTenantHeaderException.java \
+  admin-core/src/main/java/com/example/admin/core/tenant/MissingTenantContextException.java \
+  admin-core/src/test/java/com/example/admin/core/tenant/TenantContextTests.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java
 git commit -m "fix: normalize tenant header error semantics"
 ```
 
 ### Task 2: 并发场景下统一翻译唯一索引冲突
 
 **Files:**
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/service/DictService.java`
-- Create: `demo-mdm/src/test/java/com/demo/mdm/service/DictServiceDuplicateKeyTests.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java`
+- Create: `admin-mdm/src/test/java/com/example/admin/mdm/service/DictServiceDuplicateKeyTests.java`
 
 - [ ] **Step 1: 写失败测试，锁定 update 路径也必须翻译 `DuplicateKeyException`**
 
@@ -189,7 +189,7 @@ void updateType_should_translate_duplicate_key_to_biz_exception() {
 
 - [ ] **Step 2: 运行红灯，确认 update 路径现在仍然会冒 `500`**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictServiceDuplicateKeyTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictServiceDuplicateKeyTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前 update 方法没有 catch `DuplicateKeyException`
 
@@ -216,32 +216,32 @@ try {
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictServiceDuplicateKeyTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictServiceDuplicateKeyTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，现有字典 smoke 用例无回归
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-mdm/src/main/java/com/demo/mdm/service/DictService.java \
-  demo-mdm/src/test/java/com/demo/mdm/service/DictServiceDuplicateKeyTests.java
+git add admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/service/DictServiceDuplicateKeyTests.java
 git commit -m "fix: translate duplicate key conflicts on dict updates"
 ```
 
 ### Task 3: 租户来源治理，收敛到可替换策略
 
 **Files:**
-- Create: `demo-core/src/main/java/com/demo/core/tenant/TenantResolver.java`
-- Create: `demo-core/src/main/java/com/demo/core/tenant/HeaderTenantResolver.java`
-- Modify: `demo-core/src/main/java/com/demo/core/tenant/TenantFilter.java`
-- Modify: `demo-system/src/main/java/com/demo/system/controller/AuthController.java`
-- Modify: `demo-system/src/main/java/com/demo/system/app/AuthAppService.java`
-- Modify: `demo-system/src/main/java/com/demo/system/service/AuthService.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/tenant/TenantResolver.java`
+- Create: `admin-core/src/main/java/com/example/admin/core/tenant/HeaderTenantResolver.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/tenant/TenantFilter.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/controller/AuthController.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/app/AuthAppService.java`
+- Modify: `admin-system/src/main/java/com/example/admin/system/service/AuthService.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
 - Modify: `README.md`
 
 - [ ] **Step 1: 先写兼容性失败测试，锁定“租户来源只允许通过 resolver 链进入上下文”**
@@ -272,11 +272,11 @@ void filter_should_delegate_tenant_resolution_to_resolver() {
 
 - [ ] **Step 2: 运行红灯，确认当前实现把 header trust 写死在 filter / service 里**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=TenantResolverTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=TenantResolverTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前没有 `TenantResolver`
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，`AuthService.authenticate(...)` 仍直接操作 `TenantContext`
 
@@ -337,24 +337,24 @@ try {
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=TenantResolverTests,TenantContextTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=TenantResolverTests,TenantContextTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，登录行为不变，但 tenant trust boundary 已经收口
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/tenant/TenantResolver.java \
-  demo-core/src/main/java/com/demo/core/tenant/HeaderTenantResolver.java \
-  demo-core/src/main/java/com/demo/core/tenant/TenantFilter.java \
-  demo-system/src/main/java/com/demo/system/controller/AuthController.java \
-  demo-system/src/main/java/com/demo/system/app/AuthAppService.java \
-  demo-system/src/main/java/com/demo/system/service/AuthService.java \
-  demo-system/src/test/java/com/demo/system/AuthFlowTests.java \
+git add admin-core/src/main/java/com/example/admin/core/tenant/TenantResolver.java \
+  admin-core/src/main/java/com/example/admin/core/tenant/HeaderTenantResolver.java \
+  admin-core/src/main/java/com/example/admin/core/tenant/TenantFilter.java \
+  admin-system/src/main/java/com/example/admin/system/controller/AuthController.java \
+  admin-system/src/main/java/com/example/admin/system/app/AuthAppService.java \
+  admin-system/src/main/java/com/example/admin/system/service/AuthService.java \
+  admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java \
   README.md
 git commit -m "refactor: centralize tenant resolution boundary"
 ```
@@ -363,14 +363,14 @@ git commit -m "refactor: centralize tenant resolution boundary"
 
 **Files:**
 - Modify: `README.md`
-- Modify: `demo-core/src/main/java/com/demo/core/mybatis/CommonMetaObjectHandler.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/service/DictService.java`
-- Modify: `demo-boot/src/main/resources/db/migration/V1__init_platform_tables.sql`
-- Modify: `demo-boot/src/main/resources/db/migration/V2__add_global_dict_tables.sql`
-- Modify: `demo-boot/src/main/resources/db/migration/V3__add_tenant_dict_tables.sql`
-- Modify: `demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java`
-- Modify: `demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java`
-- Modify: `demo-system/src/test/java/com/demo/system/AuthFlowTests.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/mybatis/CommonMetaObjectHandler.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java`
+- Modify: `admin-boot/src/main/resources/db/migration/V1__init_platform_tables.sql`
+- Modify: `admin-boot/src/main/resources/db/migration/V2__add_global_dict_tables.sql`
+- Modify: `admin-boot/src/main/resources/db/migration/V3__add_tenant_dict_tables.sql`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java`
+- Modify: `admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java`
+- Modify: `admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java`
 
 - [ ] **Step 1: 先加失败测试，锁定“时间字段由数据库维护”**
 
@@ -390,11 +390,11 @@ void flywayMigrationShouldAutoMaintainAuditTimestamps() {
 
 - [ ] **Step 2: 运行红灯，确认当前 schema 和 service 仍依赖手工时间戳**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，migration 里的时间列没有默认值
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，去掉 service 手工时间戳后会插入失败
 
@@ -421,15 +421,15 @@ dictTypeMapper.insert(entity);
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
@@ -437,25 +437,25 @@ Expected: PASS
 
 ```bash
 git add README.md \
-  demo-core/src/main/java/com/demo/core/mybatis/CommonMetaObjectHandler.java \
-  demo-mdm/src/main/java/com/demo/mdm/service/DictService.java \
-  demo-boot/src/main/resources/db/migration/V1__init_platform_tables.sql \
-  demo-boot/src/main/resources/db/migration/V2__add_global_dict_tables.sql \
-  demo-boot/src/main/resources/db/migration/V3__add_tenant_dict_tables.sql \
-  demo-boot/src/test/java/com/demo/boot/flyway/FlywaySmokeTests.java \
-  demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java \
-  demo-system/src/test/java/com/demo/system/AuthFlowTests.java
+  admin-core/src/main/java/com/example/admin/core/mybatis/CommonMetaObjectHandler.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/service/DictService.java \
+  admin-boot/src/main/resources/db/migration/V1__init_platform_tables.sql \
+  admin-boot/src/main/resources/db/migration/V2__add_global_dict_tables.sql \
+  admin-boot/src/main/resources/db/migration/V3__add_tenant_dict_tables.sql \
+  admin-boot/src/test/java/com/example/admin/boot/flyway/FlywaySmokeTests.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java \
+  admin-system/src/test/java/com/example/admin/system/AuthFlowTests.java
 git commit -m "refactor: align audit timestamp ownership with schema contract"
 ```
 
 ### Task 5: 复用 `PageReqDTO`，收敛分页请求模型
 
 **Files:**
-- Modify: `demo-core/src/main/java/com/demo/core/web/PageReqDTO.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/controller/dto/DictTypeListReqDTO.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/controller/dto/GlobalDictTypeListReqDTO.java`
-- Modify: `demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java`
-- Modify: `demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/web/PageReqDTO.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/DictTypeListReqDTO.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/GlobalDictTypeListReqDTO.java`
+- Modify: `admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java`
+- Modify: `admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java`
 
 - [ ] **Step 1: 先写失败测试，确保 DTO 继承后行为和文档都不退化**
 
@@ -484,11 +484,11 @@ void listTypes_should_support_page_request_base_fields_and_keyword() throws Exce
 
 - [ ] **Step 2: 运行红灯，确认 DTO 继承改造前后需要测试保护**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS 或局部 FAIL；如果先只加 OpenAPI 断言，通常会 PASS，但这一步的目的是先建立保护网
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS 或局部 FAIL；保护网先落下即可
 
@@ -513,32 +513,32 @@ public class DictTypeListReqDTO extends PageReqDTO {
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS，OpenAPI 仍能看到分页字段
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/web/PageReqDTO.java \
-  demo-mdm/src/main/java/com/demo/mdm/controller/dto/DictTypeListReqDTO.java \
-  demo-mdm/src/main/java/com/demo/mdm/controller/dto/GlobalDictTypeListReqDTO.java \
-  demo-mdm/src/test/java/com/demo/mdm/DictModuleSmokeTests.java \
-  demo-boot/src/test/java/com/demo/boot/openapi/OpenApiDocumentationTests.java
+git add admin-core/src/main/java/com/example/admin/core/web/PageReqDTO.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/DictTypeListReqDTO.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/controller/dto/GlobalDictTypeListReqDTO.java \
+  admin-mdm/src/test/java/com/example/admin/mdm/DictModuleSmokeTests.java \
+  admin-boot/src/test/java/com/example/admin/boot/openapi/OpenApiDocumentationTests.java
 git commit -m "refactor: reuse base page request dto"
 ```
 
 ### Task 6: 为 `R` 增加无参 `ok()`，替换 `R.ok((Void) null)`
 
 **Files:**
-- Modify: `demo-core/src/main/java/com/demo/core/web/R.java`
-- Modify: `demo-core/src/test/java/com/demo/core/web/RTests.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/controller/TenantDictController.java`
-- Modify: `demo-mdm/src/main/java/com/demo/mdm/controller/GlobalDictController.java`
+- Modify: `admin-core/src/main/java/com/example/admin/core/web/R.java`
+- Modify: `admin-core/src/test/java/com/example/admin/core/web/RTests.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/controller/TenantDictController.java`
+- Modify: `admin-mdm/src/main/java/com/example/admin/mdm/controller/GlobalDictController.java`
 
 - [ ] **Step 1: 先写失败测试，锁定无参成功响应工厂**
 
@@ -557,7 +557,7 @@ void ok_without_data_should_wrap_success_and_null_payload() {
 
 - [ ] **Step 2: 运行红灯**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL，当前没有 `R.ok()`
 
@@ -585,27 +585,27 @@ return R.ok();
 
 替换完成后，跑一遍：
 
-Run: `rg -n "R\\.ok\\(\\(Void\\) null\\)" demo-mdm demo-system demo-core`
+Run: `rg -n "R\\.ok\\(\\(Void\\) null\\)" admin-mdm admin-system admin-core`
 
 Expected: no matches
 
 - [ ] **Step 4: 跑绿灯**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=RTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add demo-core/src/main/java/com/demo/core/web/R.java \
-  demo-core/src/test/java/com/demo/core/web/RTests.java \
-  demo-mdm/src/main/java/com/demo/mdm/controller/TenantDictController.java \
-  demo-mdm/src/main/java/com/demo/mdm/controller/GlobalDictController.java
+git add admin-core/src/main/java/com/example/admin/core/web/R.java \
+  admin-core/src/test/java/com/example/admin/core/web/RTests.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/controller/TenantDictController.java \
+  admin-mdm/src/main/java/com/example/admin/mdm/controller/GlobalDictController.java
 git commit -m "refactor: add no-arg success response factory"
 ```
 
@@ -616,19 +616,19 @@ git commit -m "refactor: add no-arg success response factory"
 
 - [ ] **Step 1: 跑本次整改的最小回归集**
 
-Run: `mvn -q -pl demo-core -am test -Dtest=TenantContextTests,RTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-core -am test -Dtest=TenantContextTests,RTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-system -am test -Dtest=AuthFlowTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-mdm -am test -Dtest=DictModuleSmokeTests,DictServiceDuplicateKeyTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-mdm -am test -Dtest=DictModuleSmokeTests,DictServiceDuplicateKeyTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
-Run: `mvn -q -pl demo-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `mvn -q -pl admin-boot -am test -Dtest=FlywaySmokeTests,OpenApiDocumentationTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS
 
@@ -636,7 +636,7 @@ Expected: PASS
 
 Run: `git status --short`
 
-Expected: 只看到本次整改涉及的 `demo-core` / `demo-system` / `demo-mdm` / `demo-boot` / `README.md`
+Expected: 只看到本次整改涉及的 `admin-core` / `admin-system` / `admin-mdm` / `admin-boot` / `README.md`
 
 - [ ] **Step 3: 汇总风险**
 

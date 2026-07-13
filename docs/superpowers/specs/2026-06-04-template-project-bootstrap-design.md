@@ -2,7 +2,7 @@
 
 ## 1. 背景
 
-当前仓库 `java-demo` 需要作为后续新项目的模板仓库使用。目标是在模板仓库内提供一个初始化脚本，由使用者在模板仓库根目录执行，一次性完成以下动作：
+当前仓库 `java-admin-starter` 需要作为后续新项目的模板仓库使用。目标是在模板仓库内提供一个初始化脚本，由使用者在模板仓库根目录执行，一次性完成以下动作：
 
 - 复制模板仓库到指定新项目目录
 - 将新目录初始化为干净的新 Git 仓库，不继承模板历史
@@ -15,9 +15,9 @@
 脚本执行后，新项目目录满足以下约束：
 
 - 目标目录是一个独立的新仓库，`git log` 不包含模板仓库历史
-- Maven 根工程名从 `java-demo` 替换为目标项目名，例如 `track-bench`
-- 四个顶层模块目录从 `demo-*` 重命名为 `{project-name}-*`
-- Java 包名从 `com.demo` 替换为用户传入的包名，例如 `com.trackbench`
+- Maven 根工程名从 `java-admin-starter` 替换为目标项目名，例如 `track-bench`
+- 四个顶层模块目录从 `admin-*` 重命名为 `{project-name}-*`
+- Java 包名从 `com.example.admin` 替换为用户传入的包名，例如 `com.trackbench`
 - 启动类名固定为 `BootApplication`
 - Spring 应用名、OpenAPI 文档名、Compose 项目标识、开发库名、本地上传目录等模板标识同步替换
 
@@ -64,28 +64,28 @@ python3 scripts/init_template_project.py \
 
 ### 5.1 项目名
 
-- 源项目名：`java-demo`
+- 源项目名：`java-admin-starter`
 - 新项目名：取 `--target` 目录名，例如 `track-bench`
 
 ### 5.2 模块目录与 Maven 模块名
 
 模板中的四个模块统一映射如下：
 
-- `demo-boot` -> `{project-name}-boot`
-- `demo-core` -> `{project-name}-core`
-- `demo-mdm` -> `{project-name}-mdm`
-- `demo-system` -> `{project-name}-system`
+- `admin-boot` -> `{project-name}-boot`
+- `admin-core` -> `{project-name}-core`
+- `admin-mdm` -> `{project-name}-mdm`
+- `admin-system` -> `{project-name}-system`
 
 对应 Maven 坐标同步替换：
 
-- 根 `artifactId`：`java-demo` -> `{project-name}`
-- 子模块 `artifactId`：`demo-*` -> `{project-name}-*`
-- 子模块 `parent.artifactId`：`java-demo` -> `{project-name}`
+- 根 `artifactId`：`java-admin-starter` -> `{project-name}`
+- 子模块 `artifactId`：`admin-*` -> `{project-name}-*`
+- 子模块 `parent.artifactId`：`java-admin-starter` -> `{project-name}`
 - 根 `pom.xml` 的 `<modules>` 列表同步替换为新模块目录名
 
 ### 5.3 包名
 
-- 源根包：`com.demo`
+- 源根包：`com.example.admin`
 - 目标根包：取 `--package`
 
 Java/Kotlin 风格合法性仅按 Java 包名校验：
@@ -114,15 +114,15 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
 
 ### 6.2 必须替换的内容标识
 
-- `java-demo`
-- `java_demo`
-- `java-demo-feature-sso`
-- `demo-boot`
-- `demo-core`
-- `demo-mdm`
-- `demo-system`
-- `com.demo`
-- `DemoBootApplication`
+- `java-admin-starter`
+- `java_admin_starter`
+- `java-admin-starter-feature-sso`
+- `admin-boot`
+- `admin-core`
+- `admin-mdm`
+- `admin-system`
+- `com.example.admin`
+- `AdminBootApplication`
 
 ### 6.3 重点文件
 
@@ -132,15 +132,15 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
 - 各模块 `pom.xml`
 - `compose.yaml`
 - `README.md`
-- `demo-boot/src/main/resources/application.yml`
-- `demo-boot/src/main/resources/application-dev.yml`
-- `demo-boot/src/main/resources/application-test.yml`
+- `admin-boot/src/main/resources/application.yml`
+- `admin-boot/src/main/resources/application-dev.yml`
+- `admin-boot/src/main/resources/application-test.yml`
 - 启动类与其测试引用
 - ArchUnit、契约测试、Flyway/模块测试中写死的模块路径、包名、类名
 
 说明：
 
-- 文档目录中的模板标识也执行统一文本替换，避免新项目仍残留 `java-demo`
+- 文档目录中的模板标识也执行统一文本替换，避免新项目仍残留 `java-admin-starter`
 - `.git`、`target`、二进制文件不参与替换
 
 ## 7. 文件复制与目录重命名流程
@@ -157,9 +157,9 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
    - `.vscode`
 3. 在目标目录内先做顶层模块目录重命名
 4. 迁移源码与测试包目录：
-   - `.../src/main/java/com/demo` -> `.../src/main/java/<package-path>`
-   - `.../src/test/java/com/demo` -> `.../src/test/java/<package-path>`
-5. 将 `DemoBootApplication.java` 重命名为 `BootApplication.java`
+   - `.../src/main/java/com/example/admin` -> `.../src/main/java/<package-path>`
+   - `.../src/test/java/com/example/admin` -> `.../src/test/java/<package-path>`
+5. 将 `AdminBootApplication.java` 重命名为 `BootApplication.java`
 6. 执行文本内容替换
 7. 删除任何复制残留的 Git 元数据（理论上复制阶段已排除）
 8. 在目标目录执行 `git init`
@@ -168,12 +168,12 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
 
 以目标项目名 `track-bench`、目标包名 `com.trackbench` 为例：
 
-- `spring.application.name: java-demo` -> `track-bench`
-- OpenAPI 标题 `java-demo API 文档` -> `track-bench API 文档`
-- Compose 项目标识 `java-demo-feature-sso` -> `track-bench`
-- 开发数据库名 `java_demo_sso` -> `track_bench`
-- 本地上传目录 `${user.home}/.java-demo/uploads` -> `${user.home}/.track-bench/uploads`
-- 测试上传目录 `${java.io.tmpdir}/java-demo/test-uploads` -> `${java.io.tmpdir}/track-bench/test-uploads`
+- `spring.application.name: java-admin-starter` -> `track-bench`
+- OpenAPI 标题 `java-admin-starter API 文档` -> `track-bench API 文档`
+- Compose 项目标识 `java-admin-starter-feature-sso` -> `track-bench`
+- 开发数据库名 `java_admin_starter_sso` -> `track_bench`
+- 本地上传目录 `${user.home}/.java-admin-starter/uploads` -> `${user.home}/.track-bench/uploads`
+- 测试上传目录 `${java.io.tmpdir}/java-admin-starter/test-uploads` -> `${java.io.tmpdir}/track-bench/test-uploads`
 
 数据库命名规则：
 
@@ -206,8 +206,8 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
 - 根 `pom.xml` 的 `artifactId` 变为目标项目名
 - 四个模块目录已按新项目名改名
 - 启动类文件名为 `BootApplication.java`
-- 关键文件不再包含 `com.demo`
-- 关键文件不再包含 `DemoBootApplication`
+- 关键文件不再包含 `com.example.admin`
+- 关键文件不再包含 `AdminBootApplication`
 - `application.yml` / `application-dev.yml` 中项目标识与路径被替换
 
 测试方式：
@@ -221,7 +221,7 @@ Java/Kotlin 风格合法性仅按 Java 包名校验：
 
 风险：
 
-- 全仓库替换 `demo-*` 容易误伤业务文本
+- 全仓库替换 `admin-*` 容易误伤业务文本
 
 约束：
 
