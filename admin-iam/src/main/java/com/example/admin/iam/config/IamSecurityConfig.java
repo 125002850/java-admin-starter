@@ -19,7 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.validation.annotation.Validated;
 
 @Configuration
-@EnableConfigurationProperties(IamProperties.class)
+@EnableConfigurationProperties({IamProperties.class, ClientIpProperties.class})
 @Validated
 public class IamSecurityConfig {
 

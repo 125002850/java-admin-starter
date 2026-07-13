@@ -14,9 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoginLogService {
 
     private final IamLoginLogMapper loginLogMapper;
+    private final ClientRequestInfoResolver clientRequestInfoResolver;
 
-    public LoginLogService(IamLoginLogMapper loginLogMapper) {
+    public LoginLogService(
+            IamLoginLogMapper loginLogMapper,
+            ClientRequestInfoResolver clientRequestInfoResolver
+    ) {
         this.loginLogMapper = loginLogMapper;
+        this.clientRequestInfoResolver = clientRequestInfoResolver;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -28,7 +33,7 @@ public class LoginLogService {
             LoginFailureReason failureReason,
             String tokenId
     ) {
-        ClientRequestInfo requestInfo = ClientRequestInfo.current();
+        ClientRequestInfo requestInfo = clientRequestInfoResolver.current();
         IamLoginLogEntity entity = new IamLoginLogEntity();
         entity.setEventType(eventType);
         entity.setResult(result);

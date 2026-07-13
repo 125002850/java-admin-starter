@@ -26,15 +26,21 @@ public class RefreshTokenService {
 
     private final IamRefreshTokenMapper refreshTokenMapper;
     private final IamProperties iamProperties;
+    private final ClientRequestInfoResolver clientRequestInfoResolver;
 
-    public RefreshTokenService(IamRefreshTokenMapper refreshTokenMapper, IamProperties iamProperties) {
+    public RefreshTokenService(
+            IamRefreshTokenMapper refreshTokenMapper,
+            IamProperties iamProperties,
+            ClientRequestInfoResolver clientRequestInfoResolver
+    ) {
         this.refreshTokenMapper = refreshTokenMapper;
         this.iamProperties = iamProperties;
+        this.clientRequestInfoResolver = clientRequestInfoResolver;
     }
 
     @Transactional
     public IssuedRefreshToken issue(Long staffId) {
-        ClientRequestInfo requestInfo = ClientRequestInfo.current();
+        ClientRequestInfo requestInfo = clientRequestInfoResolver.current();
         LocalDateTime now = LocalDateTime.now();
         String token = generateToken();
         IamRefreshTokenEntity entity = new IamRefreshTokenEntity();
