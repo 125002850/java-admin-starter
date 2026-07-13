@@ -157,6 +157,15 @@ class OpenApiDocumentationTests {
     void iamPageFilterSchemasShouldExposePrdFields() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.deptIds.type").value("array"))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.deptIds.description",
+                    containsString("子部门")))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.deptIds.items.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.statuses.type").value("array"))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.statuses.items.enum",
+                    contains("ENABLED", "DISABLED")))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.deptId").exists())
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.status").exists())
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.staffCode").exists())
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.username").exists())
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.staffName").exists())

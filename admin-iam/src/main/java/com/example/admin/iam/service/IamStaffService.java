@@ -19,9 +19,13 @@ import com.example.admin.iam.infra.mapper.IamRoleMapper;
 import com.example.admin.iam.infra.mapper.IamStaffMapper;
 import com.example.admin.iam.infra.mapper.IamStaffRoleMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -58,10 +62,14 @@ public class IamStaffService {
                     .or()
                     .like(IamStaffEntity::getPhone, reqDTO.getKeyword()));
         }
-        if (reqDTO.getDeptId() != null) {
-            query.eq(IamStaffEntity::getDeptId, reqDTO.getDeptId());
+        if (reqDTO.getDeptIds() != null && !reqDTO.getDeptIds().isEmpty()) {
+            query.in(IamStaffEntity::getDeptId, resolveDeptAndChildren(reqDTO.getDeptIds()));
+        } else if (reqDTO.getDeptId() != null) {
+            query.in(IamStaffEntity::getDeptId, resolveDeptAndChildren(List.of(reqDTO.getDeptId())));
         }
-        if (reqDTO.getStatus() != null) {
+        if (reqDTO.getStatuses() != null && !reqDTO.getStatuses().isEmpty()) {
+            query.in(IamStaffEntity::getStatus, reqDTO.getStatuses());
+        } else if (reqDTO.getStatus() != null) {
             query.eq(IamStaffEntity::getStatus, reqDTO.getStatus());
         }
         if (StringUtils.hasText(reqDTO.getStaffCode())) {
@@ -139,6 +147,7 @@ public class IamStaffService {
     }
 
     public IamStaffEntity create(StaffCreateReqDTO reqDTO, String passwordHash) {
+        assertSuperAdminRoleNotRequested(reqDTO.getRoleIds(), superAdminRoleId());
         assertUsernameAvailable(reqDTO.getUsername(), null);
         assertStaffCodeAvailable(reqDTO.getStaffCode(), null);
         requireAssignableDept(reqDTO.getDeptId());
@@ -199,9 +208,11 @@ public class IamStaffService {
     public void assignRoles(Long staffId, List<Long> roleIds) {
         requireById(staffId);
         List<Long> safeRoleIds = roleIds == null ? List.of() : roleIds;
-        if (!safeRoleIds.contains(superAdminRoleId()) && isSuperAdminStaff(staffId)) {
-            assertCanRemoveSuperAdminCapability(staffId);
+        Long superAdminRoleId = superAdminRoleId();
+        if (isSuperAdminStaff(staffId, superAdminRoleId)) {
+            throw new BizException(IamErrorCode.STAFF_SUPER_ADMIN_PROTECTED);
         }
+        assertSuperAdminRoleNotRequested(safeRoleIds, superAdminRoleId);
         staffRoleMapper.delete(Wrappers.<IamStaffRoleEntity>lambdaQuery().eq(IamStaffRoleEntity::getStaffId, staffId));
         for (Long roleId : new LinkedHashSet<>(safeRoleIds)) {
             if (roleMapper.selectById(roleId) == null) {
@@ -287,7 +298,10 @@ public class IamStaffService {
     }
 
     private boolean isSuperAdminStaff(Long staffId) {
-        Long superAdminRoleId = superAdminRoleId();
+        return isSuperAdminStaff(staffId, superAdminRoleId());
+    }
+
+    private boolean isSuperAdminStaff(Long staffId, Long superAdminRoleId) {
         if (superAdminRoleId == null) {
             return false;
         }
@@ -297,6 +311,33 @@ public class IamStaffService {
                         .eq(IamStaffRoleEntity::getRoleId, superAdminRoleId)
         );
         return count != null && count > 0L;
+    }
+
+    private Set<Long> resolveDeptAndChildren(List<Long> rootDeptIds) {
+        List<IamDeptEntity> depts = deptMapper.selectList(Wrappers.<IamDeptEntity>lambdaQuery());
+        Map<Long, List<Long>> childrenByParent = depts.stream()
+                .filter(dept -> dept.getParentId() != null)
+                .collect(Collectors.groupingBy(
+                        IamDeptEntity::getParentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(IamDeptEntity::getId, Collectors.toList())
+                ));
+        Set<Long> resolvedIds = new LinkedHashSet<>();
+        ArrayDeque<Long> queue = new ArrayDeque<>(rootDeptIds);
+        while (!queue.isEmpty()) {
+            Long deptId = queue.removeFirst();
+            if (!resolvedIds.add(deptId)) {
+                continue;
+            }
+            queue.addAll(childrenByParent.getOrDefault(deptId, List.of()));
+        }
+        return resolvedIds;
+    }
+
+    private void assertSuperAdminRoleNotRequested(List<Long> roleIds, Long superAdminRoleId) {
+        if (superAdminRoleId != null && roleIds != null && roleIds.contains(superAdminRoleId)) {
+            throw new BizException(IamErrorCode.STAFF_SUPER_ADMIN_PROTECTED);
+        }
     }
 
     private void assertCanRemoveSuperAdminCapability(Long targetStaffId) {

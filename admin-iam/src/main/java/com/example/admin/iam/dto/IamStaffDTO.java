@@ -21,11 +21,17 @@ public final class IamStaffDTO {
         @Schema(description = "关键字，匹配用户名、工号、姓名、手机号", example = "admin")
         private String keyword;
 
-        @Schema(description = "部门ID", example = "1")
+        @Schema(description = "部门ID，筛选时包含该部门及全部子部门", example = "1")
         private Long deptId;
+
+        @Schema(description = "部门ID集合，筛选时包含各部门及全部子部门；非空时优先于 deptId", example = "[1, 2]")
+        private List<@NotNull Long> deptIds;
 
         @Schema(description = "员工状态", example = "ENABLED")
         private IamStatus status;
+
+        @Schema(description = "员工状态集合；非空时优先于 status", example = "[\"ENABLED\", \"DISABLED\"]")
+        private List<@NotNull IamStatus> statuses;
 
         @Schema(description = "员工工号，模糊匹配", example = "E1001")
         private String staffCode;
@@ -55,12 +61,28 @@ public final class IamStaffDTO {
             this.deptId = deptId;
         }
 
+        public List<Long> getDeptIds() {
+            return deptIds;
+        }
+
+        public void setDeptIds(List<Long> deptIds) {
+            this.deptIds = deptIds;
+        }
+
         public IamStatus getStatus() {
             return status;
         }
 
         public void setStatus(IamStatus status) {
             this.status = status;
+        }
+
+        public List<IamStatus> getStatuses() {
+            return statuses;
+        }
+
+        public void setStatuses(List<IamStatus> statuses) {
+            this.statuses = statuses;
         }
 
         public String getStaffCode() {

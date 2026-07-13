@@ -250,6 +250,195 @@ class IamManagementIntegrationTests {
         assertThat(operationLogPage.path("data").path("total").asLong()).isEqualTo(1);
     }
 
+    @Test
+    void staffPageShouldSupportMultiSelectFiltersAndLegacyFallback() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String firstDeptCode = "MS_A_" + suffix;
+        String secondDeptCode = "MS_B_" + suffix;
+        createDept(token, 1L, firstDeptCode, "多选部门甲" + suffix, "ENABLED");
+        createDept(token, 1L, secondDeptCode, "多选部门乙" + suffix, "ENABLED");
+        Long firstDeptId = deptId(firstDeptCode);
+        Long secondDeptId = deptId(secondDeptCode);
+
+        String enabledUsername = "multi_enabled_" + suffix;
+        String disabledUsername = "multi_disabled_" + suffix;
+        createStaff(token, enabledUsername, "ME_" + suffix, firstDeptId);
+        createStaff(token, disabledUsername, "MD_" + suffix, secondDeptId);
+        jdbcTemplate.update("update sys_staff set status = 'DISABLED' where username = ?", disabledUsername);
+
+        JsonNode multiSelectPage = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptIds": [%d, %d],
+                  "statuses": ["ENABLED", "DISABLED"]
+                }
+                """.formatted(firstDeptId, secondDeptId), token, 200);
+        assertThat(multiSelectPage.path("code").asInt()).isEqualTo(200);
+        assertThat(multiSelectPage.path("data").path("total").asLong()).isEqualTo(2);
+        assertThat(multiSelectPage.path("data").path("list"))
+                .extracting(item -> item.path("username").asText())
+                .containsExactlyInAnyOrder(enabledUsername, disabledUsername);
+
+        JsonNode pluralFieldsTakePrecedence = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptId": %d,
+                  "deptIds": [%d],
+                  "status": "ENABLED",
+                  "statuses": ["DISABLED"]
+                }
+                """.formatted(firstDeptId, secondDeptId), token, 200);
+        assertThat(pluralFieldsTakePrecedence.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(pluralFieldsTakePrecedence.path("data").path("list").get(0).path("username").asText())
+                .isEqualTo(disabledUsername);
+
+        JsonNode legacyPage = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptId": %d,
+                  "status": "ENABLED"
+                }
+                """.formatted(firstDeptId), token, 200);
+        assertThat(legacyPage.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(legacyPage.path("data").path("list").get(0).path("username").asText())
+                .isEqualTo(enabledUsername);
+    }
+
+    @Test
+    void staffPageDepartmentFilterShouldIncludeAllDescendants() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        createDept(token, 1L, "TREE_P_" + suffix, "筛选父部门" + suffix, "ENABLED");
+        Long parentDeptId = deptId("TREE_P_" + suffix);
+        createDept(token, parentDeptId, "TREE_C_" + suffix, "筛选子部门" + suffix, "ENABLED");
+        Long childDeptId = deptId("TREE_C_" + suffix);
+        createDept(token, childDeptId, "TREE_G_" + suffix, "筛选孙部门" + suffix, "ENABLED");
+        Long grandchildDeptId = deptId("TREE_G_" + suffix);
+        createDept(token, 1L, "TREE_O_" + suffix, "其他分支" + suffix, "ENABLED");
+        Long otherDeptId = deptId("TREE_O_" + suffix);
+
+        String parentUsername = "tree_parent_" + suffix;
+        String childUsername = "tree_child_" + suffix;
+        String grandchildUsername = "tree_grandchild_" + suffix;
+        String otherUsername = "tree_other_" + suffix;
+        createStaff(token, parentUsername, "TP_" + suffix, parentDeptId);
+        createStaff(token, childUsername, "TC_" + suffix, childDeptId);
+        createStaff(token, grandchildUsername, "TG_" + suffix, grandchildDeptId);
+        createStaff(token, otherUsername, "TO_" + suffix, otherDeptId);
+
+        JsonNode response = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptIds": [%d]
+                }
+                """.formatted(parentDeptId), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(200);
+        assertThat(response.path("data").path("total").asLong()).isEqualTo(3);
+        assertThat(response.path("data").path("list"))
+                .extracting(item -> item.path("username").asText())
+                .containsExactlyInAnyOrder(parentUsername, childUsername, grandchildUsername)
+                .doesNotContain(otherUsername);
+    }
+
+    @Test
+    void staffCreateShouldRejectSuperAdminRole() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String username = "create_super_" + suffix;
+
+        JsonNode response = postJson("/api/iam/staff/create", """
+                {
+                  "username": "%s",
+                  "staffCode": "CS_%s",
+                  "staffName": "非法超管员工",
+                  "deptId": 1,
+                  "password": "Staff@123456",
+                  "status": "ENABLED",
+                  "roleIds": [%d]
+                }
+                """.formatted(username, suffix, superAdminRoleId()), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2002006);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff where username = ? and deleted = 0",
+                Long.class,
+                username
+        )).isZero();
+    }
+
+    @Test
+    void roleAssignmentShouldRejectSuperAdminForOrdinaryStaff() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String username = "assign_super_" + suffix;
+        createStaff(token, username, "AS_" + suffix, 1L);
+        Long staffId = staffId(username);
+
+        JsonNode response = postJson("/api/iam/staff/roles/assign", """
+                {
+                  "staffId": %d,
+                  "roleIds": [%d]
+                }
+                """.formatted(staffId, superAdminRoleId()), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2002006);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff_role where staff_id = ? and role_id = ? and deleted = 0",
+                Long.class,
+                staffId,
+                superAdminRoleId()
+        )).isZero();
+    }
+
+    @Test
+    void roleAssignmentShouldRejectChangesForBuiltInSuperAdmin() throws Exception {
+        String token = adminAccessToken();
+
+        JsonNode response = postJson("/api/iam/staff/roles/assign", """
+                {
+                  "staffId": 1,
+                  "roleIds": [%d]
+                }
+                """.formatted(superAdminRoleId()), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2002006);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff_role where staff_id = 1 and role_id = ? and deleted = 0",
+                Long.class,
+                superAdminRoleId()
+        )).isEqualTo(1L);
+    }
+
+    @Test
+    void builtInSuperAdminShouldRetainExistingSelfProtection() throws Exception {
+        String token = adminAccessToken();
+
+        JsonNode disableResponse = postJson("/api/iam/staff/status/update", """
+                {
+                  "staffId": 1,
+                  "status": "DISABLED"
+                }
+                """, token, 200);
+        JsonNode deleteResponse = postJson("/api/iam/staff/delete", """
+                {
+                  "staffId": 1
+                }
+                """, token, 200);
+
+        assertThat(disableResponse.path("code").asInt()).isEqualTo(2002004);
+        assertThat(deleteResponse.path("code").asInt()).isEqualTo(2002004);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff where id = 1 and status = 'ENABLED' and deleted = 0",
+                Long.class
+        )).isEqualTo(1L);
+    }
+
     private String adminAccessToken() throws Exception {
         JsonNode login = postJson("/api/iam/auth/login", """
                 {"username":"admin","password":"Admin@123456"}
@@ -315,6 +504,13 @@ class IamManagementIntegrationTests {
                 "select id from sys_staff where username = ? and deleted = 0",
                 Long.class,
                 username
+        );
+    }
+
+    private Long superAdminRoleId() {
+        return jdbcTemplate.queryForObject(
+                "select id from sys_role where role_code = 'SUPER_ADMIN' and deleted = 0",
+                Long.class
         );
     }
 
