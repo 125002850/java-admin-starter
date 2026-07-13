@@ -13,6 +13,7 @@ import com.example.admin.iam.dto.IamAuthDTO.RefreshReqDTO;
 import com.example.admin.iam.dto.IamAuthDTO.TokenRspDTO;
 import com.example.admin.iam.enums.IamErrorCode;
 import com.example.admin.iam.enums.LoginEventType;
+import com.example.admin.iam.enums.LoginFailureReason;
 import com.example.admin.iam.enums.LoginResult;
 import com.example.admin.iam.enums.OperationLogAction;
 import com.example.admin.iam.enums.OperationLogModule;
@@ -69,12 +70,26 @@ public class AuthAppService {
     public LoginRspDTO login(LoginReqDTO reqDTO) {
         IamStaffEntity staff = staffService.findByUsername(reqDTO.getUsername());
         if (staff == null || !passwordEncoder.matches(reqDTO.getPassword(), staff.getPasswordHash())) {
-            loginLogService.record(LoginEventType.LOGIN, LoginResult.FAIL, null, reqDTO.getUsername(), "BAD_CREDENTIALS", null);
+            loginLogService.record(
+                    LoginEventType.LOGIN,
+                    LoginResult.FAIL,
+                    null,
+                    reqDTO.getUsername(),
+                    LoginFailureReason.BAD_CREDENTIALS,
+                    null
+            );
             delayFailure();
             throw new BizException(IamErrorCode.AUTH_BAD_CREDENTIALS);
         }
         if (!staffService.isEnabled(staff)) {
-            loginLogService.record(LoginEventType.LOGIN, LoginResult.FAIL, staff.getId(), staff.getUsername(), "STAFF_DISABLED", null);
+            loginLogService.record(
+                    LoginEventType.LOGIN,
+                    LoginResult.FAIL,
+                    staff.getId(),
+                    staff.getUsername(),
+                    LoginFailureReason.STAFF_DISABLED,
+                    null
+            );
             delayFailure();
             throw new BizException(IamErrorCode.AUTH_STAFF_DISABLED);
         }
@@ -112,7 +127,14 @@ public class AuthAppService {
             rspDTO.setAccessTokenExpiresAt(accessToken.expiresAt());
             return rspDTO;
         } catch (BizException ex) {
-            loginLogService.record(LoginEventType.REFRESH, LoginResult.FAIL, null, null, ex.getErrorCode().getMsg(), null);
+            loginLogService.record(
+                    LoginEventType.REFRESH,
+                    LoginResult.FAIL,
+                    null,
+                    null,
+                    refreshFailureReason(ex),
+                    null
+            );
             delayFailure();
             throw new AuthenticationCredentialsNotFoundException("refresh token invalid");
         }
@@ -180,5 +202,12 @@ public class AuthAppService {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private LoginFailureReason refreshFailureReason(BizException exception) {
+        if (exception.getErrorCode().getCode() == IamErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getCode()) {
+            return LoginFailureReason.REFRESH_TOKEN_EXPIRED;
+        }
+        return LoginFailureReason.REFRESH_TOKEN_INVALID;
     }
 }

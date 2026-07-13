@@ -4,8 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -166,6 +168,54 @@ class FlywaySmokeTests {
     }
 
     @Test
+    void flywayMigrationShouldSeedIamOperationLogActionDictionary() {
+        assertThat(queryCount("""
+                select count(*)
+                from sys_dict_type_global
+                where dict_type_code = 'IAM_OPERATION_LOG_ACTION'
+                  and dict_type_name = '操作日志动作'
+                  and status = 'enable'
+                  and deleted = 0
+                """))
+            .isEqualTo(1);
+
+        assertThat(queryGlobalDictItems("IAM_OPERATION_LOG_ACTION"))
+            .containsExactly(
+                Map.entry("CREATE", "新增"),
+                Map.entry("UPDATE", "编辑"),
+                Map.entry("DELETE", "删除"),
+                Map.entry("STATUS_UPDATE", "状态变更"),
+                Map.entry("ASSIGN", "分配"),
+                Map.entry("RESET_PASSWORD", "重置密码"),
+                Map.entry("CHANGE_PASSWORD", "修改密码"),
+                Map.entry("LOGIN", "登录"),
+                Map.entry("LOGOUT", "退出")
+            );
+    }
+
+    @Test
+    void flywayMigrationShouldSeedIamLoginLogDictionaries() {
+        assertThat(queryGlobalDictItems("IAM_LOGIN_EVENT_TYPE"))
+            .containsExactly(
+                Map.entry("LOGIN", "登录"),
+                Map.entry("REFRESH", "刷新令牌"),
+                Map.entry("LOGOUT", "退出登录")
+            );
+        assertThat(queryGlobalDictItems("IAM_LOGIN_RESULT"))
+            .containsExactly(
+                Map.entry("SUCCESS", "成功"),
+                Map.entry("FAIL", "失败")
+            );
+        assertThat(queryGlobalDictItems("IAM_LOGIN_FAILURE_REASON"))
+            .containsExactly(
+                Map.entry("BAD_CREDENTIALS", "用户名或密码错误"),
+                Map.entry("STAFF_DISABLED", "员工已禁用"),
+                Map.entry("REFRESH_TOKEN_INVALID", "刷新令牌无效"),
+                Map.entry("REFRESH_TOKEN_EXPIRED", "刷新令牌已过期")
+            );
+    }
+
+    @Test
     void flywayMigrationShouldAllowReassigningLogicallyDeletedStaffRole() {
         executeUpdate("update sys_staff_role set deleted = 100 where staff_id = 1 and role_id = 1");
 
@@ -260,6 +310,30 @@ class FlywaySmokeTests {
             return resultSet.next() ? resultSet.getInt(1) : 0;
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to query count", exception);
+        }
+    }
+
+    private Map<String, String> queryGlobalDictItems(String dictTypeCode) {
+        String sql = """
+            select dict_item_code, dict_item_name
+            from sys_dict_item_global
+            where dict_type_code = ?
+              and status = 'enable'
+              and deleted = 0
+            order by sort_order, id
+            """;
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, dictTypeCode);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                Map<String, String> items = new LinkedHashMap<>();
+                while (resultSet.next()) {
+                    items.put(resultSet.getString("dict_item_code"), resultSet.getString("dict_item_name"));
+                }
+                return items;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("failed to query global dict items", exception);
         }
     }
 
