@@ -850,8 +850,8 @@ IAM 新表的唯一约束必须兼容逻辑删除后的同名复用。
 
 1. `main` 分支本地用户主体统一使用 `staff` 术语。
 2. 后端包名、类名、DTO、接口路径和数据库表名都应使用 `staff`，不得在 IAM 新代码中混用 `user` 表示本地员工。
-3. `sys_user_cache` 属于 SSO 透传用户缓存语义，不作为 `main` 分支 IAM 员工表。
-4. 实施 `main` 本地 IAM 时，应移除、迁移或隔离 SSO 专用的用户缓存代码，避免与 `sys_staff` 语义冲突。
+3. 历史 `sys_user_cache` 属于 SSO 透传用户缓存语义，不作为 `main` 分支 IAM 员工表；当前 schema 已移除该表。
+4. `main` 本地 IAM 不保留 SSO 专用用户缓存代码，避免与 `sys_staff` 语义冲突。
 
 `sys_refresh_token` 至少包含：
 

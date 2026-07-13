@@ -4,8 +4,6 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.Version;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.example.admin.core.jackson.AuditUserIdSerializer;
 
 import java.time.LocalDateTime;
 
@@ -21,11 +19,9 @@ public abstract class BaseEntity {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
-    @JsonSerialize(using = AuditUserIdSerializer.class)
     @TableField(value = "create_by", fill = FieldFill.INSERT)
     private Long createBy;
 
-    @JsonSerialize(using = AuditUserIdSerializer.class)
     @TableField(value = "update_by", fill = FieldFill.INSERT_UPDATE)
     private Long updateBy;
 

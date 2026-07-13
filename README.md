@@ -284,7 +284,7 @@ docker compose down -v
 ## 数据库迁移
 
 - 版本化迁移文件统一放在 `admin-boot/src/main/resources/db/migration/`。
-- 当前历史迁移已演进到 `V20260710115300__restore_logic_delete_unique_indexes.sql`。
+- 当前历史迁移已演进到 `V20260713113400__drop_legacy_sso_user_cache.sql`。
 - 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名；结构变更通过新增下一版本 migration 演进。
 - 仓库 `pre-commit` 通过 `scripts/check-migrations.sh` 拦截历史版本化 migration 的修改。
 - 完整迁移规范见 `.agents/skills/oig-java-development/references/database-migrations.md`。

@@ -23,8 +23,6 @@ platform:
     enabled: ${SSO_STAFF_ENABLED:false}
   operator:
     gateway-filter-enabled: ${GATEWAY_OPERATOR_FILTER_ENABLED:false}
-    cache-user:
-      update-window-seconds: ${CACHE_USER_UPDATE_WINDOW_SECONDS:600}
   file:
     storage:
       type: ${FILE_STORAGE_TYPE:local}

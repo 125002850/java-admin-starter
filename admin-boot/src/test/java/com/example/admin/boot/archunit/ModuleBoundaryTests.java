@@ -1,5 +1,7 @@
 package com.example.admin.boot.archunit;
 
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -56,6 +58,18 @@ class ModuleBoundaryTests {
                 .that().resideInAPackage("com.example.admin.core..")
                 .should().dependOnClassesThat().resideInAPackage("com.example.admin.iam..");
         rule.check(allClasses);
+    }
+
+    @Test
+    void admin_core_must_not_declare_concrete_mybatis_tables_or_mappers() {
+        noClasses()
+                .that().resideInAPackage("com.example.admin.core..")
+                .should().beAnnotatedWith(TableName.class)
+                .check(allClasses);
+        noClasses()
+                .that().resideInAPackage("com.example.admin.core..")
+                .should().beAssignableTo(BaseMapper.class)
+                .check(allClasses);
     }
 
     @Test
