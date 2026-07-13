@@ -1,11 +1,11 @@
-name: java-demo-feature-sso
+name: java-admin-starter-feature-sso
 
 services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: java_demo_sso
+      MYSQL_DATABASE: java_admin_starter_sso
       MYSQL_ROOT_PASSWORD: root
       TZ: Asia/Shanghai
     ports:

@@ -2,8 +2,8 @@
 
 set -eu
 
-MIGRATION_DIR="demo-boot/src/main/resources/db/migration"
-JAVA_MIGRATION_DIR="demo-boot/src/main/java/db/migration"
+MIGRATION_DIR="admin-boot/src/main/resources/db/migration"
+JAVA_MIGRATION_DIR="admin-boot/src/main/java/db/migration"
 LEGACY_JAVA_MIGRATION="$JAVA_MIGRATION_DIR/V11__fix_sys_user_cache_columns.java"
 
 is_versioned_migration() {
