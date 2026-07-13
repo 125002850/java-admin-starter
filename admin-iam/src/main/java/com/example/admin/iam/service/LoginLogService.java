@@ -1,6 +1,7 @@
 package com.example.admin.iam.service;
 
 import com.example.admin.iam.enums.LoginEventType;
+import com.example.admin.iam.enums.LoginFailureReason;
 import com.example.admin.iam.enums.LoginResult;
 import com.example.admin.iam.infra.entity.IamLoginLogEntity;
 import com.example.admin.iam.infra.mapper.IamLoginLogMapper;
@@ -24,7 +25,7 @@ public class LoginLogService {
             LoginResult result,
             Long staffId,
             String username,
-            String failureReason,
+            LoginFailureReason failureReason,
             String tokenId
     ) {
         ClientRequestInfo requestInfo = ClientRequestInfo.current();
@@ -33,7 +34,7 @@ public class LoginLogService {
         entity.setResult(result);
         entity.setStaffId(staffId);
         entity.setUsername(username);
-        entity.setFailureReason(failureReason);
+        entity.setFailureReason(failureReason == null ? null : failureReason.getCode());
         entity.setTokenId(tokenId);
         entity.setIp(requestInfo.ip());
         entity.setUserAgent(requestInfo.userAgent());

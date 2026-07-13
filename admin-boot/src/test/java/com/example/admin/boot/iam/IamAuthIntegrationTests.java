@@ -81,6 +81,14 @@ class IamAuthIntegrationTests {
 
         JsonNode refresh = postJson("/api/iam/auth/refresh", "{\"refreshToken\":\"" + refreshToken + "\"}", null, 401);
         assertThat(refresh.path("code").asInt()).isEqualTo(401);
+        assertThat(jdbcTemplate.queryForObject("""
+                select failure_reason
+                from sys_login_log
+                where event_type = 'REFRESH'
+                  and result = 'FAIL'
+                order by id desc
+                limit 1
+                """, String.class)).isEqualTo("REFRESH_TOKEN_INVALID");
 
         String changedRefreshToken = changed.path("data").path("refreshToken").asText();
         JsonNode rotated = postJson("/api/iam/auth/refresh", "{\"refreshToken\":\"" + changedRefreshToken + "\"}", null, 200);
@@ -95,6 +103,26 @@ class IamAuthIntegrationTests {
     void protectedApiShouldReturn401WithoutToken() throws Exception {
         JsonNode response = postJson("/api/iam/auth/me", "{}", null, 401);
         assertThat(response.path("code").asInt()).isEqualTo(401);
+    }
+
+    @Test
+    void expiredRefreshTokenShouldRecordStableFailureReasonCode() throws Exception {
+        JsonNode login = postJson("/api/iam/auth/login", """
+            {"username":"admin","password":"Admin@123456"}
+            """, null, 200);
+        String refreshToken = login.path("data").path("refreshToken").asText();
+        jdbcTemplate.update("update sys_refresh_token set expire_time = '2000-01-01 00:00:00'");
+
+        postJson("/api/iam/auth/refresh", "{\"refreshToken\":\"" + refreshToken + "\"}", null, 401);
+
+        assertThat(jdbcTemplate.queryForObject("""
+                select failure_reason
+                from sys_login_log
+                where event_type = 'REFRESH'
+                  and result = 'FAIL'
+                order by id desc
+                limit 1
+                """, String.class)).isEqualTo("REFRESH_TOKEN_EXPIRED");
     }
 
     private JsonNode postJson(String path, String body, String accessToken, int expectedStatus) throws Exception {
