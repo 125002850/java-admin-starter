@@ -6,6 +6,7 @@ import com.demo.core.exception.CommonErrorCode;
 import com.demo.core.export.model.ExportTaskResult;
 import com.demo.core.export.spi.ExportTaskSubmitter;
 import com.demo.core.operator.OperatorContext;
+import com.demo.core.operator.OperatorUsernameResolver;
 import com.demo.core.query.ast.QueryAst;
 import com.demo.core.query.support.DynamicQueryGuard;
 import com.demo.core.web.PageResult;
@@ -48,6 +49,7 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
     private final DynamicQueryGuard dynamicQueryGuard;
     private final ExportRecordSceneQueryMapper exportRecordSceneQueryMapper;
     private final ExportRecordSceneQueryDefinition exportRecordSceneQueryDefinition;
+    private final OperatorUsernameResolver operatorUsernameResolver;
 
     public ExportCenterAppService(
             ExportExecutionService exportExecutionService,
@@ -56,7 +58,8 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
             ExportRecordService exportRecordService,
             DynamicQueryGuard dynamicQueryGuard,
             ExportRecordSceneQueryMapper exportRecordSceneQueryMapper,
-            ExportRecordSceneQueryDefinition exportRecordSceneQueryDefinition
+            ExportRecordSceneQueryDefinition exportRecordSceneQueryDefinition,
+            OperatorUsernameResolver operatorUsernameResolver
     ) {
         this.exportExecutionService = exportExecutionService;
         this.exportDownloadService = exportDownloadService;
@@ -65,13 +68,15 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         this.dynamicQueryGuard = dynamicQueryGuard;
         this.exportRecordSceneQueryMapper = exportRecordSceneQueryMapper;
         this.exportRecordSceneQueryDefinition = exportRecordSceneQueryDefinition;
+        this.operatorUsernameResolver = operatorUsernameResolver;
     }
 
     @Transactional
     public ExportSubmitRspDTO submit(ExportSubmitReqDTO reqDTO) {
         ExportRecordEntity entity = exportExecutionService.execute(reqDTO.getSceneCode(), reqDTO.getQuery());
         DownloadLinkIssuedResult downloadLinkIssuedResult = issueDownloadLink(entity);
-        return toSubmitRsp(downloadLinkIssuedResult.record(), downloadLinkIssuedResult.downloadUrl());
+        ExportRecordEntity record = downloadLinkIssuedResult.record();
+        return toSubmitRsp(record, downloadLinkIssuedResult.downloadUrl(), auditUsernames(List.of(record)));
     }
 
     @Override
@@ -87,7 +92,10 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         QueryAst queryAst = exportRecordSceneQueryMapper.map(reqDTO, currentOperatorId());
         dynamicQueryGuard.validate(queryAst, exportRecordSceneQueryDefinition.maxComplexityScore());
         Page<ExportRecordEntity> page = exportRecordService.pageMyRecords(queryAst, exportRecordSceneQueryDefinition);
-        List<ExportRecordRspDTO> records = page.getRecords().stream().map(this::toRecordRsp).toList();
+        Map<Long, String> usernames = auditUsernames(page.getRecords());
+        List<ExportRecordRspDTO> records = page.getRecords().stream()
+                .map(entity -> toRecordRsp(entity, usernames))
+                .toList();
         return new PageResult<>(records, page.getTotal());
     }
 
@@ -95,7 +103,7 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
     public ExportRecordRspDTO detail(Long recordId) {
         ExportRecordEntity entity = exportRecordService.getActiveRequired(recordId);
         ensureOwnedByCurrentOperator(entity);
-        return toRecordRsp(entity);
+        return toRecordRsp(entity, auditUsernames(List.of(entity)));
     }
 
     @Transactional
@@ -184,7 +192,7 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         return operatorId == null ? FALLBACK_OPERATOR_ID : operatorId;
     }
 
-    private ExportRecordRspDTO toRecordRsp(ExportRecordEntity entity) {
+    private ExportRecordRspDTO toRecordRsp(ExportRecordEntity entity, Map<Long, String> usernames) {
         ExportRecordStatus status = ExportRecordStatus.fromCode(String.valueOf(entity.getStatus()));
         ExportRecordRspDTO rspDTO = new ExportRecordRspDTO();
         rspDTO.setRecordId(entity.getId());
@@ -201,11 +209,15 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         rspDTO.setFinishedTime(entity.getFinishedTime());
         rspDTO.setExpireTime(entity.getExpireTime());
         rspDTO.setCreateTime(entity.getCreateTime());
-        rspDTO.setCreateBy(entity.getCreateBy());
+        rspDTO.setCreateBy(auditUsername(usernames, entity.getCreateBy()));
         return rspDTO;
     }
 
-    private ExportSubmitRspDTO toSubmitRsp(ExportRecordEntity entity, String downloadUrl) {
+    private ExportSubmitRspDTO toSubmitRsp(
+            ExportRecordEntity entity,
+            String downloadUrl,
+            Map<Long, String> usernames
+    ) {
         ExportRecordStatus status = ExportRecordStatus.fromCode(String.valueOf(entity.getStatus()));
         ExportSubmitRspDTO rspDTO = new ExportSubmitRspDTO();
         rspDTO.setRecordId(entity.getId());
@@ -222,7 +234,7 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         rspDTO.setFinishedTime(entity.getFinishedTime());
         rspDTO.setExpireTime(entity.getExpireTime());
         rspDTO.setCreateTime(entity.getCreateTime());
-        rspDTO.setCreateBy(entity.getCreateBy());
+        rspDTO.setCreateBy(auditUsername(usernames, entity.getCreateBy()));
         rspDTO.setDownloadUrl(downloadUrl);
         return rspDTO;
     }
@@ -253,6 +265,16 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         String downloadUrl = exportDownloadService.fetchDownloadUrl(entity, currentOperatorId());
         ExportRecordEntity refreshedRecord = exportRecordService.getActiveRequired(entity.getId());
         return new DownloadLinkIssuedResult(refreshedRecord, downloadUrl);
+    }
+
+    private Map<Long, String> auditUsernames(List<ExportRecordEntity> records) {
+        return operatorUsernameResolver.resolveUsernames(records.stream()
+                .map(ExportRecordEntity::getCreateBy)
+                .toList());
+    }
+
+    private String auditUsername(Map<Long, String> usernames, Long operatorId) {
+        return operatorId == null ? null : usernames.get(operatorId);
     }
 
     private record DownloadLinkIssuedResult(ExportRecordEntity record, String downloadUrl) {

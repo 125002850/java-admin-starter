@@ -1,5 +1,6 @@
 package com.demo.core.operator;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +24,11 @@ class CacheUserServiceTests {
     void setUp() {
         cacheUserMapper = Mockito.mock(CacheUserMapper.class);
         cacheUserService = new CacheUserService(cacheUserMapper);
+    }
+
+    @AfterEach
+    void tearDown() {
+        OperatorContext.clear();
     }
 
     @Test
@@ -50,19 +56,35 @@ class CacheUserServiceTests {
     }
 
     @Test
-    void should_return_real_name_map_for_non_empty_cached_users() {
+    void should_resolve_usernames_for_non_empty_cached_users() {
         CacheUserEntity user100 = new CacheUserEntity();
         user100.setUserId(100L);
-        user100.setRealName(" 张三 ");
+        user100.setUserName(" test-user ");
+        user100.setRealName("张三");
         CacheUserEntity user101 = new CacheUserEntity();
         user101.setUserId(101L);
-        user101.setRealName(" ");
+        user101.setUserName(" ");
+        user101.setRealName("李四");
         when(cacheUserMapper.selectBatchIds(argThat(ids -> ids.contains(100L) && ids.contains(101L) && ids.size() == 2)))
                 .thenReturn(List.of(user100, user101));
 
-        Map<Long, String> result = cacheUserService.getRealNameMap(List.of(100L, 101L, 0L));
+        Map<Long, String> result = cacheUserService.resolveUsernames(List.of(100L, 101L, 0L));
 
-        assertThat(result).containsEntry(100L, "张三");
+        assertThat(result).containsEntry(100L, "test-user");
         assertThat(result).doesNotContainKey(101L);
+    }
+
+    @Test
+    void should_prefer_current_operator_username_over_stale_cache() {
+        CacheUserEntity cachedUser = new CacheUserEntity();
+        cachedUser.setUserId(100L);
+        cachedUser.setUserName("old-user");
+        when(cacheUserMapper.selectBatchIds(argThat(ids -> ids.contains(100L))))
+                .thenReturn(List.of(cachedUser));
+        OperatorContext.set(100L, " current-user ", null);
+
+        Map<Long, String> result = cacheUserService.resolveUsernames(List.of(100L));
+
+        assertThat(result).containsEntry(100L, "current-user");
     }
 }

@@ -1,6 +1,8 @@
 package com.demo.mdm.dict.app;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.demo.core.mybatis.BaseEntity;
+import com.demo.core.operator.OperatorUsernameResolver;
 import com.demo.core.query.scene.DynamicQueryAstMapper;
 import com.demo.core.query.ast.QueryAst;
 import com.demo.core.query.support.DynamicQueryGuard;
@@ -27,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class DictAppService {
@@ -38,6 +42,7 @@ public class DictAppService {
     private final GlobalDictTypeSceneQueryDefinition globalDictTypeSceneQueryDefinition;
     private final GlobalDictItemSceneQueryMapper globalDictItemSceneQueryMapper;
     private final GlobalDictItemSceneQueryDefinition globalDictItemSceneQueryDefinition;
+    private final OperatorUsernameResolver operatorUsernameResolver;
 
     public DictAppService(
             DictService dictService,
@@ -45,7 +50,8 @@ public class DictAppService {
             GlobalDictTypeSceneQueryMapper globalDictTypeSceneQueryMapper,
             GlobalDictTypeSceneQueryDefinition globalDictTypeSceneQueryDefinition,
             GlobalDictItemSceneQueryMapper globalDictItemSceneQueryMapper,
-            GlobalDictItemSceneQueryDefinition globalDictItemSceneQueryDefinition
+            GlobalDictItemSceneQueryDefinition globalDictItemSceneQueryDefinition,
+            OperatorUsernameResolver operatorUsernameResolver
     ) {
         this.dictService = dictService;
         this.dynamicQueryGuard = dynamicQueryGuard;
@@ -53,6 +59,7 @@ public class DictAppService {
         this.globalDictTypeSceneQueryDefinition = globalDictTypeSceneQueryDefinition;
         this.globalDictItemSceneQueryMapper = globalDictItemSceneQueryMapper;
         this.globalDictItemSceneQueryDefinition = globalDictItemSceneQueryDefinition;
+        this.operatorUsernameResolver = operatorUsernameResolver;
     }
 
     @Transactional
@@ -65,17 +72,9 @@ public class DictAppService {
         QueryAst queryAst = globalDictTypeSceneQueryMapper.map(reqDTO);
         dynamicQueryGuard.validate(queryAst, globalDictTypeSceneQueryDefinition.maxComplexityScore());
         Page<GlobalDictTypeEntity> page = dictService.pageGlobalTypes(queryAst, globalDictTypeSceneQueryDefinition);
+        Map<Long, String> usernames = auditUsernames(page.getRecords());
         return new PageResult<>(page.getRecords().stream()
-                .map(type -> {
-                    GlobalDictTypeRspDTO dto = new GlobalDictTypeRspDTO(type.getId(), type.getDictTypeCode(), type.getDictTypeName());
-                    dto.setRemark(type.getRemark());
-                    dto.setStatus(type.getStatus().getCode());
-                    dto.setCreateTime(type.getCreateTime());
-                    dto.setUpdateTime(type.getUpdateTime());
-                    dto.setCreateBy(type.getCreateBy());
-                    dto.setUpdateBy(type.getUpdateBy());
-                    return dto;
-                })
+                .map(type -> toGlobalTypeRsp(type, usernames))
                 .collect(Collectors.toList()), page.getTotal());
     }
 
@@ -107,17 +106,9 @@ public class DictAppService {
     @Transactional(readOnly = true)
     public List<GlobalDictTypeRspDTO> listAllGlobalTypes(GlobalDictTypeListReqDTO reqDTO) {
         List<GlobalDictTypeEntity> types = dictService.listAllGlobalTypes(reqDTO.getKeyword());
+        Map<Long, String> usernames = auditUsernames(types);
         return types.stream()
-                .map(type -> {
-                    GlobalDictTypeRspDTO dto = new GlobalDictTypeRspDTO(type.getId(), type.getDictTypeCode(), type.getDictTypeName());
-                    dto.setRemark(type.getRemark());
-                    dto.setStatus(type.getStatus().getCode());
-                    dto.setCreateTime(type.getCreateTime());
-                    dto.setUpdateTime(type.getUpdateTime());
-                    dto.setCreateBy(type.getCreateBy());
-                    dto.setUpdateBy(type.getUpdateBy());
-                    return dto;
-                })
+                .map(type -> toGlobalTypeRsp(type, usernames))
                 .collect(Collectors.toList());
     }
 
@@ -126,18 +117,47 @@ public class DictAppService {
         QueryAst queryAst = DynamicQueryAstMapper.toPageQueryAst(reqDTO);
         dynamicQueryGuard.validate(queryAst, globalDictItemSceneQueryDefinition.maxComplexityScore());
         Page<GlobalDictItemEntity> page = dictService.pageGlobalItems(queryAst, globalDictItemSceneQueryDefinition);
+        Map<Long, String> usernames = auditUsernames(page.getRecords());
         return new PageResult<>(page.getRecords().stream()
-                .map(item -> {
-                    DictItemRspDTO dto = new DictItemRspDTO(item.getId(), item.getDictTypeCode(), item.getDictItemCode(), item.getDictItemName());
-                    dto.setSortOrder(item.getSortOrder());
-                    dto.setRemark(item.getRemark());
-                    dto.setStatus(item.getStatus().getCode());
-                    dto.setCreateTime(item.getCreateTime());
-                    dto.setUpdateTime(item.getUpdateTime());
-                    dto.setCreateBy(item.getCreateBy());
-                    dto.setUpdateBy(item.getUpdateBy());
-                    return dto;
-                })
+                .map(item -> toDictItemRsp(item, usernames))
                 .collect(Collectors.toList()), page.getTotal());
+    }
+
+    private GlobalDictTypeRspDTO toGlobalTypeRsp(
+            GlobalDictTypeEntity type,
+            Map<Long, String> usernames
+    ) {
+        GlobalDictTypeRspDTO dto = new GlobalDictTypeRspDTO(
+                type.getId(), type.getDictTypeCode(), type.getDictTypeName());
+        dto.setRemark(type.getRemark());
+        dto.setStatus(type.getStatus().getCode());
+        dto.setCreateTime(type.getCreateTime());
+        dto.setUpdateTime(type.getUpdateTime());
+        dto.setCreateBy(auditUsername(usernames, type.getCreateBy()));
+        dto.setUpdateBy(auditUsername(usernames, type.getUpdateBy()));
+        return dto;
+    }
+
+    private DictItemRspDTO toDictItemRsp(GlobalDictItemEntity item, Map<Long, String> usernames) {
+        DictItemRspDTO dto = new DictItemRspDTO(
+                item.getId(), item.getDictTypeCode(), item.getDictItemCode(), item.getDictItemName());
+        dto.setSortOrder(item.getSortOrder());
+        dto.setRemark(item.getRemark());
+        dto.setStatus(item.getStatus().getCode());
+        dto.setCreateTime(item.getCreateTime());
+        dto.setUpdateTime(item.getUpdateTime());
+        dto.setCreateBy(auditUsername(usernames, item.getCreateBy()));
+        dto.setUpdateBy(auditUsername(usernames, item.getUpdateBy()));
+        return dto;
+    }
+
+    private Map<Long, String> auditUsernames(List<? extends BaseEntity> entities) {
+        return operatorUsernameResolver.resolveUsernames(entities.stream()
+                .flatMap(entity -> Stream.of(entity.getCreateBy(), entity.getUpdateBy()))
+                .toList());
+    }
+
+    private String auditUsername(Map<Long, String> usernames, Long operatorId) {
+        return operatorId == null ? null : usernames.get(operatorId);
     }
 }

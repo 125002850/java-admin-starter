@@ -138,6 +138,17 @@ class OpenApiDocumentationTests {
     }
 
     @Test
+    void auditResponseSchemasShouldExposeUsernamesAsStrings() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.createBy.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.updateBy.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.createBy.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.updateBy.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.createBy.type").value("string"));
+    }
+
+    @Test
     void pageResultSchemasShouldRequireTotalAndList() throws Exception {
         String content = mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())

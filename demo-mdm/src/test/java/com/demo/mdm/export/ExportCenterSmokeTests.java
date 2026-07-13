@@ -12,6 +12,7 @@ import com.demo.core.export.support.SpringExportSceneRegistry;
 import com.demo.core.mybatis.CommonMetaObjectHandler;
 import com.demo.core.mybatis.MybatisPlusConfig;
 import com.demo.core.operator.OperatorContext;
+import com.demo.core.operator.OperatorUsernameResolver;
 import com.demo.core.query.executor.MybatisPlusQueryExecutor;
 import com.demo.core.query.support.DynamicQueryGuard;
 import com.demo.core.query.support.DynamicQuerySummaryRenderer;
@@ -183,7 +184,7 @@ class ExportCenterSmokeTests {
                 .andExpect(jsonPath("$.data.exportBizCode").value("mdm.global.dict.type.list"))
                 .andExpect(jsonPath("$.data.statusName").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.fileName").value(allOf(startsWith("全局字典类型-筛选-"), endsWith(".csv"))))
-                .andExpect(jsonPath("$.data.createBy").value(8801))
+                .andExpect(jsonPath("$.data.createBy").value("submit_exporter"))
                 .andExpect(jsonPath("$.data.downloadCount").value(1))
                 .andExpect(jsonPath("$.data.querySnapshotSummary").value("字典类型编码 等于 user_status"))
                 .andExpect(jsonPath("$.data.downloadUrl")
@@ -388,6 +389,7 @@ class ExportCenterSmokeTests {
 
     @Test
     void pageMyExports_should_support_dynamic_query_and_keep_owner_constraint() throws Exception {
+        OperatorContext.set(8802L, "分页人", null);
         jdbcTemplate.update("""
                 insert into sys_export_record_global (
                   id, export_biz_code, export_biz_name, file_name, file_type, status,
@@ -397,7 +399,7 @@ class ExportCenterSmokeTests {
                 """,
                 201L, "mdm.global.dict.type.list", "全局字典类型列表导出", "global-dict-types-a.csv", "csv", 2,
                 java.sql.Timestamp.valueOf("2026-06-10 00:00:00"), "{}", "ok", 0, 3600,
-                java.sql.Timestamp.valueOf("2026-06-03 08:00:00"), java.sql.Timestamp.valueOf("2026-06-03 08:00:00"), 0L, 0L
+                java.sql.Timestamp.valueOf("2026-06-03 08:00:00"), java.sql.Timestamp.valueOf("2026-06-03 08:00:00"), 8802L, 0L
         );
         jdbcTemplate.update("""
                 insert into sys_export_record_global (
@@ -408,7 +410,7 @@ class ExportCenterSmokeTests {
                 """,
                 202L, "mdm.global.dict.type.list", "全局字典类型列表导出", "global-dict-types-b.csv", "csv", 4,
                 java.sql.Timestamp.valueOf("2026-06-10 00:00:00"), "{}", "ok", 0, 3600,
-                java.sql.Timestamp.valueOf("2026-06-02 08:00:00"), java.sql.Timestamp.valueOf("2026-06-02 08:00:00"), 0L, 0L
+                java.sql.Timestamp.valueOf("2026-06-02 08:00:00"), java.sql.Timestamp.valueOf("2026-06-02 08:00:00"), 8802L, 0L
         );
         jdbcTemplate.update("""
                 insert into sys_export_record_global (
@@ -430,7 +432,7 @@ class ExportCenterSmokeTests {
                 """,
                 204L, "mdm.global.dict.type.list", "全局字典类型列表导出", "global-dict-types-deleted.csv", "csv", 2,
                 java.sql.Timestamp.valueOf("2026-06-10 00:00:00"), "{}", "ok", 0, 3600,
-                java.sql.Timestamp.valueOf("2026-06-05 08:00:00"), java.sql.Timestamp.valueOf("2026-06-05 08:00:00"), 0L, 1L
+                java.sql.Timestamp.valueOf("2026-06-05 08:00:00"), java.sql.Timestamp.valueOf("2026-06-05 08:00:00"), 8802L, 1L
         );
 
         mockMvc.perform(post("/api/mdm/export/my/page")
@@ -470,7 +472,31 @@ class ExportCenterSmokeTests {
                 .andExpect(jsonPath("$.data.total").value(2))
                 .andExpect(jsonPath("$.data.list.length()").value(2))
                 .andExpect(jsonPath("$.data.list[0].recordId").value(201))
+                .andExpect(jsonPath("$.data.list[0].createBy").value("page_exporter"))
                 .andExpect(jsonPath("$.data.list[1].recordId").value(202));
+    }
+
+    @Test
+    void detail_should_return_audit_username() throws Exception {
+        OperatorContext.set(8802L, "详情查询人", null);
+        insertExportRecord(
+                205L,
+                "mdm.global.dict.type.list",
+                "全局字典类型列表导出",
+                "global-dict-types-detail.csv",
+                "export/source/global-dict-types-detail.csv",
+                128L,
+                8802L
+        );
+
+        mockMvc.perform(post("/api/mdm/export/detail")
+                        .header("X-User-Id", "8802")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"recordId\":205}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.recordId").value(205))
+                .andExpect(jsonPath("$.data.createBy").value("page_exporter"));
     }
 
     @Test
@@ -561,6 +587,14 @@ class ExportCenterSmokeTests {
         @Bean
         ExportFileAccessor exportFileAccessor(InMemoryExportGateway gateway) {
             return gateway;
+        }
+
+        @Bean
+        OperatorUsernameResolver operatorUsernameResolver() {
+            return operatorIds -> Map.of(
+                    8801L, "submit_exporter",
+                    8802L, "page_exporter"
+            );
         }
     }
 

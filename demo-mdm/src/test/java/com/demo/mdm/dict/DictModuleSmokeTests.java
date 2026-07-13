@@ -3,6 +3,7 @@ package com.demo.mdm.dict;
 import com.demo.core.exception.GlobalExceptionHandler;
 import com.demo.core.mybatis.CommonMetaObjectHandler;
 import com.demo.core.mybatis.MybatisPlusConfig;
+import com.demo.core.operator.OperatorUsernameResolver;
 import com.demo.core.query.executor.MybatisPlusQueryExecutor;
 import com.demo.core.query.support.DynamicQueryGuard;
 import com.demo.core.query.support.QueryComplexityScorer;
@@ -22,11 +23,13 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -163,6 +166,23 @@ class DictModuleSmokeTests {
                 .andExpect(jsonPath("$.msg").value("ok"))
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.list.length()").value(0));
+    }
+
+    @Test
+    void listGlobalTypes_should_return_audit_usernames() throws Exception {
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global "
+                        + "(id, dict_type_code, dict_type_name, create_time, update_time, create_by, update_by, deleted) "
+                        + "values (76, 'audit_type', '审计字典', current_timestamp, current_timestamp, 1, 1, 0)"
+        );
+
+        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"pageNo\":1,\"pageSize\":10}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.list[0].createBy").value("admin"))
+                .andExpect(jsonPath("$.data.list[0].updateBy").value("admin"));
     }
 
     @Test
@@ -575,5 +595,10 @@ class DictModuleSmokeTests {
             GlobalExceptionHandler.class
     })
     static class TestApplication {
+
+        @Bean
+        OperatorUsernameResolver operatorUsernameResolver() {
+            return operatorIds -> Map.of(1L, "admin");
+        }
     }
 }
