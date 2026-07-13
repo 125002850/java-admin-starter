@@ -54,8 +54,8 @@ class InitTemplateProjectTests(unittest.TestCase):
             self.assertIn("${user.home}/.track-bench/uploads", application_dev_yml)
 
             readme = (target_dir / "README.md").read_text(encoding="utf-8")
-            self.assertNotIn("java-demo", readme)
-            self.assertNotIn("com.demo", readme)
+            self.assertNotIn("java-admin-starter", readme)
+            self.assertNotIn("com.example.admin", readme)
 
             head_check = subprocess.run(
                 ["git", "rev-parse", "--verify", "HEAD"],
