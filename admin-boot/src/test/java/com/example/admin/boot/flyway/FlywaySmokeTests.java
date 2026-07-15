@@ -155,6 +155,63 @@ class FlywaySmokeTests {
         assertThat(queryCount("select count(*) from sys_role where role_code = 'SUPER_ADMIN' and data_scope_type = 'ALL' and deleted = 0")).isEqualTo(1);
         assertThat(queryCount("select count(*) from sys_staff_role where staff_id = 1 and role_id = 1 and deleted = 0")).isEqualTo(1);
         assertThat(queryCount("select count(*) from sys_role_menu where role_id = 1 and deleted = 0")).isGreaterThan(0);
+        assertThat(queryCount("""
+                select count(*)
+                from sys_menu
+                where parent_id is null
+                  and deleted = 0
+                  and (
+                    (menu_code = 'basic_settings' and menu_name = '基础设置' and route_path = '/dashboard/basic-settings')
+                    or (menu_code = 'system_management' and menu_name = '系统管理' and route_path = '/dashboard/system-management')
+                    or (menu_code = 'log_management' and menu_name = '日志管理' and route_path = '/dashboard/log-management')
+                  )
+                """))
+            .isEqualTo(3);
+        assertThat(queryCount("""
+                select count(*)
+                from sys_menu child
+                join sys_menu parent on parent.id = child.parent_id and parent.deleted = 0
+                where parent.menu_code = 'basic_settings'
+                  and child.menu_code in ('iam_staff', 'iam_dept', 'iam_role', 'iam_menu')
+                  and child.route_path like '/dashboard/basic-settings/%'
+                  and child.component_path = child.route_path
+                  and child.deleted = 0
+                """))
+            .isEqualTo(4);
+        assertThat(queryCount("""
+                select count(*)
+                from sys_menu child
+                join sys_menu parent on parent.id = child.parent_id and parent.deleted = 0
+                where parent.menu_code = 'system_management'
+                  and child.menu_code in ('mdm_dict', 'export_center')
+                  and child.route_path like '/dashboard/system-management/%'
+                  and child.component_path = child.route_path
+                  and child.deleted = 0
+                """))
+            .isEqualTo(2);
+        assertThat(queryCount("""
+                select count(*)
+                from sys_menu child
+                join sys_menu parent on parent.id = child.parent_id and parent.deleted = 0
+                where parent.menu_code = 'log_management'
+                  and child.menu_code in ('iam_login_log', 'iam_operation_log')
+                  and child.route_path like '/dashboard/log-management/%'
+                  and child.component_path = child.route_path
+                  and child.deleted = 0
+                """))
+            .isEqualTo(2);
+        assertThat(queryCount("select count(*) from sys_menu where menu_code = 'file_storage' and deleted = 0"))
+            .isZero();
+        assertThat(queryCount("""
+                select count(*)
+                from sys_menu child
+                join sys_menu parent on parent.id = child.parent_id and parent.deleted = 0
+                where parent.menu_code = 'system_management'
+                  and child.menu_code = 'export_center'
+                  and child.menu_name = '导出中心'
+                  and child.deleted = 0
+                """))
+            .isEqualTo(1);
     }
 
     @Test
