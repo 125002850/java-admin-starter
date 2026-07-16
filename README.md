@@ -206,7 +206,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 | 项目 | 值 |
 |------|----|
 | Compose 项目标识 | `java-admin-starter-main-iam` |
-| MySQL 端口 | `3307` |
+| MySQL 端口 | `3300` |
 | 数据库名 | `java_admin_starter_iam` |
 | 用户名 | `root` |
 | 密码 | `root` |
