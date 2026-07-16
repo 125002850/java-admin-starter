@@ -51,7 +51,7 @@ class InitTemplateProjectTests(unittest.TestCase):
             application_dev_yml = (
                 target_dir / "track-bench-boot/src/main/resources/application-dev.yml"
             ).read_text(encoding="utf-8")
-            self.assertIn("jdbc:mysql://127.0.0.1:3307/track_bench", application_dev_yml)
+            self.assertIn("jdbc:mysql://127.0.0.1:3300/track_bench", application_dev_yml)
             self.assertIn("${TRACK_BENCH_DATASOURCE_URL:", application_dev_yml)
             self.assertIn("${user.home}/.track-bench/uploads", application_dev_yml)
             self.assertNotIn("JAVA_ADMIN_STARTER", application_dev_yml)
@@ -143,7 +143,7 @@ class InitTemplateProjectTests(unittest.TestCase):
             application_dev_yml = (
                 target_dir / "admin-service-boot/src/main/resources/application-dev.yml"
             ).read_text(encoding="utf-8")
-            self.assertIn("jdbc:mysql://127.0.0.1:3307/admin_service_iam", application_dev_yml)
+            self.assertIn("jdbc:mysql://127.0.0.1:3300/admin_service_iam", application_dev_yml)
             self.assertNotIn("admin_service_service", application_dev_yml)
 
 

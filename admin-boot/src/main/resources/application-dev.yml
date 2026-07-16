@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${JAVA_ADMIN_STARTER_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3307/java_admin_starter_iam?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
+    url: ${JAVA_ADMIN_STARTER_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3300/java_admin_starter_iam?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${JAVA_ADMIN_STARTER_DATASOURCE_USERNAME:root}
     password: ${JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD:root}
     hikari:
