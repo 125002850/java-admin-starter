@@ -4,11 +4,24 @@
 
 | 模块 | 职责 | 约束 |
 |---|---|---|
-| `admin-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
-| `admin-core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
-| `admin-iam` | 本地身份、鉴权、权限、员工、部门、角色、菜单和审计日志 | 不依赖 `admin-system` 实现包；认证入口使用 Bearer JWT |
-| `admin-system` | 全局字典、导出中心、文件存储和员工兼容查询 | 依赖 `admin-core`；外部 SDK 只能出现在对应 provider 或 client 适配层 |
-| `admin-{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
+| `boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
+| `core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
+| `iam` | 本地身份、鉴权、权限、员工、部门、角色、菜单和审计日志 | 不依赖 `system` 实现包；认证入口使用 Bearer JWT |
+| `system` | 全局字典、导出中心、文件存储和员工兼容查询 | 依赖 `core`；外部 SDK 只能出现在对应 provider 或 client 适配层 |
+| `{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
+
+## 命名空间
+
+- `java-admin-starter` 仓库基线 Maven `groupId` 与 Java 根包固定为 `com.oigit.admin`。
+- 包声明、源码目录、组件扫描、Mapper 扫描、ArchUnit 规则和内部 Maven 依赖必须使用同一根命名空间。
+- 通过 `scripts/init_template_project.py --package` 生成业务项目时，必须把基线命名空间完整替换为目标包名，生成结果不得残留 `com.oigit.admin`。
+
+## 模块命名
+
+- 模块目录名与 Maven `artifactId` 必须保持一致。
+- 基础模块固定使用 `boot`、`core`、`iam`、`system`，具体业务模块直接使用业务域名，例如 `order`、`inventory`。
+- 不重复添加 `admin-` 或项目名前缀；管理后台命名空间由仓库名、Maven `groupId` 和 Java 包名表达。
+- 只有同一 reactor 确实同时承载多个端且存在同名业务模块时，才允许使用 `admin-`、`customer-` 等端标识消除歧义。
 
 ## 调用链路
 
@@ -21,14 +34,14 @@ Controller -> AppService -> Domain/Service -> Infra/Mapper
 - `controller` 禁止绕过 `AppService` 直接调用 `service`、`infra` 或 `mapper`。
 - `AppService` 是事务边界所在层。
 - `AppService` 禁止直接面向 Web DTO 编写持久化逻辑，持久化访问统一下沉到 `service` / `infra`。
-- 业务链路对外部厂商能力的调用必须通过 `admin-system` 内对应 provider / client 适配层。
+- 业务链路对外部厂商能力的调用必须通过 `system` 内对应 provider / client 适配层。
 
 ## 分包规范
 
 标准业务模块包结构：
 
 ```text
-com.example.admin.{module}
+com.oigit.admin.{module}
 ├── controller
 │   └── dto
 ├── app
@@ -58,16 +71,16 @@ com.example.admin.{module}
 
 ## 当前模块能力映射
 
-- 全局字典能力位于 `admin-system/dict`，接口统一暴露 `/api/mdm/dict/global/**`。
-- 导出中心能力位于 `admin-system/export`，接口统一暴露 `/api/mdm/export/**`。
-- 员工信息查询能力位于 `admin-system/staff`，接口统一暴露 `/api/staff/**`。
-- 文件存储能力位于 `admin-system/file`，接口统一暴露 `/api/file/storage/**`。
+- 全局字典能力位于 `system/dict`，接口统一暴露 `/api/mdm/dict/global/**`。
+- 导出中心能力位于 `system/export`，接口统一暴露 `/api/mdm/export/**`。
+- 员工信息查询能力位于 `system/staff`，接口统一暴露 `/api/staff/**`。
+- 文件存储能力位于 `system/file`，接口统一暴露 `/api/file/storage/**`。
 
 ## 文件存储模块
 
-- 文件能力位于 `admin-system/file`，对外统一暴露 `/api/file/storage/**`。
+- 文件能力位于 `system/file`，对外统一暴露 `/api/file/storage/**`。
 - provider 通过 `platform.file.storage.type=local|qiniu|minio` 切换。
-- `qiniu` / `minio` SDK 只允许出现在 `admin-system` 的 file provider 适配层。
+- `qiniu` / `minio` SDK 只允许出现在 `system` 的 file provider 适配层。
 - 业务链路保持 `Controller -> AppService -> Service -> Provider`。
 - 当前阶段对象元信息只存在于对象存储，不新增数据库表。
 - 七牛真实网络集成测试使用 `qiniu-it` profile 和 `FILE_STORAGE_QINIU_*` 环境变量。
@@ -75,11 +88,11 @@ com.example.admin.{module}
 
 ## 导出与下载中心
 
-- 与具体业务解耦的导出原生抽象放在 `admin-core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
-- 外部文件落盘与访问能力放在 `admin-system/file`，导出框架不得直接依赖厂商 SDK。
-- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `admin-system/export`。
+- 与具体业务解耦的导出原生抽象放在 `core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
+- 外部文件落盘与访问能力放在 `system/file`，导出框架不得直接依赖厂商 SDK。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `system/export`。
 - 具体业务导出实现放在具体业务模块，例如参数组装、数据查询、列定义、导出内容构建。
-- 协作链路：业务模块声明导出场景并提供 handler，`admin-system/export` 编排与记录生命周期，`admin-system/file` 负责文件存储，`admin-core` 负责抽象契约。
+- 协作链路：业务模块声明导出场景并提供 handler，`system/export` 编排与记录生命周期，`system/file` 负责文件存储，`core` 负责抽象契约。
 
 ## 不提前做
 

@@ -5,13 +5,15 @@
 ## 当前完成状态
 
 - 当前工作分支：`main`
-- `admin-boot` / `admin-core` / `admin-iam` / `admin-system` 底座已完成。
+- `boot` / `core` / `iam` / `system` 底座已完成。
 - `dev` profile 支持通过 `JAVA_ADMIN_STARTER_DATASOURCE_*` 环境变量连接独立 MySQL；未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL。
-- `admin-iam` 已落地本地登录、JWT、refresh token 轮换、员工、部门、角色、菜单/按钮权限、数据权限、登录日志和操作日志。
-- `admin-system` 承载后台系统管理与平台能力：全局字典、导出中心、SSO 员工查询兼容接口、文件存储。
+- `iam` 已落地本地登录、JWT、refresh token 轮换、员工、部门、角色、菜单/按钮权限、数据权限、登录日志和操作日志。
+- `system` 承载后台系统管理与平台能力：全局字典、导出中心、SSO 员工查询兼容接口、文件存储。
 - 文件存储支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换。
-- 动态查询 DSL 已在 `admin-core` 落地，当前接入全局字典类型、字典项和导出记录分页场景。
-- 顶层模块边界约定为：`admin-boot` 负责启动，`admin-core` 负责底层通用能力与原生抽象，`admin-iam` 承载本地身份权限，`admin-system` 承载系统管理与平台能力，`admin-{biz}` 承载具体业务。
+- 动态查询 DSL 已在 `core` 落地，当前接入全局字典类型、字典项和导出记录分页场景。
+- 顶层模块边界约定为：`boot` 负责启动，`core` 负责底层通用能力与原生抽象，`iam` 承载本地身份权限，`system` 承载系统管理与平台能力，`{biz}` 承载具体业务。
+- 模块目录名与 Maven `artifactId` 保持一致，统一使用仓库内语义名，不重复添加 `admin-` 或项目名前缀；管理后台命名空间由仓库名、`groupId` 和 Java 包名表达。
+- 仓库基线 Maven `groupId` 与 Java 根包统一使用 `com.oigit.admin`；通过初始化脚本生成业务项目时，由 `--package` 替换为目标项目命名空间。
 
 ## 架构总览
 
@@ -20,12 +22,12 @@
                                 │
                                 ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                                  admin-boot                                   │
+│                                     boot                                     │
 │                       Spring Boot 启动 · 配置装配 · Bean 扫描                 │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌─────────────────────────────┐  ┌───────────────────────────────────────┐  │
-│  │          admin-iam            │  │             admin-system               │  │
+│  │             iam             │  │                system                 │  │
 │  │       本地身份与权限          │  │       系统管理与平台能力               │  │
 │  │  auth / staff / dept / role  │  │  dict / export / file / staff compat │  │
 │  │  menu / permission / logs    │  │  local / qiniu / minio providers     │  │
@@ -34,7 +36,7 @@
 │                 └──────────────┬───────────────────────┘                      │
 │                                ▼                                              │
 │                         ┌────────────────┐                                    │
-│                         │   admin-core    │                                    │
+│                         │      core      │                                    │
 │                         │ R / Exception  │                                    │
 │                         │ Trace / Query  │                                    │
 │                         │ Export SPI     │                                    │
@@ -55,12 +57,12 @@
 **模块依赖方向**：
 
 ```
-admin-boot
-   ├──▶ admin-iam ─────▶ admin-core
+boot
+   ├──▶ iam ─────▶ core
    │          └───────▶ MySQL 8
    │
-   └──▶ admin-system ──▶ admin-core
-              ├──────▶ admin-iam（权限标注）
+   └──▶ system ──▶ core
+              ├──────▶ iam（权限标注）
               ├──────▶ MySQL 8
               └──────▶ 对象存储（Local / Qiniu / MinIO）
 ```
@@ -93,10 +95,10 @@ java-admin-starter/
 ├── docs/
 │   └── prd/                                         # 当前产品需求基线
 │
-├── admin-boot/                                       # 启动模块：Spring Boot 装配、配置、启动入口
+├── boot/                                            # 启动模块：Spring Boot 装配、配置、启动入口
 │   └── src/
 │       ├── main/
-│       │   ├── java/com/example/admin/boot/
+│       │   ├── java/com/oigit/admin/boot/
 │       │   │   ├── AdminBootApplication.java         # 启动类
 │       │   │   └── config/                          # OpenAPI 等启动层配置
 │       │   └── resources/
@@ -106,11 +108,11 @@ java-admin-starter/
 │       │       ├── logback-spring.xml               # 日志配置
 │       │       └── db/migration/                    # Flyway SQL 迁移脚本
 │       └── test/
-│           ├── java/com/example/admin/boot/                  # 启动层契约、OpenAPI、Flyway 与 IAM 集成测试
+│           ├── java/com/oigit/admin/boot/                  # 启动层契约、OpenAPI、Flyway 与 IAM 集成测试
 │           └── resources/                           # 测试 profile 与 Mockito 配置
 │
-├── admin-core/                                       # 全局共享基础设施与业务无关的底层抽象
-│   └── src/main/java/com/example/admin/core/
+├── core/                                            # 全局共享基础设施与业务无关的底层抽象
+│   └── src/main/java/com/oigit/admin/core/
 │       ├── web/                                     # R<T>、PageReqDTO、PageResult
 │       ├── exception/                               # 错误码、BizException、全局异常处理
 │       ├── validation/                              # Bean Validation 集成
@@ -121,8 +123,8 @@ java-admin-starter/
 │       ├── export/                                  # 导出框架 SPI 与通用模型
 │       └── query/                                   # 动态查询 DSL 框架
 │
-├── admin-iam/                                        # 本地 IAM 模块：认证、员工、部门、角色、菜单、权限和日志
-│   └── src/main/java/com/example/admin/iam/
+├── iam/                                             # 本地 IAM 模块：认证、员工、部门、角色、菜单、权限和日志
+│   └── src/main/java/com/oigit/admin/iam/
 │       ├── controller/                              # IAM HTTP 接口
 │       ├── dto/                                     # IAM ReqDTO / RspDTO
 │       ├── app/                                     # 事务边界与流程编排
@@ -131,8 +133,8 @@ java-admin-starter/
 │       ├── infra/                                   # Entity 与 Mapper
 │       └── enums/                                   # IAM 错误码和业务枚举
 │
-└── admin-system/                                     # 系统管理与平台能力模块
-    └── src/main/java/com/example/admin/
+└── system/                                          # 系统管理与平台能力模块
+    └── src/main/java/com/oigit/admin/
         ├── dict/                                    # 全局字典
         ├── export/                                  # 导出中心与导出记录生命周期
         ├── file/                                    # 文件存储与 local/qiniu/minio provider
@@ -143,11 +145,11 @@ java-admin-starter/
 
 | 模块 | 职责 | 约束 |
 |------|------|------|
-| `admin-boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
-| `admin-core` | 全局通用基础设施，以及与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
-| `admin-iam` | 本地身份与权限能力，负责认证、员工、部门、角色、菜单、权限、数据权限和审计日志 | 不依赖 SSO；不放通用主数据或第三方 provider |
-| `admin-system` | 后台系统管理与平台能力，负责全局字典、导出中心、员工兼容查询、文件存储等能力 | 外部厂商 SDK 只能出现在对应 provider 适配层 |
-| `admin-{biz}` | 其余具体业务模块 | 只放本业务域实现；如需导出、文件、字典等能力，应复用 `core/system` 提供的基础抽象与平台服务 |
+| `boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
+| `core` | 全局通用基础设施，以及与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
+| `iam` | 本地身份与权限能力，负责认证、员工、部门、角色、菜单、权限、数据权限和审计日志 | 不依赖 SSO；不放通用主数据或第三方 provider |
+| `system` | 后台系统管理与平台能力，负责全局字典、导出中心、员工兼容查询、文件存储等能力 | 外部厂商 SDK 只能出现在对应 provider 适配层 |
+| `{biz}` | 其余具体业务模块 | 只放本业务域实现；如需导出、文件、字典等能力，应复用 `core/system` 提供的基础抽象与平台服务 |
 
 ## 技术栈
 
@@ -168,7 +170,10 @@ java-admin-starter/
 
 ## 工程规范
 
-详细开发规范已拆分到本仓库 skill：`.agents/skills/oig-java-development/`。后续写代码或提交前，先读取 `.agents/skills/oig-java-development/SKILL.md`，再按改动类型读取对应 `references/`。
+- 详细开发规范位于 `.agents/skills/oig-java-development/`。
+- 每个独立开发任务首次修改文件前，先读取一次 `SKILL.md`，再按改动类型读取对应 `references/`。
+- 当前任务中，已读取的 `SKILL.md` 和对应 reference 可直接复用，无需在每次文件修改或提交前重复读取。
+- 仅在新增改动类型、当前任务明确修改了相应规范文件，或当前上下文已无法保留其完整内容时，补读或重新读取。
 
 核心入口：
 
@@ -204,10 +209,10 @@ export JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD='<从本地安全配置读取>'
 docker compose up -d
 
 # 2. 先在仓库根目录构建并安装启动模块依赖的兄弟模块
-mvn -pl admin-boot -am install -DskipTests
+mvn -pl boot -am install -DskipTests
 
 # 3. 以 dev profile 启动应用
-cd admin-boot
+cd boot
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
@@ -260,7 +265,7 @@ export IAM_CLIENT_IP_TRUSTED_PROXY_CIDRS='127.0.0.1/32,10.20.30.0/24'
 明确不包含：
 
 - `track-bench-postloan` 模块
-- `com.example.admin.postloan.*` / `com.trackbench.postloan.*`
+- `com.oigit.admin.postloan.*` / `com.trackbench.postloan.*`
 - `tb_track_*`、客户工作台、订单、库存、贷后跟踪、附件业务表
 - `/api/postloan/**`
 
@@ -276,7 +281,7 @@ mysql --protocol=tcp -h 192.168.186.154 -P 32425 -u oig -p \
 如需单独执行迁移，可在启动模块下运行：
 
 ```bash
-cd admin-boot
+cd boot
 mvn flyway:migrate
 ```
 
@@ -293,9 +298,9 @@ docker compose down -v
 
 ## 数据库迁移
 
-- 版本化迁移文件统一放在 `admin-boot/src/main/resources/db/migration/`。
+- 版本化迁移文件统一放在 `boot/src/main/resources/db/migration/`。
 - 当前历史迁移已演进到 `V20260713113400__drop_legacy_sso_user_cache.sql`。
-- 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名；结构变更通过新增下一版本 migration 演进。
+- 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名文件名或内容；结构变更通过新增下一版本 migration 演进。经批准的模块目录整体重命名只允许随目录原样搬迁。
 - 仓库 `pre-commit` 通过 `scripts/check-migrations.sh` 拦截历史版本化 migration 的修改。
 - 完整迁移规范见 `.agents/skills/oig-java-development/references/database-migrations.md`。
 
