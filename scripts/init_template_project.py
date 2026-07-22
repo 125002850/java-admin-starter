@@ -31,6 +31,7 @@ LEGACY_DEV_DATABASE_NAME = "java_admin_starter_sso"
 LEGACY_TEST_DATABASE_NAME = "java_admin_starter_test"
 LEGACY_REMOTE_DATABASE_NAME = "basic_platform_sso"
 GENERATED_TEXT_REPLACEMENTS = {
+    "当前 `feature/sso` 分支": "当前分支",
     "- 当前工作分支：`feature/sso`": "- 当前工作分支：`main`",
     "feature/sso gateway-SSO conventions": "gateway-SSO conventions",
     "只描述当前 `feature/sso` 网关 SSO 基座": "只描述当前网关 SSO 基座",
@@ -158,23 +159,22 @@ def copy_template(source_root: Path, target_dir: Path) -> None:
     )
 
 
-def module_suffix(module_name: str, source_project_name: str) -> str:
+def canonical_module_name(module_name: str, source_project_name: str) -> str:
     project_prefix = f"{source_project_name}-"
     if module_name.startswith(project_prefix):
-        return module_name[len(source_project_name) :]
+        return module_name[len(project_prefix) :]
     if module_name.startswith("admin-"):
-        return module_name[len("admin") :]
-    raise ValueError(f"Maven 模块名不符合模板命名约定: {module_name}")
+        return module_name[len("admin-") :]
+    return module_name
 
 
 def rename_module_directories(
     project_root: Path,
     source_project_name: str,
-    target_project_name: str,
     module_names: tuple[str, ...],
 ) -> dict[str, str]:
     mapping = {
-        module_name: f"{target_project_name}{module_suffix(module_name, source_project_name)}"
+        module_name: canonical_module_name(module_name, source_project_name)
         for module_name in module_names
     }
     if len(set(mapping.values())) != len(mapping):
@@ -201,10 +201,10 @@ def find_boot_module_name(
     boot_modules = [
         module_name
         for module_name in metadata.module_names
-        if module_suffix(module_name, metadata.project_name) == "-boot"
+        if canonical_module_name(module_name, metadata.project_name) == "boot"
     ]
     if len(boot_modules) != 1:
-        raise ValueError("模板必须且只能包含一个 *-boot 模块")
+        raise ValueError("模板必须且只能包含一个 boot 模块")
     return module_mapping[boot_modules[0]]
 
 
@@ -421,7 +421,6 @@ def main() -> int:
     module_mapping = rename_module_directories(
         target_dir,
         metadata.project_name,
-        target_project_name,
         metadata.module_names,
     )
     for module_dir_name in module_mapping.values():
