@@ -3,7 +3,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example.admin</groupId>
+    <groupId>com.oigit.admin</groupId>
     <artifactId>java-admin-starter</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
@@ -98,10 +98,10 @@
     </dependencyManagement>
 
     <modules>
-        <module>admin-boot</module>
-        <module>admin-core</module>
-        <module>admin-iam</module>
-        <module>admin-system</module>
+        <module>boot</module>
+        <module>core</module>
+        <module>iam</module>
+        <module>system</module>
     </modules>
 
     <build>

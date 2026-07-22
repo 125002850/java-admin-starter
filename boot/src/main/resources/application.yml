@@ -1,0 +1,78 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: java-admin-starter
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+knife4j:
+  enable: true
+
+platform:
+  iam:
+    jwt-secret: ${IAM_JWT_SECRET}
+    access-token-ttl-minutes: ${IAM_ACCESS_TOKEN_TTL_MINUTES:30}
+    refresh-token-ttl-days: ${IAM_REFRESH_TOKEN_TTL_DAYS:14}
+    failure-delay-millis: ${IAM_FAILURE_DELAY_MILLIS:500}
+    client-ip:
+      trusted-proxy-cidrs: ${IAM_CLIENT_IP_TRUSTED_PROXY_CIDRS:}
+  sso-staff:
+    enabled: ${SSO_STAFF_ENABLED:false}
+  operator:
+    gateway-filter-enabled: ${GATEWAY_OPERATOR_FILTER_ENABLED:false}
+  file:
+    storage:
+      type: ${FILE_STORAGE_TYPE:local}
+      zone-id: ${FILE_STORAGE_ZONE_ID:Asia/Shanghai}
+      local:
+        root-dir: ${java.io.tmpdir}/java-admin-starter/uploads
+        base-url: /local-files
+      qiniu:
+        access-key: ${FILE_STORAGE_QINIU_ACCESS_KEY:}
+        secret-key: ${FILE_STORAGE_QINIU_SECRET_KEY:}
+        bucket-name: ${FILE_STORAGE_QINIU_BUCKET_NAME:}
+        base-url: ${FILE_STORAGE_QINIU_BASE_URL:}
+        upload-host: ${FILE_STORAGE_QINIU_UPLOAD_HOST:https://upload.qiniup.com}
+        private-bucket: ${FILE_STORAGE_QINIU_PRIVATE_BUCKET:true}
+        upload-token-expire-seconds: ${FILE_STORAGE_QINIU_UPLOAD_TOKEN_EXPIRE_SECONDS:600}
+        download-url-expire-seconds: ${FILE_STORAGE_QINIU_DOWNLOAD_URL_EXPIRE_SECONDS:1200}
+        region: ${FILE_STORAGE_QINIU_REGION:huadong}
+        connect-timeout: ${FILE_STORAGE_QINIU_CONNECT_TIMEOUT:10}
+        read-timeout: ${FILE_STORAGE_QINIU_READ_TIMEOUT:30}
+        write-timeout: ${FILE_STORAGE_QINIU_WRITE_TIMEOUT:0}
+      minio:
+        endpoint: ${FILE_STORAGE_MINIO_ENDPOINT:}
+        access-key: ${FILE_STORAGE_MINIO_ACCESS_KEY:}
+        secret-key: ${FILE_STORAGE_MINIO_SECRET_KEY:}
+        bucket-name: ${FILE_STORAGE_MINIO_BUCKET_NAME:}
+        base-url: ${FILE_STORAGE_MINIO_BASE_URL:}
+        private-bucket: ${FILE_STORAGE_MINIO_PRIVATE_BUCKET:true}
+        download-url-expire-seconds: ${FILE_STORAGE_MINIO_DOWNLOAD_URL_EXPIRE_SECONDS:1200}
+        region: ${FILE_STORAGE_MINIO_REGION:}
+        connect-timeout: ${FILE_STORAGE_MINIO_CONNECT_TIMEOUT:10}
+        read-timeout: ${FILE_STORAGE_MINIO_READ_TIMEOUT:30}
+        write-timeout: ${FILE_STORAGE_MINIO_WRITE_TIMEOUT:0}
+
+oigit:
+  appcik:
+    sso:
+      server-addr: ${OIGIT_APPCIK_SSO_SERVER_ADDR:}
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-enums-package: com.oigit.admin
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: "CAST(UNIX_TIMESTAMP(NOW(6)) * 1000000 AS UNSIGNED)"
+      logic-not-delete-value: 0
+      id-type: auto
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
