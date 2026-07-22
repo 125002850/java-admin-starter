@@ -122,7 +122,7 @@ class ModuleBoundaryTests {
     @Test
     void no_controller_must_expose_api_system_paths() {
         ArchRule rule = noClasses()
-                .should(haveRequestMappingStartingWith("/api/system"));
+                .should(haveForbiddenRequestMappingStartingWith("/api/system", "/api/system/dict"));
         rule.check(allClasses);
     }
 
@@ -147,6 +147,32 @@ class ModuleBoundaryTests {
         rule.check(allClasses);
     }
 
+    private static ArchCondition<JavaClass> haveForbiddenRequestMappingStartingWith(String forbiddenPrefix, String... allowedPrefixes) {
+        return new ArchCondition<>("have @RequestMapping starting with " + forbiddenPrefix + " (excluding allowed prefixes)") {
+            @Override
+            public void check(JavaClass javaClass, ConditionEvents events) {
+                javaClass.tryGetAnnotationOfType(RequestMapping.class).ifPresent(rm -> {
+                    for (String path : rm.value()) {
+                        if (!path.startsWith(forbiddenPrefix)) {
+                            continue;
+                        }
+                        boolean allowed = false;
+                        for (String allowedPrefix : allowedPrefixes) {
+                            if (path.startsWith(allowedPrefix)) {
+                                allowed = true;
+                                break;
+                            }
+                        }
+                        if (!allowed) {
+                            events.add(SimpleConditionEvent.violated(javaClass,
+                                    javaClass.getName() + " exposes " + path));
+                        }
+                    }
+                });
+            }
+        };
+    }
+
     private static ArchCondition<JavaClass> haveRequestMappingStartingWith(String forbiddenPrefix) {
         return new ArchCondition<>("have @RequestMapping starting with " + forbiddenPrefix) {
             @Override
@@ -164,13 +190,13 @@ class ModuleBoundaryTests {
     }
 
     private static ArchCondition<JavaClass> haveNonGlobalDictRequestMapping() {
-        return new ArchCondition<>("have @RequestMapping under /api/mdm/dict but not /global") {
+        return new ArchCondition<>("have @RequestMapping under /api/system/dict but not /global") {
             @Override
             public void check(JavaClass javaClass, ConditionEvents events) {
                 javaClass.tryGetAnnotationOfType(RequestMapping.class).ifPresent(rm -> {
                     for (String path : rm.value()) {
-                        if (path.startsWith("/api/mdm/dict")
-                                && !path.startsWith("/api/mdm/dict/global")) {
+                        if (path.startsWith("/api/system/dict")
+                                && !path.startsWith("/api/system/dict/global")) {
                             events.add(SimpleConditionEvent.violated(javaClass,
                                     javaClass.getName() + " exposes non-global dict path " + path));
                         }

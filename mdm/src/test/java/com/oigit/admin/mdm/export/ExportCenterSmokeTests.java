@@ -19,7 +19,7 @@ import com.oigit.admin.core.query.support.DynamicQuerySummaryRenderer;
 import com.oigit.admin.core.query.support.QueryComplexityScorer;
 import com.oigit.admin.mdm.export.app.ExportCenterAppService;
 import com.oigit.admin.mdm.export.controller.ExportCenterController;
-import com.oigit.admin.mdm.dict.export.GlobalDictTypeListExportHandler;
+import com.oigit.admin.dict.export.GlobalDictTypeListExportHandler;
 import com.oigit.admin.mdm.export.enums.ExportRecordStatus;
 import com.oigit.admin.mdm.export.infra.entity.ExportRecordEntity;
 import com.oigit.admin.mdm.export.query.ExportRecordSceneQueryDefinition;
@@ -29,9 +29,9 @@ import com.oigit.admin.mdm.export.service.ExportDownloadService;
 import com.oigit.admin.mdm.export.service.ExportExecutionService;
 import com.oigit.admin.mdm.export.service.ExportRecordService;
 import com.oigit.admin.mdm.export.service.ExportTaskDispatcher;
-import com.oigit.admin.mdm.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
-import com.oigit.admin.mdm.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
-import com.oigit.admin.mdm.dict.service.DictService;
+import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
+import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
+import com.oigit.admin.dict.service.DictService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -655,7 +655,7 @@ class ExportCenterSmokeTests {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @MapperScan({
-            "com.oigit.admin.mdm.dict.infra.mapper",
+            "com.oigit.admin.dict.infra.mapper",
             "com.oigit.admin.mdm.export.infra.mapper"
     })
     @Import({

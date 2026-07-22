@@ -35,7 +35,7 @@ public class OpenApiConfig {
     private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of(
         "com.oigit.admin.core",
         "com.oigit.admin.file.controller.dto",
-        "com.oigit.admin.mdm.dict.controller.dto",
+        "com.oigit.admin.dict.controller.dto",
         "com.oigit.admin.mdm.export.controller.dto",
         "com.oigit.admin.staff.controller.dto"
     );

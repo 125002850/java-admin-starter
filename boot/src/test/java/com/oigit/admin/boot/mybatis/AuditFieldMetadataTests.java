@@ -2,8 +2,8 @@ package com.oigit.admin.boot.mybatis;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.oigit.admin.mdm.dict.infra.entity.GlobalDictItemEntity;
-import com.oigit.admin.mdm.dict.infra.entity.GlobalDictTypeEntity;
+import com.oigit.admin.dict.infra.entity.GlobalDictItemEntity;
+import com.oigit.admin.dict.infra.entity.GlobalDictTypeEntity;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
