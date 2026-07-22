@@ -5,7 +5,7 @@
 当前分支不再依赖数据库启动脚本，而是直接由分支自身维护数据库配置文件：
 
 - 仓库根目录 `compose.yaml`
-- `admin-boot/src/main/resources/application-dev.yml`
+- `boot/src/main/resources/application-dev.yml`
 
 这样开发者切回当前分支时，数据库容器配置和 Spring Boot 的开发连接地址会随 Git 分支一起切换，不需要再额外执行分支识别脚本。
 
@@ -58,27 +58,34 @@ docker compose up -d
 
 ## 启动 Spring Boot
 
-数据库启动后，直接本地运行服务：
+推荐由统一脚本检查 Docker/MySQL、安装兄弟模块并启动服务：
 
 ```bash
-cd admin-boot
+./scripts/start-dev.sh
+```
+
+也可以在数据库启动后手动运行：
+
+```bash
+mvn -pl boot -am install -DskipTests
+cd boot
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-当前分支的 [application-dev.yml](/Users/youdingte/studys/java-admin-starter/admin-boot/src/main/resources/application-dev.yml:1) 已固定连接到：
+当前分支的 [`application-dev.yml`](../../boot/src/main/resources/application-dev.yml) 未设置 `JAVA_ADMIN_STARTER_DATASOURCE_*` 时连接到：
 
 ```text
 jdbc:mysql://127.0.0.1:3307/java_admin_starter_sso
 ```
 
-因此不再需要额外导出环境变量。
+如需使用远程独立库，可通过 `JAVA_ADMIN_STARTER_DATASOURCE_URL`、`JAVA_ADMIN_STARTER_DATASOURCE_USERNAME`、`JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD` 覆盖；此时 `start-dev.sh` 会跳过本地 Docker/MySQL。
 
 ## 为什么这样更简单
 
-- 不再需要数据库脚本
+- 不再需要按分支维护数据库映射脚本
 - 不再需要 `eval`
 - 不再需要脚本判断当前分支
-- `docker compose up -d` 就是唯一入口
+- 本地数据库仍可直接使用 `docker compose up -d`，完整开发启动使用 `./scripts/start-dev.sh`
 
 切分支时，真正跟着切换的是分支里的 YAML 内容，而不是脚本里的映射规则。
 
@@ -87,7 +94,7 @@ jdbc:mysql://127.0.0.1:3307/java_admin_starter_sso
 如果 `main` 分支也要保持独立数据库，应在 `main` 分支内分别维护它自己的：
 
 - `compose.yaml`
-- `admin-boot/src/main/resources/application-dev.yml`
+- `boot/src/main/resources/application-dev.yml`
 
 并保证它们使用不同的：
 
