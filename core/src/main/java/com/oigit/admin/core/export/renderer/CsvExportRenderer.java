@@ -2,11 +2,14 @@ package com.oigit.admin.core.export.renderer;
 
 import com.oigit.admin.core.export.model.ExportColumn;
 import com.oigit.admin.core.export.model.ExportRenderRequest;
-import com.oigit.admin.core.export.model.RenderedExportFile;
 import com.oigit.admin.core.export.spi.ExportRenderer;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,28 +29,26 @@ public class CsvExportRenderer implements ExportRenderer {
     }
 
     @Override
-    public RenderedExportFile render(ExportRenderRequest request) {
+    public String contentType() {
+        return CONTENT_TYPE;
+    }
+
+    @Override
+    public void render(ExportRenderRequest request, OutputStream outputStream) throws IOException {
         List<ExportColumn> orderedColumns = new ArrayList<>(request.getColumns());
         orderedColumns.sort(Comparator.comparing(column -> column.getOrder() == null ? Integer.MAX_VALUE : column.getOrder()));
 
-        StringBuilder builder = new StringBuilder(UTF8_BOM);
-        builder.append(toCsvLine(orderedColumns.stream().map(ExportColumn::getTitle).toList())).append("\r\n");
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
+        writer.write(UTF8_BOM);
+        writeCsvLine(writer, orderedColumns.stream().map(ExportColumn::getTitle).toList());
         for (Object row : request.getRows()) {
             List<String> values = new ArrayList<>(orderedColumns.size());
             for (ExportColumn column : orderedColumns) {
                 values.add(stringify(resolveValue(row, column.getField())));
             }
-            builder.append(toCsvLine(values)).append("\r\n");
+            writeCsvLine(writer, values);
         }
-
-        byte[] content = builder.toString().getBytes(StandardCharsets.UTF_8);
-        RenderedExportFile file = new RenderedExportFile();
-        file.setFileName(request.getFileName());
-        file.setFileType(FILE_TYPE);
-        file.setContentType(CONTENT_TYPE);
-        file.setContent(content);
-        file.setFileSize(content.length);
-        return file;
+        writer.flush();
     }
 
     private Object resolveValue(Object row, String field) {
@@ -68,8 +69,14 @@ public class CsvExportRenderer implements ExportRenderer {
         return value == null ? "" : String.valueOf(value);
     }
 
-    private String toCsvLine(List<String> values) {
-        return values.stream().map(this::escape).reduce((left, right) -> left + "," + right).orElse("");
+    private void writeCsvLine(BufferedWriter writer, List<String> values) throws IOException {
+        for (int index = 0; index < values.size(); index++) {
+            if (index > 0) {
+                writer.write(',');
+            }
+            writer.write(escape(values.get(index)));
+        }
+        writer.write("\r\n");
     }
 
     private String escape(String value) {

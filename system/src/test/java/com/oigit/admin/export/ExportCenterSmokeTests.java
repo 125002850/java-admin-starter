@@ -20,12 +20,15 @@ import com.oigit.admin.core.query.support.QueryComplexityScorer;
 import com.oigit.admin.export.app.ExportCenterAppService;
 import com.oigit.admin.export.controller.ExportCenterController;
 import com.oigit.admin.dict.export.GlobalDictTypeListExportHandler;
+import com.oigit.admin.export.enums.ExportRecordStatus;
+import com.oigit.admin.export.infra.entity.ExportRecordEntity;
 import com.oigit.admin.export.query.ExportRecordSceneQueryDefinition;
 import com.oigit.admin.export.query.ExportRecordSceneQueryMapper;
 import com.oigit.admin.export.service.ExportBatchDownloadService;
 import com.oigit.admin.export.service.ExportDownloadService;
 import com.oigit.admin.export.service.ExportExecutionService;
 import com.oigit.admin.export.service.ExportRecordService;
+import com.oigit.admin.export.service.ExportTaskDispatcher;
 import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
 import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
 import com.oigit.admin.dict.service.DictService;
@@ -43,16 +46,27 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -89,8 +103,15 @@ class ExportCenterSmokeTests {
     @Qualifier("inMemoryExportGateway")
     private InMemoryExportGateway exportGateway;
 
+    @Autowired
+    private ExportRecordService exportRecordService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @BeforeEach
     void setUp() {
+        exportGateway.reset();
         jdbcTemplate.execute("drop table if exists sys_export_record_global");
         jdbcTemplate.execute("drop table if exists sys_dict_type_global");
         jdbcTemplate.execute("create table sys_dict_type_global ("
@@ -183,13 +204,11 @@ class ExportCenterSmokeTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.exportBizCode").value("mdm.global.dict.type.list"))
-                .andExpect(jsonPath("$.data.statusName").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.statusName").value("PROCESSING"))
                 .andExpect(jsonPath("$.data.fileName").value(allOf(startsWith("全局字典类型-筛选-"), endsWith(".csv"))))
                 .andExpect(jsonPath("$.data.createBy").value("submit_exporter"))
-                .andExpect(jsonPath("$.data.downloadCount").value(1))
-                .andExpect(jsonPath("$.data.querySnapshotSummary").value("字典类型编码 等于 user_status"))
-                .andExpect(jsonPath("$.data.downloadUrl")
-                        .value(startsWith("https://download.example.com/export/mdm_global_dict_type_list/")));
+                .andExpect(jsonPath("$.data.downloadCount").value(0))
+                .andExpect(jsonPath("$.data.querySnapshotSummary").value("字典类型编码 等于 user_status"));
 
         Long recordId = jdbcTemplate.queryForObject("select id from sys_export_record_global limit 1", Long.class);
         Integer status = jdbcTemplate.queryForObject("select status from sys_export_record_global where id = ?", Integer.class, recordId);
@@ -220,7 +239,9 @@ class ExportCenterSmokeTests {
                 Integer.class,
                 recordId
         );
-        assertThat(downloadCountAfterSubmit).isEqualTo(1);
+        assertThat(downloadCountAfterSubmit).isZero();
+        assertThat(exportGateway.storeTransactionActive()).isFalse();
+        assertThat(exportGateway.lastStoredContentPath()).doesNotExist();
 
         mockMvc.perform(post("/api/mdm/export/download")
                         .header("X-User-Id", "8801")
@@ -236,11 +257,84 @@ class ExportCenterSmokeTests {
                 Integer.class,
                 recordId
         );
-        assertThat(downloadCount).isEqualTo(2);
+        assertThat(downloadCount).isEqualTo(1);
+        assertThat(exportGateway.tempUrlTransactionActive()).isFalse();
     }
 
     @Test
-    void batchDownload_should_zip_owned_success_records_without_creating_export_record() throws Exception {
+    void submit_when_storage_fails_should_keep_failed_record() throws Exception {
+        OperatorContext.set(8801L, "导出人", null);
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, create_time, update_time, deleted) "
+                        + "values (101, 'user_status', '用户状态', timestamp '2026-06-01 08:00:00', timestamp '2026-06-01 08:00:00', 0)"
+        );
+        exportGateway.failNextStore();
+
+        mockMvc.perform(post("/api/mdm/export/submit")
+                        .header("X-User-Id", "8801")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "sceneCode":"mdm.global.dict.type.list",
+                                  "query":{}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.statusName").value("PROCESSING"));
+
+        Integer recordCount = jdbcTemplate.queryForObject(
+                "select count(*) from sys_export_record_global",
+                Integer.class
+        );
+        Integer taskStatus = jdbcTemplate.queryForObject(
+                "select status from sys_export_record_global limit 1",
+                Integer.class
+        );
+        String failCode = jdbcTemplate.queryForObject(
+                "select fail_code from sys_export_record_global limit 1",
+                String.class
+        );
+
+        assertThat(recordCount).isOne();
+        assertThat(taskStatus).isEqualTo(ExportRecordStatus.FAILED.getIntCode());
+        assertThat(failCode).isEqualTo("EXPORT_EXECUTION_FAILED");
+        assertThat(exportGateway.storeTransactionActive()).isFalse();
+        assertThat(exportGateway.lastStoredContentPath()).doesNotExist();
+    }
+
+    @Test
+    void lifecycle_updates_should_survive_outer_transaction_rollback() {
+        OperatorContext.set(8801L, "导出人", null);
+        ExportRecordEntity record = new ExportRecordEntity();
+        record.setExportBizCode("transaction.boundary.test");
+        record.setExportBizName("事务边界测试");
+        record.setFileName("transaction-boundary.csv");
+        record.setFileType("csv");
+        record.setQuerySnapshotJson("{}");
+        record.setQuerySnapshotSummary("事务边界测试");
+        record.setDownloadCount(0);
+        record.setExpireSeconds(3600);
+        record.setExpireTime(LocalDateTime.now().plusHours(1));
+        record.setDeleted(0L);
+
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.executeWithoutResult(status -> {
+            exportRecordService.createProcessingRecord(record);
+            exportRecordService.markFailed(record.getId(), "EXPECTED_FAILURE", "模拟失败");
+            status.setRollbackOnly();
+        });
+
+        Integer persistedStatus = jdbcTemplate.queryForObject(
+                "select status from sys_export_record_global where id = ?",
+                Integer.class,
+                record.getId()
+        );
+        assertThat(persistedStatus).isEqualTo(ExportRecordStatus.FAILED.getIntCode());
+    }
+
+    @Test
+    void batchDownload_should_create_task_and_stream_owned_success_records() throws Exception {
         OperatorContext.set(8802L, "批量下载人", null);
         byte[] customerCsv = "字典编码,字典名称\nDICT001,字典A\n".getBytes(StandardCharsets.UTF_8);
         byte[] orderCsv = "记录ID,文件大小\nR001,100\n".getBytes(StandardCharsets.UTF_8);
@@ -275,11 +369,9 @@ class ExportCenterSmokeTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.recordId").doesNotExist())
-                .andExpect(jsonPath("$.data.fileName").value(allOf(startsWith("导出中心批量下载-"), endsWith(".zip"))))
-                .andExpect(jsonPath("$.data.downloadUrl").value(startsWith("https://download.example.com/export/mdm_export_center_batch_download/")))
-                .andExpect(jsonPath("$.data.contentType").value("application/zip"))
-                .andExpect(jsonPath("$.data.fileSize").isNumber());
+                .andExpect(jsonPath("$.data.recordId").isNumber())
+                .andExpect(jsonPath("$.data.statusName").value("PROCESSING"))
+                .andExpect(jsonPath("$.data.fileName").value(allOf(startsWith("导出中心批量下载-"), endsWith(".zip"))));
 
         Integer batchRecordCount = jdbcTemplate.queryForObject(
                 "select count(*) from sys_export_record_global where export_biz_code = ?",
@@ -296,16 +388,39 @@ class ExportCenterSmokeTests {
                 Integer.class,
                 302L
         );
+        Long batchRecordId = jdbcTemplate.queryForObject(
+                "select id from sys_export_record_global where export_biz_code = ?",
+                Long.class,
+                "mdm.export-center.batch-download"
+        );
+        Integer batchStatus = jdbcTemplate.queryForObject(
+                "select status from sys_export_record_global where id = ?",
+                Integer.class,
+                batchRecordId
+        );
         String batchObjectKey = exportGateway.firstObjectKeyWithPrefix("export/mdm_export_center_batch_download/");
 
-        assertThat(batchRecordCount).isZero();
+        assertThat(batchRecordCount).isOne();
+        assertThat(batchStatus).isEqualTo(ExportRecordStatus.SUCCESS.getIntCode());
         assertThat(customerDownloadCount).isEqualTo(1);
         assertThat(orderDownloadCount).isEqualTo(1);
+        assertThat(exportGateway.openedStreamCount()).isEqualTo(2);
+        assertThat(exportGateway.closedStreamCount()).isEqualTo(2);
+        assertThat(exportGateway.streamTransactionActive()).isFalse();
+        assertThat(exportGateway.storeTransactionActive()).isFalse();
+        assertThat(exportGateway.lastStoredContentPath()).doesNotExist();
         assertThat(zipEntryNames(exportGateway.content(batchObjectKey)))
                 .containsExactly(
                         "全局字典类型-筛选-20260629110000.csv",
                         "导出记录-筛选-20260629110100.csv"
                 );
+
+        mockMvc.perform(post("/api/mdm/export/download")
+                        .header("X-User-Id", "8802")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"recordId\":" + batchRecordId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.downloadUrl").value("https://download.example.com/" + batchObjectKey));
     }
 
     @Test
@@ -563,6 +678,7 @@ class ExportCenterSmokeTests {
             ExportDownloadService.class,
             ExportBatchDownloadService.class,
             ExportRecordService.class,
+            ExportTaskDispatcher.class,
             GlobalDictTypeListExportHandler.class,
             SpringExportSceneRegistry.class,
             SpringExportRendererRegistry.class,
@@ -591,6 +707,11 @@ class ExportCenterSmokeTests {
             return gateway;
         }
 
+        @Bean("exportTaskExecutor")
+        TaskExecutor exportTaskExecutor() {
+            return new SyncTaskExecutor();
+        }
+
         @Bean
         OperatorUsernameResolver operatorUsernameResolver() {
             return operatorIds -> Map.of(
@@ -603,21 +724,40 @@ class ExportCenterSmokeTests {
     static class InMemoryExportGateway implements ExportFileSink, ExportFileAccessor {
 
         private final Map<String, byte[]> store = new ConcurrentHashMap<>();
+        private final AtomicBoolean failNextStore = new AtomicBoolean();
+        private final AtomicInteger openedStreamCount = new AtomicInteger();
+        private final AtomicInteger closedStreamCount = new AtomicInteger();
+        private volatile boolean storeTransactionActive;
+        private volatile boolean streamTransactionActive;
+        private volatile boolean tempUrlTransactionActive;
+        private volatile Path lastStoredContentPath;
 
         @Override
         public ExportStoredFile store(RenderedExportFile file, ExportStoreRequest request) {
+            storeTransactionActive = TransactionSynchronizationManager.isActualTransactionActive();
+            lastStoredContentPath = file.getContentPath();
+            if (failNextStore.compareAndSet(true, false)) {
+                throw new IllegalStateException("simulated storage failure");
+            }
             String objectKey = request.getBizPath() + "/" + file.getFileName();
-            store.put(objectKey, file.getContent());
+            byte[] content;
+            try (InputStream inputStream = file.openInputStream()) {
+                content = inputStream.readAllBytes();
+            } catch (IOException ex) {
+                throw new IllegalStateException("failed to read rendered export", ex);
+            }
+            store.put(objectKey, content);
             ExportStoredFile storedFile = new ExportStoredFile();
             storedFile.setObjectKey(objectKey);
             storedFile.setStorageType("memory");
             storedFile.setContentType(file.getContentType());
-            storedFile.setFileSize((long) file.getContent().length);
+            storedFile.setFileSize((long) content.length);
             return storedFile;
         }
 
         @Override
         public String fetchTempUrl(String objectKey) {
+            tempUrlTransactionActive = TransactionSynchronizationManager.isActualTransactionActive();
             byte[] content = store.get(objectKey);
             if (objectKey.endsWith(".csv")) {
                 String csv = new String(content, StandardCharsets.UTF_8);
@@ -630,8 +770,24 @@ class ExportCenterSmokeTests {
         }
 
         @Override
-        public byte[] fetchContent(String objectKey) {
-            return content(objectKey);
+        public InputStream openStream(String objectKey) {
+            streamTransactionActive = TransactionSynchronizationManager.isActualTransactionActive();
+            openedStreamCount.incrementAndGet();
+            return new FilterInputStream(new ByteArrayInputStream(content(objectKey))) {
+                @Override
+                public void close() throws IOException {
+                    try {
+                        super.close();
+                    } finally {
+                        closedStreamCount.incrementAndGet();
+                    }
+                }
+            };
+        }
+
+        @Override
+        public void delete(String objectKey) {
+            store.remove(objectKey);
         }
 
         void put(String objectKey, byte[] content) {
@@ -647,6 +803,45 @@ class ExportCenterSmokeTests {
                     .filter(objectKey -> objectKey.startsWith(prefix))
                     .findFirst()
                     .orElseThrow();
+        }
+
+        void failNextStore() {
+            failNextStore.set(true);
+        }
+
+        boolean storeTransactionActive() {
+            return storeTransactionActive;
+        }
+
+        boolean streamTransactionActive() {
+            return streamTransactionActive;
+        }
+
+        boolean tempUrlTransactionActive() {
+            return tempUrlTransactionActive;
+        }
+
+        int openedStreamCount() {
+            return openedStreamCount.get();
+        }
+
+        int closedStreamCount() {
+            return closedStreamCount.get();
+        }
+
+        Path lastStoredContentPath() {
+            return lastStoredContentPath;
+        }
+
+        void reset() {
+            store.clear();
+            failNextStore.set(false);
+            openedStreamCount.set(0);
+            closedStreamCount.set(0);
+            storeTransactionActive = false;
+            streamTransactionActive = false;
+            tempUrlTransactionActive = false;
+            lastStoredContentPath = null;
         }
     }
 

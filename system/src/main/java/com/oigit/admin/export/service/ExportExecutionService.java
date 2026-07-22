@@ -24,12 +24,15 @@ import com.oigit.admin.core.query.ast.QueryAst;
 import com.oigit.admin.core.query.support.DynamicQuerySummaryRenderer;
 import com.oigit.admin.export.enums.ExportCenterErrorCode;
 import com.oigit.admin.export.infra.entity.ExportRecordEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +44,7 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class ExportExecutionService {
 
+    private static final Logger log = LoggerFactory.getLogger(ExportExecutionService.class);
     private static final int DEFAULT_EXPIRE_SECONDS = 3600;
     private static final int DEFAULT_PACKAGE_CHUNK_SIZE = 5000;
     private static final int MAX_PACKAGE_CHUNK_SIZE = 5000;
@@ -57,6 +61,7 @@ public class ExportExecutionService {
     private final ExportRecordService exportRecordService;
     private final ObjectMapper objectMapper;
     private final DynamicQuerySummaryRenderer dynamicQuerySummaryRenderer;
+    private final ExportTaskDispatcher exportTaskDispatcher;
 
     public ExportExecutionService(
             ExportSceneRegistry exportSceneRegistry,
@@ -64,7 +69,8 @@ public class ExportExecutionService {
             ExportFileSink exportFileSink,
             ExportRecordService exportRecordService,
             ObjectMapper objectMapper,
-            DynamicQuerySummaryRenderer dynamicQuerySummaryRenderer
+            DynamicQuerySummaryRenderer dynamicQuerySummaryRenderer,
+            ExportTaskDispatcher exportTaskDispatcher
     ) {
         this.exportSceneRegistry = exportSceneRegistry;
         this.exportRendererRegistry = exportRendererRegistry;
@@ -72,98 +78,126 @@ public class ExportExecutionService {
         this.exportRecordService = exportRecordService;
         this.objectMapper = objectMapper;
         this.dynamicQuerySummaryRenderer = dynamicQuerySummaryRenderer;
+        this.exportTaskDispatcher = exportTaskDispatcher;
     }
 
-    public ExportRecordEntity execute(String sceneCode, JsonNode queryNode) {
+    public ExportRecordEntity submit(String sceneCode, JsonNode queryNode) {
         ExportHandler<?> handler = resolveHandler(sceneCode);
-        return executeInternal(handler, queryNode);
+        return submitInternal(handler, queryNode);
     }
 
-    private <Q> ExportRecordEntity executeInternal(ExportHandler<Q> handler, JsonNode queryNode) {
+    @SuppressWarnings("unchecked")
+    private <Q> ExportRecordEntity submitInternal(ExportHandler<Q> handler, JsonNode queryNode) {
         Q query = convertQuery(handler, queryNode);
         handler.validate(query);
 
         ExportMeta meta = handler.buildMeta(query);
         validateMeta(meta);
         if (isPackageMode(query)) {
-            return executePackageInternal(handler, query, meta);
+            if (!(query instanceof ExportOptionsReqDTO options)
+                    || !(handler instanceof PackageableExportHandler<?> packageableHandler)) {
+                throw new BizException(CommonErrorCode.PARAM_ERROR);
+            }
+            validatePackageMeta(meta);
+            ExportMeta packageMeta = toPackageMeta(meta);
+            ExportRecordEntity record = createProcessingRecord(handler, query, packageMeta);
+            dispatchTask(
+                    record.getId(),
+                    () -> executePackageTask(
+                            (PackageableExportHandler<Q>) packageableHandler,
+                            query,
+                            packageMeta,
+                            options,
+                            record.getId()
+                    )
+            );
+            return record;
         }
 
-        List<ExportColumn> columns = defaultIfNull(handler.columns(query));
-        List<?> rows = defaultIfNull(handler.queryRows(query));
-        String querySnapshotJson = serializeQuery(query);
+        ExportRecordEntity record = createProcessingRecord(handler, query, meta);
+        dispatchTask(record.getId(), () -> executeStandardTask(handler, query, record, record.getId()));
+        return record;
+    }
 
+    private <Q> ExportRecordEntity createProcessingRecord(ExportHandler<Q> handler, Q query, ExportMeta meta) {
+        String querySnapshotJson = serializeQuery(query);
         ExportRecordEntity record = buildProcessingRecord(handler, meta, querySnapshotJson, query);
-        Long recordId = exportRecordService.createProcessingRecord(record);
+        exportRecordService.createProcessingRecord(record);
+        return record;
+    }
+
+    private void dispatchTask(Long recordId, Runnable task) {
         try {
+            exportTaskDispatcher.dispatch(task);
+        } catch (RuntimeException ex) {
+            markFailedQuietly(recordId, "EXPORT_TASK_REJECTED", ex.getMessage());
+            throw new BizException(ExportCenterErrorCode.EXPORT_EXECUTION_FAILED);
+        }
+    }
+
+    private <Q> void executeStandardTask(
+            ExportHandler<Q> handler,
+            Q query,
+            ExportRecordEntity record,
+            Long recordId
+    ) {
+        ExportStoredFile storedFile = null;
+        try {
+            List<ExportColumn> columns = defaultIfNull(handler.columns(query));
+            List<?> rows = defaultIfNull(handler.queryRows(query));
             ExportRenderer renderer = resolveRenderer(record.getFileType());
             ExportRenderRequest renderRequest = new ExportRenderRequest();
             renderRequest.setFileName(record.getFileName());
             renderRequest.setColumns(columns);
             renderRequest.setRows(rows);
-            RenderedExportFile renderedExportFile = renderer.render(renderRequest);
 
             ExportStoreRequest storeRequest = new ExportStoreRequest();
             storeRequest.setBizPath(resolveBizPath(handler.sceneCode()));
-            ExportStoredFile storedFile = exportFileSink.store(renderedExportFile, storeRequest);
+            try (RenderedExportFile renderedExportFile = renderer.render(renderRequest)) {
+                storedFile = exportFileSink.store(renderedExportFile, storeRequest);
+            }
 
             exportRecordService.markSuccess(
-                recordId,
-                storedFile.getObjectKey(),
-                storedFile.getContentType(),
-                storedFile.getFileSize(),
-                storedFile.getStorageType()
+                    recordId,
+                    storedFile.getObjectKey(),
+                    storedFile.getContentType(),
+                    storedFile.getFileSize(),
+                    storedFile.getStorageType()
             );
-            return exportRecordService.getRequired(recordId);
         } catch (BizException ex) {
-            markFailedQuietly(recordId, ex.getErrorCode().getMsg(), ex.getMessage());
-            throw ex;
+            handleTaskFailure(recordId, storedFile, String.valueOf(ex.getErrorCode().getCode()), ex.getMessage(), ex);
         } catch (Exception ex) {
-            markFailedQuietly(recordId, "EXPORT_EXECUTION_FAILED", ex.getMessage());
-            throw new BizException(ExportCenterErrorCode.EXPORT_EXECUTION_FAILED);
+            handleTaskFailure(recordId, storedFile, "EXPORT_EXECUTION_FAILED", ex.getMessage(), ex);
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private <Q> ExportRecordEntity executePackageInternal(ExportHandler<Q> handler, Q query, ExportMeta meta) {
-        if (!(query instanceof ExportOptionsReqDTO options)
-                || !(handler instanceof PackageableExportHandler<?> packageableHandler)) {
-            throw new BizException(CommonErrorCode.PARAM_ERROR);
-        }
-        validatePackageMeta(meta);
-
-        ExportMeta packageMeta = toPackageMeta(meta);
-        String querySnapshotJson = serializeQuery(query);
-        ExportRecordEntity record = buildProcessingRecord(handler, packageMeta, querySnapshotJson, query);
-        Long recordId = exportRecordService.createProcessingRecord(record);
+    private <Q> void executePackageTask(
+            PackageableExportHandler<Q> handler,
+            Q query,
+            ExportMeta packageMeta,
+            ExportOptionsReqDTO options,
+            Long recordId
+    ) {
+        ExportStoredFile storedFile = null;
         try {
             List<ExportColumn> columns = defaultIfNull(handler.columns(query));
-            RenderedExportFile renderedExportFile = renderPackageFile(
-                    (PackageableExportHandler<Q>) packageableHandler,
-                    query,
-                    packageMeta,
-                    columns,
-                    options
-            );
-
             ExportStoreRequest storeRequest = new ExportStoreRequest();
             storeRequest.setBizPath(resolveBizPath(handler.sceneCode()));
-            ExportStoredFile storedFile = exportFileSink.store(renderedExportFile, storeRequest);
+            try (RenderedExportFile renderedExportFile = renderPackageFile(handler, query, packageMeta, columns, options)) {
+                storedFile = exportFileSink.store(renderedExportFile, storeRequest);
+            }
 
             exportRecordService.markSuccess(
-                recordId,
-                storedFile.getObjectKey(),
-                storedFile.getContentType(),
-                storedFile.getFileSize(),
-                storedFile.getStorageType()
+                    recordId,
+                    storedFile.getObjectKey(),
+                    storedFile.getContentType(),
+                    storedFile.getFileSize(),
+                    storedFile.getStorageType()
             );
-            return exportRecordService.getRequired(recordId);
         } catch (BizException ex) {
-            markFailedQuietly(recordId, ex.getErrorCode().getMsg(), ex.getMessage());
-            throw ex;
+            handleTaskFailure(recordId, storedFile, String.valueOf(ex.getErrorCode().getCode()), ex.getMessage(), ex);
         } catch (Exception ex) {
-            markFailedQuietly(recordId, "EXPORT_EXECUTION_FAILED", ex.getMessage());
-            throw new BizException(ExportCenterErrorCode.EXPORT_EXECUTION_FAILED);
+            handleTaskFailure(recordId, storedFile, "EXPORT_EXECUTION_FAILED", ex.getMessage(), ex);
         }
     }
 
@@ -259,30 +293,39 @@ public class ExportExecutionService {
         long totalRows = handler.countRows(query);
         RangeWindow window = resolveRangeWindow(options.getRange(), totalRows);
 
-        byte[] content = zipCsvChunks(handler, query, csvRenderer, columns, packageMeta.getFileName(), chunkSize, window);
-        RenderedExportFile file = new RenderedExportFile();
-        file.setFileName(packageMeta.getFileName());
-        file.setFileType(ZIP_FILE_TYPE);
-        file.setContentType(ZIP_CONTENT_TYPE);
-        file.setContent(content);
-        file.setFileSize(content.length);
-        return file;
+        Path contentPath = Files.createTempFile("oig-export-package-", ".zip");
+        boolean completed = false;
+        try {
+            zipCsvChunks(handler, query, csvRenderer, columns, packageMeta.getFileName(), chunkSize, window, contentPath);
+            RenderedExportFile file = new RenderedExportFile();
+            file.setFileName(packageMeta.getFileName());
+            file.setFileType(ZIP_FILE_TYPE);
+            file.setContentType(ZIP_CONTENT_TYPE);
+            file.setContentPath(contentPath);
+            file.setFileSize(Files.size(contentPath));
+            completed = true;
+            return file;
+        } finally {
+            if (!completed) {
+                Files.deleteIfExists(contentPath);
+            }
+        }
     }
 
-    private <Q> byte[] zipCsvChunks(
+    private <Q> void zipCsvChunks(
             PackageableExportHandler<Q> handler,
             Q query,
             ExportRenderer csvRenderer,
             List<ExportColumn> columns,
             String zipFileName,
             int chunkSize,
-            RangeWindow window
+            RangeWindow window,
+            Path contentPath
     ) throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream, StandardCharsets.UTF_8)) {
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(contentPath), StandardCharsets.UTF_8)) {
             if (window.totalRows() == 0) {
                 writeCsvEntry(zipOutputStream, csvRenderer, columns, List.of(), buildChunkFileName(zipFileName, 0, 0));
-                return outputStream.toByteArray();
+                return;
             }
             long chunkStart = window.startRow();
             while (chunkStart <= window.endRow()) {
@@ -299,7 +342,6 @@ public class ExportExecutionService {
                 chunkStart = chunkEnd + 1L;
             }
         }
-        return outputStream.toByteArray();
     }
 
     private void writeCsvEntry(
@@ -313,10 +355,9 @@ public class ExportExecutionService {
         renderRequest.setFileName(fileName);
         renderRequest.setColumns(columns);
         renderRequest.setRows(rows);
-        RenderedExportFile renderedCsv = csvRenderer.render(renderRequest);
-        ZipEntry zipEntry = new ZipEntry(sanitizeEntryName(renderedCsv.getFileName()));
+        ZipEntry zipEntry = new ZipEntry(sanitizeEntryName(fileName));
         zipOutputStream.putNextEntry(zipEntry);
-        zipOutputStream.write(renderedCsv.getContent());
+        csvRenderer.render(renderRequest, zipOutputStream);
         zipOutputStream.closeEntry();
     }
 
@@ -428,7 +469,31 @@ public class ExportExecutionService {
     private void markFailedQuietly(Long recordId, String failCode, String failMessage) {
         try {
             exportRecordService.markFailed(recordId, truncate(failCode, 64), truncate(failMessage, MAX_FAIL_MESSAGE_LENGTH));
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.error("failed to persist export task failure, recordId={}", recordId, ex);
+        }
+    }
+
+    private void handleTaskFailure(
+            Long recordId,
+            ExportStoredFile storedFile,
+            String failCode,
+            String failMessage,
+            Exception cause
+    ) {
+        cleanupStoredFileQuietly(storedFile);
+        markFailedQuietly(recordId, failCode, failMessage);
+        log.warn("export task failed, recordId={}", recordId, cause);
+    }
+
+    private void cleanupStoredFileQuietly(ExportStoredFile storedFile) {
+        if (storedFile == null || !StringUtils.hasText(storedFile.getObjectKey())) {
+            return;
+        }
+        try {
+            exportFileSink.delete(storedFile.getObjectKey());
+        } catch (Exception ex) {
+            log.warn("failed to clean uploaded export object, objectKey={}", storedFile.getObjectKey(), ex);
         }
     }
 

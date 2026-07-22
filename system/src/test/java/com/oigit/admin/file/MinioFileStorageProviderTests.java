@@ -1,6 +1,7 @@
 package com.oigit.admin.file;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -72,6 +73,18 @@ class MinioFileStorageProviderTests {
         String tempUrl = provider.buildTempUrl("avatar/user/2026/05/19/test.png");
 
         assertThat(tempUrl).isEqualTo("https://cdn.example.com/avatar/user/2026/05/19/test.png");
+    }
+
+    @Test
+    void openStream_should_return_minio_download_stream() throws Exception {
+        MinioOperations minioOperations = mock(MinioOperations.class);
+        when(minioOperations.download("admin-bucket", "avatar/user/2026/05/19/test.png"))
+                .thenReturn(new ByteArrayInputStream("minio".getBytes()));
+        MinioFileStorageProvider provider = new MinioFileStorageProvider(properties(false), minioOperations);
+
+        try (InputStream inputStream = provider.openStream("avatar/user/2026/05/19/test.png")) {
+            assertThat(inputStream.readAllBytes()).isEqualTo("minio".getBytes());
+        }
     }
 
     @Test

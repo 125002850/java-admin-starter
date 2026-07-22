@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -52,6 +53,9 @@ class LocalFileStorageProviderTests {
         assertThat(storedFile.getObjectKey()).isEqualTo("nested/path/file.txt");
         assertThat(storedFile.getOriginUrl()).isEqualTo("/local-files/nested/path/file.txt");
         assertThat(Files.readString(tempDir.resolve("nested/path/file.txt"))).isEqualTo("provider-data");
+        try (InputStream inputStream = provider.openStream("nested/path/file.txt")) {
+            assertThat(inputStream.readAllBytes()).isEqualTo("provider-data".getBytes());
+        }
     }
 
     @Test
