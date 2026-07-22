@@ -46,7 +46,8 @@ class ModuleBoundaryTests {
     void admin_mdm_must_not_depend_on_admin_boot() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.oigit.admin.mdm..")
-                .should().dependOnClassesThat().resideInAPackage("com.oigit.admin.boot..");
+                .should().dependOnClassesThat().resideInAPackage("com.oigit.admin.boot..")
+                .allowEmptyShould(true);
         rule.check(allClasses);
     }
 
@@ -115,7 +116,8 @@ class ModuleBoundaryTests {
     void admin_mdm_must_not_depend_on_admin_system_file_package() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("com.oigit.admin.mdm..")
-                .should().dependOnClassesThat().resideInAPackage("com.oigit.admin.file..");
+                .should().dependOnClassesThat().resideInAPackage("com.oigit.admin.file..")
+                .allowEmptyShould(true);
         rule.check(allClasses);
     }
 
