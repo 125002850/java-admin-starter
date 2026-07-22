@@ -1,0 +1,640 @@
+package com.oigit.admin.boot.iam;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
+@Transactional
+class IamManagementIntegrationTests {
+
+    private static final String DEFAULT_ADMIN_PASSWORD_HASH =
+            "$2a$10$WbuU43YMwePH06bezaQJBO3NG8OvpJBpN/kq13BLpS.25GE6gfwf2";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void resetDefaultAdmin() {
+        jdbcTemplate.update("delete from sys_refresh_token");
+        jdbcTemplate.update("""
+                update sys_staff
+                   set password_hash = ?,
+                       must_change_password = 0,
+                       status = 'ENABLED',
+                       deleted = 0
+                 where username = 'admin'
+                """, DEFAULT_ADMIN_PASSWORD_HASH);
+    }
+
+    @Test
+    void staffUpdateShouldRejectDisabledDept() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String enabledDeptCode = "EN_" + suffix;
+        String disabledDeptCode = "DIS_" + suffix;
+        createDept(token, 1L, enabledDeptCode, "启用部门" + suffix, "ENABLED");
+        createDept(token, 1L, disabledDeptCode, "禁用部门" + suffix, "DISABLED");
+        Long enabledDeptId = deptId(enabledDeptCode);
+        Long disabledDeptId = deptId(disabledDeptCode);
+
+        String username = "staff_" + suffix;
+        String staffCode = "S_" + suffix;
+        createStaff(token, username, staffCode, enabledDeptId);
+        Long staffId = staffId(username);
+
+        JsonNode response = postJson("/api/iam/staff/update", """
+                {
+                  "staffId": %d,
+                  "staffCode": "%s",
+                  "staffName": "员工更新%s",
+                  "deptId": %d,
+                  "status": "ENABLED"
+                }
+                """.formatted(staffId, staffCode, suffix, disabledDeptId), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2003006);
+    }
+
+    @Test
+    void deptManagementShouldRejectDuplicateRootAndTreeCycles() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String rootCode = "ROOT_" + suffix;
+        createDept(token, null, rootCode, "根部门" + suffix, "ENABLED");
+
+        JsonNode duplicateRoot = postJson("/api/iam/dept/create", """
+                {
+                  "deptCode": "%s",
+                  "deptName": "根部门重复%s",
+                  "status": "ENABLED"
+                }
+                """.formatted(rootCode, suffix), token, 200);
+        assertThat(duplicateRoot.path("code").asInt()).isEqualTo(2003002);
+
+        String parentCode = "DP_" + suffix;
+        String childCode = "DC_" + suffix;
+        createDept(token, 1L, parentCode, "父部门" + suffix, "ENABLED");
+        Long parentId = deptId(parentCode);
+        createDept(token, parentId, childCode, "子部门" + suffix, "ENABLED");
+        Long childId = deptId(childCode);
+
+        JsonNode selfParent = postJson("/api/iam/dept/update", """
+                {
+                  "deptId": %d,
+                  "parentId": %d,
+                  "deptCode": "%s",
+                  "deptName": "子部门%s",
+                  "status": "ENABLED"
+                }
+                """.formatted(childId, childId, childCode, suffix), token, 200);
+        assertThat(selfParent.path("code").asInt()).isEqualTo(2003007);
+
+        JsonNode descendantParent = postJson("/api/iam/dept/update", """
+                {
+                  "deptId": %d,
+                  "parentId": %d,
+                  "deptCode": "%s",
+                  "deptName": "父部门%s",
+                  "status": "ENABLED"
+                }
+                """.formatted(parentId, childId, parentCode, suffix), token, 200);
+        assertThat(descendantParent.path("code").asInt()).isEqualTo(2003007);
+    }
+
+    @Test
+    void menuManagementShouldRejectTreeCycles() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String parentCode = "menu_parent_" + suffix;
+        String childCode = "menu_child_" + suffix;
+        createMenu(token, 1000L, parentCode, "父菜单" + suffix);
+        Long parentId = menuId(parentCode);
+        createMenu(token, parentId, childCode, "子菜单" + suffix);
+        Long childId = menuId(childCode);
+
+        JsonNode selfParent = postJson("/api/iam/menu/update", """
+                {
+                  "menuId": %d,
+                  "parentId": %d,
+                  "menuCode": "%s",
+                  "menuName": "子菜单%s",
+                  "menuType": "MENU",
+                  "status": "ENABLED"
+                }
+                """.formatted(childId, childId, childCode, suffix), token, 200);
+        assertThat(selfParent.path("code").asInt()).isEqualTo(2005006);
+
+        JsonNode descendantParent = postJson("/api/iam/menu/update", """
+                {
+                  "menuId": %d,
+                  "parentId": %d,
+                  "menuCode": "%s",
+                  "menuName": "父菜单%s",
+                  "menuType": "MENU",
+                  "status": "ENABLED"
+                }
+                """.formatted(parentId, childId, parentCode, suffix), token, 200);
+        assertThat(descendantParent.path("code").asInt()).isEqualTo(2005006);
+    }
+
+    @Test
+    void rolePageShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String roleCode = "AUDIT_" + suffix;
+
+        JsonNode createResponse = postJson("/api/iam/role/create", """
+                {
+                  "roleCode": "%s",
+                  "roleName": "审计角色%s",
+                  "status": "ENABLED",
+                  "dataScopeType": "ALL"
+                }
+                """.formatted(roleCode, suffix), token, 200);
+        assertThat(createResponse.path("code").asInt()).isEqualTo(200);
+
+        JsonNode pageResponse = postJson("/api/iam/role/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "keyword": "%s"
+                }
+                """.formatted(roleCode), token, 200);
+
+        assertThat(pageResponse.path("code").asInt()).isEqualTo(200);
+        assertThat(pageResponse.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode role = pageResponse.path("data").path("list").get(0);
+        assertThat(role.path("createBy").isTextual()).isTrue();
+        assertThat(role.path("createBy").asText()).isEqualTo("admin");
+        assertThat(role.path("updateBy").isTextual()).isTrue();
+        assertThat(role.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void staffPageShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String username = "audit_staff_" + suffix;
+        createStaff(token, username, "AU_" + suffix, 1L);
+
+        JsonNode pageResponse = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "username": "%s"
+                }
+                """.formatted(username), token, 200);
+
+        assertThat(pageResponse.path("code").asInt()).isEqualTo(200);
+        assertThat(pageResponse.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode staff = pageResponse.path("data").path("list").get(0);
+        assertThat(staff.path("createBy").isTextual()).isTrue();
+        assertThat(staff.path("createBy").asText()).isEqualTo("admin");
+        assertThat(staff.path("updateBy").isTextual()).isTrue();
+        assertThat(staff.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void deptTreeShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String deptCode = "AUDIT_DEPT_" + suffix;
+        createDept(token, 1L, deptCode, "审计部门" + suffix, "ENABLED");
+
+        JsonNode treeResponse = postJson("/api/iam/dept/tree", """
+                {"keyword": "%s"}
+                """.formatted(deptCode), token, 200);
+
+        assertThat(treeResponse.path("code").asInt()).isEqualTo(200);
+        JsonNode dept = treeResponse.path("data").get(0);
+        assertThat(dept.path("deptCode").asText()).isEqualTo(deptCode);
+        assertThat(dept.path("createBy").isTextual()).isTrue();
+        assertThat(dept.path("createBy").asText()).isEqualTo("admin");
+        assertThat(dept.path("updateBy").isTextual()).isTrue();
+        assertThat(dept.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void menuTreeShouldReturnAuditUsernames() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String menuCode = "audit_menu_" + suffix;
+        createMenu(token, 1000L, menuCode, "审计菜单" + suffix);
+
+        JsonNode treeResponse = postJson("/api/iam/menu/tree", """
+                {"keyword": "%s"}
+                """.formatted(menuCode), token, 200);
+
+        assertThat(treeResponse.path("code").asInt()).isEqualTo(200);
+        JsonNode menu = treeResponse.path("data").get(0);
+        assertThat(menu.path("menuCode").asText()).isEqualTo(menuCode);
+        assertThat(menu.path("createBy").isTextual()).isTrue();
+        assertThat(menu.path("createBy").asText()).isEqualTo("admin");
+        assertThat(menu.path("updateBy").isTextual()).isTrue();
+        assertThat(menu.path("updateBy").asText()).isEqualTo("admin");
+    }
+
+    @Test
+    void pageFiltersShouldSupportPrdFields() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String deptCode = "PF_" + suffix;
+        createDept(token, 1L, deptCode, "筛选部门" + suffix, "ENABLED");
+        Long deptId = deptId(deptCode);
+
+        String username = "filter_" + suffix;
+        String staffCode = "F_" + suffix;
+        String staffName = "筛选员工" + suffix;
+        createStaff(token, username, staffCode, staffName, deptId);
+        Long staffId = staffId(username);
+
+        JsonNode staffPage = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "staffCode": "%s",
+                  "username": "%s",
+                  "staffName": "%s",
+                  "createTimeRange": {
+                    "startTime": "2000-01-01 00:00:00",
+                    "endTime": "2099-01-01 00:00:00"
+                  }
+                }
+                """.formatted(staffCode, username, staffName), token, 200);
+        assertThat(staffPage.path("code").asInt()).isEqualTo(200);
+        assertThat(staffPage.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(staffPage.path("data").path("list").get(0).path("username").asText()).isEqualTo(username);
+
+        String loginIp = "10.88.0.1";
+        jdbcTemplate.update("""
+                insert into sys_login_log
+                  (staff_id, username, event_type, result, ip, operation_time, create_by, update_by, deleted)
+                values (?, ?, 'LOGIN', 'SUCCESS', ?, '2026-07-08 10:00:00', 0, 0, 0)
+                """, staffId, username, loginIp);
+
+        JsonNode loginLogPage = postJson("/api/iam/log/login/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "username": "%s",
+                  "staffName": "%s",
+                  "result": "SUCCESS",
+                  "ip": "%s",
+                  "operationTimeRange": {
+                    "startTime": "2026-07-08 00:00:00",
+                    "endTime": "2026-07-08 23:59:59"
+                  }
+                }
+                """.formatted(username, staffName, loginIp), token, 200);
+        assertThat(loginLogPage.path("code").asInt()).isEqualTo(200);
+        assertThat(loginLogPage.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode loginLog = loginLogPage.path("data").path("list").get(0);
+        assertThat(loginLog.path("staffName").asText()).isEqualTo(staffName);
+
+        JsonNode loginLogDetail = postJson("/api/iam/log/login/detail", """
+                {"logId": %d}
+                """.formatted(loginLog.path("logId").asLong()), token, 200);
+        assertThat(loginLogDetail.path("code").asInt()).isEqualTo(200);
+        assertThat(loginLogDetail.path("data").path("staffName").asText()).isEqualTo(staffName);
+
+        String requestPath = "/api/iam/staff/filter-" + suffix;
+        jdbcTemplate.update("""
+                insert into sys_operation_log
+                  (operator_id, operator_username, operator_staff_name, module, action, request_path, http_method,
+                   success, ip, user_agent, cost_millis, operation_time, create_by, update_by, deleted)
+                values (?, ?, ?, 'IAM_STAFF', 'CREATE', ?, 'POST', 1, '10.88.0.2', 'JUnit', 12,
+                        '2026-07-08 11:00:00', 0, 0, 0)
+                """, staffId, username, staffName, requestPath);
+
+        JsonNode operationLogPage = postJson("/api/iam/log/operation/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "operatorUsername": "%s",
+                  "operatorStaffName": "%s",
+                  "success": true,
+                  "requestPath": "%s",
+                  "operationTimeRange": {
+                    "startTime": "2026-07-08 00:00:00",
+                    "endTime": "2026-07-08 23:59:59"
+                  }
+                }
+                """.formatted(username, staffName, requestPath), token, 200);
+        assertThat(operationLogPage.path("code").asInt()).isEqualTo(200);
+        assertThat(operationLogPage.path("data").path("total").asLong()).isEqualTo(1);
+    }
+
+    @Test
+    void staffPageShouldSupportMultiSelectFiltersAndLegacyFallback() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String firstDeptCode = "MS_A_" + suffix;
+        String secondDeptCode = "MS_B_" + suffix;
+        createDept(token, 1L, firstDeptCode, "多选部门甲" + suffix, "ENABLED");
+        createDept(token, 1L, secondDeptCode, "多选部门乙" + suffix, "ENABLED");
+        Long firstDeptId = deptId(firstDeptCode);
+        Long secondDeptId = deptId(secondDeptCode);
+
+        String enabledUsername = "multi_enabled_" + suffix;
+        String disabledUsername = "multi_disabled_" + suffix;
+        createStaff(token, enabledUsername, "ME_" + suffix, firstDeptId);
+        createStaff(token, disabledUsername, "MD_" + suffix, secondDeptId);
+        jdbcTemplate.update("update sys_staff set status = 'DISABLED' where username = ?", disabledUsername);
+
+        JsonNode multiSelectPage = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptIds": [%d, %d],
+                  "statuses": ["ENABLED", "DISABLED"]
+                }
+                """.formatted(firstDeptId, secondDeptId), token, 200);
+        assertThat(multiSelectPage.path("code").asInt()).isEqualTo(200);
+        assertThat(multiSelectPage.path("data").path("total").asLong()).isEqualTo(2);
+        assertThat(multiSelectPage.path("data").path("list"))
+                .extracting(item -> item.path("username").asText())
+                .containsExactlyInAnyOrder(enabledUsername, disabledUsername);
+
+        JsonNode pluralFieldsTakePrecedence = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptId": %d,
+                  "deptIds": [%d],
+                  "status": "ENABLED",
+                  "statuses": ["DISABLED"]
+                }
+                """.formatted(firstDeptId, secondDeptId), token, 200);
+        assertThat(pluralFieldsTakePrecedence.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(pluralFieldsTakePrecedence.path("data").path("list").get(0).path("username").asText())
+                .isEqualTo(disabledUsername);
+
+        JsonNode legacyPage = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptId": %d,
+                  "status": "ENABLED"
+                }
+                """.formatted(firstDeptId), token, 200);
+        assertThat(legacyPage.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(legacyPage.path("data").path("list").get(0).path("username").asText())
+                .isEqualTo(enabledUsername);
+    }
+
+    @Test
+    void staffPageDepartmentFilterShouldIncludeAllDescendants() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        createDept(token, 1L, "TREE_P_" + suffix, "筛选父部门" + suffix, "ENABLED");
+        Long parentDeptId = deptId("TREE_P_" + suffix);
+        createDept(token, parentDeptId, "TREE_C_" + suffix, "筛选子部门" + suffix, "ENABLED");
+        Long childDeptId = deptId("TREE_C_" + suffix);
+        createDept(token, childDeptId, "TREE_G_" + suffix, "筛选孙部门" + suffix, "ENABLED");
+        Long grandchildDeptId = deptId("TREE_G_" + suffix);
+        createDept(token, 1L, "TREE_O_" + suffix, "其他分支" + suffix, "ENABLED");
+        Long otherDeptId = deptId("TREE_O_" + suffix);
+
+        String parentUsername = "tree_parent_" + suffix;
+        String childUsername = "tree_child_" + suffix;
+        String grandchildUsername = "tree_grandchild_" + suffix;
+        String otherUsername = "tree_other_" + suffix;
+        createStaff(token, parentUsername, "TP_" + suffix, parentDeptId);
+        createStaff(token, childUsername, "TC_" + suffix, childDeptId);
+        createStaff(token, grandchildUsername, "TG_" + suffix, grandchildDeptId);
+        createStaff(token, otherUsername, "TO_" + suffix, otherDeptId);
+
+        JsonNode response = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptIds": [%d]
+                }
+                """.formatted(parentDeptId), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(200);
+        assertThat(response.path("data").path("total").asLong()).isEqualTo(3);
+        assertThat(response.path("data").path("list"))
+                .extracting(item -> item.path("username").asText())
+                .containsExactlyInAnyOrder(parentUsername, childUsername, grandchildUsername)
+                .doesNotContain(otherUsername);
+    }
+
+    @Test
+    void staffCreateShouldRejectSuperAdminRole() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String username = "create_super_" + suffix;
+
+        JsonNode response = postJson("/api/iam/staff/create", """
+                {
+                  "username": "%s",
+                  "staffCode": "CS_%s",
+                  "staffName": "非法超管员工",
+                  "deptId": 1,
+                  "password": "Staff@123456",
+                  "status": "ENABLED",
+                  "roleIds": [%d]
+                }
+                """.formatted(username, suffix, superAdminRoleId()), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2002006);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff where username = ? and deleted = 0",
+                Long.class,
+                username
+        )).isZero();
+    }
+
+    @Test
+    void roleAssignmentShouldRejectSuperAdminForOrdinaryStaff() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        String username = "assign_super_" + suffix;
+        createStaff(token, username, "AS_" + suffix, 1L);
+        Long staffId = staffId(username);
+
+        JsonNode response = postJson("/api/iam/staff/roles/assign", """
+                {
+                  "staffId": %d,
+                  "roleIds": [%d]
+                }
+                """.formatted(staffId, superAdminRoleId()), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2002006);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff_role where staff_id = ? and role_id = ? and deleted = 0",
+                Long.class,
+                staffId,
+                superAdminRoleId()
+        )).isZero();
+    }
+
+    @Test
+    void roleAssignmentShouldRejectChangesForBuiltInSuperAdmin() throws Exception {
+        String token = adminAccessToken();
+
+        JsonNode response = postJson("/api/iam/staff/roles/assign", """
+                {
+                  "staffId": 1,
+                  "roleIds": [%d]
+                }
+                """.formatted(superAdminRoleId()), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(2002006);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff_role where staff_id = 1 and role_id = ? and deleted = 0",
+                Long.class,
+                superAdminRoleId()
+        )).isEqualTo(1L);
+    }
+
+    @Test
+    void builtInSuperAdminShouldRetainExistingSelfProtection() throws Exception {
+        String token = adminAccessToken();
+
+        JsonNode disableResponse = postJson("/api/iam/staff/status/update", """
+                {
+                  "staffId": 1,
+                  "status": "DISABLED"
+                }
+                """, token, 200);
+        JsonNode deleteResponse = postJson("/api/iam/staff/delete", """
+                {
+                  "staffId": 1
+                }
+                """, token, 200);
+
+        assertThat(disableResponse.path("code").asInt()).isEqualTo(2002004);
+        assertThat(deleteResponse.path("code").asInt()).isEqualTo(2002004);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sys_staff where id = 1 and status = 'ENABLED' and deleted = 0",
+                Long.class
+        )).isEqualTo(1L);
+    }
+
+    private String adminAccessToken() throws Exception {
+        JsonNode login = postJson("/api/iam/auth/login", """
+                {"username":"admin","password":"Admin@123456"}
+                """, null, 200);
+        assertThat(login.path("code").asInt()).isEqualTo(200);
+        return login.path("data").path("accessToken").asText();
+    }
+
+    private void createDept(String token, Long parentId, String deptCode, String deptName, String status) throws Exception {
+        String parentFragment = parentId == null ? "" : "\"parentId\": %d,".formatted(parentId);
+        JsonNode response = postJson("/api/iam/dept/create", """
+                {
+                  %s
+                  "deptCode": "%s",
+                  "deptName": "%s",
+                  "status": "%s"
+                }
+                """.formatted(parentFragment, deptCode, deptName, status), token, 200);
+        assertThat(response.path("code").asInt()).isEqualTo(200);
+    }
+
+    private void createStaff(String token, String username, String staffCode, Long deptId) throws Exception {
+        createStaff(token, username, staffCode, "测试员工", deptId);
+    }
+
+    private void createStaff(String token, String username, String staffCode, String staffName, Long deptId) throws Exception {
+        JsonNode response = postJson("/api/iam/staff/create", """
+                {
+                  "username": "%s",
+                  "staffCode": "%s",
+                  "staffName": "%s",
+                  "deptId": %d,
+                  "password": "Staff@123456",
+                  "status": "ENABLED"
+                }
+                """.formatted(username, staffCode, staffName, deptId), token, 200);
+        assertThat(response.path("code").asInt()).isEqualTo(200);
+    }
+
+    private void createMenu(String token, Long parentId, String menuCode, String menuName) throws Exception {
+        JsonNode response = postJson("/api/iam/menu/create", """
+                {
+                  "parentId": %d,
+                  "menuCode": "%s",
+                  "menuName": "%s",
+                  "menuType": "MENU",
+                  "status": "ENABLED"
+                }
+                """.formatted(parentId, menuCode, menuName), token, 200);
+        assertThat(response.path("code").asInt()).isEqualTo(200);
+    }
+
+    private Long deptId(String deptCode) {
+        return jdbcTemplate.queryForObject(
+                "select id from sys_dept where dept_code = ? and deleted = 0",
+                Long.class,
+                deptCode
+        );
+    }
+
+    private Long staffId(String username) {
+        return jdbcTemplate.queryForObject(
+                "select id from sys_staff where username = ? and deleted = 0",
+                Long.class,
+                username
+        );
+    }
+
+    private Long superAdminRoleId() {
+        return jdbcTemplate.queryForObject(
+                "select id from sys_role where role_code = 'SUPER_ADMIN' and deleted = 0",
+                Long.class
+        );
+    }
+
+    private Long menuId(String menuCode) {
+        return jdbcTemplate.queryForObject(
+                "select id from sys_menu where menu_code = ? and deleted = 0",
+                Long.class,
+                menuCode
+        );
+    }
+
+    private JsonNode postJson(String path, String body, String accessToken, int expectedStatus) throws Exception {
+        var request = post(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body == null ? "{}" : body);
+        if (accessToken != null) {
+            request.header("Authorization", "Bearer " + accessToken);
+        }
+        String content = mockMvc.perform(request)
+                .andExpect(status().is(expectedStatus))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        return objectMapper.readTree(content);
+    }
+
+    private String suffix() {
+        return Long.toString(System.nanoTime(), 36);
+    }
+}

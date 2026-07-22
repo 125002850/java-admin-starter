@@ -1,9 +1,0 @@
-package com.example.admin.iam.infra.mapper;
-
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.admin.iam.infra.entity.IamRefreshTokenEntity;
-import org.apache.ibatis.annotations.Mapper;
-
-@Mapper
-public interface IamRefreshTokenMapper extends BaseMapper<IamRefreshTokenEntity> {
-}
