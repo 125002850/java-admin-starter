@@ -9,7 +9,7 @@
 - `dev` profile 支持通过环境变量连接独立 MySQL 库 `basic_platform_sso`，未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL
 - `system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换
 - 动态查询 DSL 已在 `core` 落地，当前接入全局字典类型、字典项和导出记录分页场景
-- `mdm` 已承载全局字典和导出中心，支持导出提交、我的导出记录、详情、下载、批量下载和软删除
+- `mdm` 当前无源码，保留为空模块（通用业务平台扩展预留空间）
 - 顶层模块边界约定为：`boot` 负责启动，`core` 负责底层通用能力与原生抽象，`mdm` 承载通用业务服务，`system` 承载外部服务集成，`{biz}` 承载具体业务
 - 模块目录名与 Maven `artifactId` 保持一致，统一使用仓库内语义名，不重复添加 `admin-` 或项目名前缀
 - 仓库基线 Maven `groupId` 与 Java 根包统一使用 `com.oigit.admin`；初始化业务项目时由 `--package` 替换为目标命名空间
@@ -72,28 +72,13 @@ java-admin-starter/
 ├── system/                                     # 系统集成模块：对接对象存储、短信、邮件、支付等外部服务
 │   └── src/
 │       ├── main/java/com/oigit/admin/
-│       │   └── file/
-│       │       ├── controller/                      #     文件存储接口
-│       │       │   └── dto/                         #     请求/响应 DTO
-│       │       ├── app/                             #     FileAppService（事务边界）
-│       │       ├── service/                         #     文件存储服务、对象键规则、provider 编排
-│       │       ├── config/                          #     文件存储配置与本地静态资源映射
-│       │       ├── enums/                           #     文件模块错误码等枚举
-│       │       └── infra/provider/                  #     local/qiniu/minio provider 适配
-│       └── test/java/com/oigit/admin/file/                 #     provider 级单元测试
+│       │   ├── file/                                #     文件存储接口与 provider 适配
+│       │   ├── dict/                                #     全局字典管理与导出场景 handler
+│       │   ├── staff/                               #     SSO 员工查询
+│       │   └── export/                              #     导出中心能力
+│       └── test/java/com/oigit/admin/               #     file/dict/export/staff 模块测试
 │
-└── mdm/                                        # 通用业务服务模块：承载主数据与跨业务复用的平台型业务能力
-    └── src/
-        ├── main/java/com/oigit/admin/mdm/
-        │   ├── dict/                                #     全局字典能力
-        │   │   ├── controller/                      #     全局字典接口与 DTO
-        │   │   ├── app/                             #     DictAppService（事务边界）
-        │   │   ├── service/                         #     字典领域服务
-        │   │   ├── enums/                           #     字典模块错误码枚举
-        │   │   ├── export/                          #     字典导出场景 handler
-        │   │   └── infra/                           #     字典实体与 Mapper
-        │   └── export/                              #     导出中心能力
-        └── test/                                    #     模块冒烟测试与 Mockito 配置
+└── mdm/                                        # 通用业务服务模块（当前无源码，保留为空模块）
 ```
 
 ### 模块职责
@@ -283,11 +268,11 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 - 与具体业务解耦的导出原生抽象放在 `core`，例如导出场景声明、导出 handler SPI、文件渲染器 SPI、导出结果落盘 sink、文件访问 lifecycle 等。
 - 外部文件落盘与文件访问能力放在 `system`，导出框架如需写入对象存储，应通过 `system` 提供的文件能力完成，而不是直接依赖厂商 SDK。
-- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `mdm`，例如导出记录、状态流转、有效期管理、下载留痕、过期清理等。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `system`（`export` 包），例如导出记录、状态流转、有效期管理、下载留痕、过期清理等。
 - 导出提交只同步创建 `PROCESSING` 记录，查询、渲染和对象存储上传由异步任务执行；创建、成功和失败状态分别使用独立短事务落库。
 - CSV 渲染、批量 ZIP 构建、源文件读取和对象存储上传均使用临时文件或流式接口，避免把源文件与压缩结果同时放入 JVM 堆。
 - 具体业务导出实现放在 `{biz}`，例如某个业务的导出参数组装、数据查询、列定义与导出内容构建；业务模块通过 `core` 提供的 SPI 接入平台能力。
-- 模块协作链路保持清晰：业务模块声明导出场景并提供 handler，`mdm` 负责编排与记录生命周期，`system` 负责文件存储，`core` 负责抽象契约。
+- 模块协作链路保持清晰：业务模块声明导出场景并提供 handler，`system` 的 `export` 包负责编排与记录生命周期，`system` 的 `file` 包负责文件存储，`core` 负责抽象契约。
 
 ## 启动方式
 

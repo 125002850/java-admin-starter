@@ -36,7 +36,7 @@ public class OpenApiConfig {
         "com.oigit.admin.core",
         "com.oigit.admin.file.controller.dto",
         "com.oigit.admin.dict.controller.dto",
-        "com.oigit.admin.mdm.export.controller.dto",
+        "com.oigit.admin.export.controller.dto",
         "com.oigit.admin.staff.controller.dto"
     );
 

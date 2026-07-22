@@ -6,8 +6,8 @@
 |---|---|---|
 | `boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
-| `mdm` | 主数据、平台型业务服务和跨业务复用能力 | 当前承载全局字典与导出中心，不承载仅属于单一业务域的实现 |
-| `system` | 对象存储、SSO staff client 等外部系统集成 | 外部 SDK 只能出现在对应 provider 或 client 适配层 |
+| `mdm` | 主数据、平台型业务服务和跨业务复用能力（当前无源码，保留为空模块） | 不承载仅属于单一业务域的实现 |
+| `system` | 对象存储、导出中心、SSO 员工查询、全局字典、外部系统集成 | 外部 SDK 只能出现在对应 provider 或 client 适配层 |
 | `{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
 
 模块目录名与 Maven `artifactId` 必须一致，统一使用仓库内语义名，不添加 `admin-` 或项目名前缀。仓库基线 Maven `groupId` 与 Java 根包统一使用 `com.oigit.admin`。
@@ -61,8 +61,8 @@ com.oigit.admin.{module}
 
 ## 当前模块能力映射
 
-- 全局字典能力位于 `mdm` 的 `mdm/dict` 包，接口统一暴露 `/api/mdm/dict/global/**`。
-- 导出中心能力位于 `mdm` 的 `mdm/export` 包，接口统一暴露 `/api/mdm/export/**`。
+- 全局字典能力位于 `system` 的 `dict` 包，接口统一暴露 `/api/mdm/dict/global/**`。
+- 导出中心能力位于 `system` 的 `export` 包，接口统一暴露 `/api/mdm/export/**`。
 - 员工信息查询能力位于 `system/staff`，接口统一暴露 `/api/staff/**`。
 - 文件存储能力位于 `system/file`，接口统一暴露 `/api/file/storage/**`。
 
@@ -80,11 +80,11 @@ com.oigit.admin.{module}
 
 - 与具体业务解耦的导出原生抽象放在 `core`，例如场景声明、handler SPI、renderer SPI、sink、file lifecycle。
 - 外部文件落盘与访问能力放在 `system/file`，导出框架不得直接依赖厂商 SDK。
-- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `mdm/export`。
+- 带明确业务语义、跨业务复用的下载中心与导出编排能力放在 `system/export`。
 - 导出任务只在创建记录、成功落库和失败落库时开启短事务；查询、渲染、对象存储上传、临时 URL 和 ZIP 构建等文件或网络操作必须在事务外执行。
 - 大文件渲染、对象存储上传和批量 ZIP 下载必须使用流式接口，禁止按总文件大小上限推导 JVM 内存安全。
 - 具体业务导出实现放在具体业务模块，例如参数组装、数据查询、列定义、导出内容构建。
-- 协作链路：业务模块声明导出场景并提供 handler，`mdm/export` 编排与记录生命周期，`system/file` 负责文件存储，`core` 负责抽象契约。
+- 协作链路：业务模块声明导出场景并提供 handler，`system/export` 编排与记录生命周期，`system/file` 负责文件存储，`core` 负责抽象契约。
 
 ## 不提前做
 

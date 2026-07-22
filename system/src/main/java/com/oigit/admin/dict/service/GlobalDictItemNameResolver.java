@@ -1,7 +1,7 @@
 package com.oigit.admin.dict.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.oigit.admin.core.dict.DictItemNameResolver;
+import com.oigit.admin.dict.service.DictItemNameResolver;
 import com.oigit.admin.dict.infra.entity.GlobalDictItemEntity;
 import com.oigit.admin.dict.infra.mapper.GlobalDictItemMapper;
 import org.springframework.stereotype.Service;
