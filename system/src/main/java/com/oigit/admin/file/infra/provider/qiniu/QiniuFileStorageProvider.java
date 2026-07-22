@@ -60,12 +60,10 @@ public class QiniuFileStorageProvider implements FileStorageProvider, DirectUplo
     }
 
     @Override
-    public byte[] download(String objectKey) {
+    public InputStream openStream(String objectKey) {
         try {
             URLConnection connection = URI.create(buildTempUrl(objectKey)).toURL().openConnection();
-            try (InputStream inputStream = connection.getInputStream()) {
-                return inputStream.readAllBytes();
-            }
+            return connection.getInputStream();
         } catch (IllegalArgumentException | IOException ex) {
             throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
         }

@@ -7,4 +7,6 @@ import com.oigit.admin.core.export.model.RenderedExportFile;
 public interface ExportFileSink {
 
     ExportStoredFile store(RenderedExportFile file, ExportStoreRequest request);
+
+    void delete(String objectKey);
 }

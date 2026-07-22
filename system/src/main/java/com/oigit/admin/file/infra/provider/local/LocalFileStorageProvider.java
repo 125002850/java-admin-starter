@@ -56,14 +56,14 @@ public class LocalFileStorageProvider implements FileStorageProvider {
     }
 
     @Override
-    public byte[] download(String objectKey) {
+    public InputStream openStream(String objectKey) {
         String normalizedObjectKey = normalizeObjectKey(objectKey);
         Path targetPath = resolvePath(normalizedObjectKey);
         if (Files.notExists(targetPath)) {
             throw new BizException(FileErrorCode.FILE_NOT_FOUND);
         }
         try {
-            return Files.readAllBytes(targetPath);
+            return Files.newInputStream(targetPath);
         } catch (IOException ex) {
             throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
         }

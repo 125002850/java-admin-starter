@@ -82,13 +82,48 @@ public class FileService {
         }
     }
 
+    public StoredFile upload(
+            InputStream inputStream,
+            long size,
+            String bizPath,
+            String objectKey,
+            String originalFilename,
+            String contentType
+    ) {
+        if (inputStream == null || size <= 0) {
+            throw new BizException(FileErrorCode.EMPTY_FILE);
+        }
+        String normalizedBizPath = normalizeBizPath(bizPath);
+        String resolvedObjectKey = StringUtils.hasText(objectKey)
+                ? normalizeObjectKey(objectKey)
+                : generateObjectKey(normalizedBizPath, originalFilename);
+        return doUpload(
+                inputStream,
+                normalizedBizPath,
+                resolvedObjectKey,
+                contentType,
+                size,
+                originalFilename
+        );
+    }
+
     public void delete(String objectKey) {
         fileStorageProvider.delete(normalizeObjectKey(objectKey));
     }
 
     public byte[] download(String objectKey) {
+        try (InputStream inputStream = openDownloadStream(objectKey)) {
+            return inputStream.readAllBytes();
+        } catch (BizException ex) {
+            throw ex;
+        } catch (IOException ex) {
+            throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
+        }
+    }
+
+    public InputStream openDownloadStream(String objectKey) {
         try {
-            return fileStorageProvider.download(normalizeObjectKey(objectKey));
+            return fileStorageProvider.openStream(normalizeObjectKey(objectKey));
         } catch (BizException ex) {
             throw ex;
         } catch (Exception ex) {

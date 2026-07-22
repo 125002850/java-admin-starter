@@ -21,8 +21,9 @@ public class ExportDownloadService {
 
     public String fetchDownloadUrl(ExportRecordEntity entity, Long operatorId) {
         ensureDownloadable(entity);
+        String downloadUrl = exportFileAccessor.fetchTempUrl(entity.getObjectKey());
         exportRecordService.recordDownloadLinkAcquired(entity.getId(), operatorId);
-        return exportFileAccessor.fetchTempUrl(entity.getObjectKey());
+        return downloadUrl;
     }
 
     private void ensureDownloadable(ExportRecordEntity entity) {

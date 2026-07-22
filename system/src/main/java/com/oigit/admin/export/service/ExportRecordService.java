@@ -12,6 +12,7 @@ import com.oigit.admin.export.enums.ExportRecordStatus;
 import com.oigit.admin.export.infra.entity.ExportRecordEntity;
 import com.oigit.admin.export.infra.mapper.ExportRecordMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -33,7 +34,7 @@ public class ExportRecordService {
         this.mybatisPlusQueryExecutor = mybatisPlusQueryExecutor;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Long createProcessingRecord(ExportRecordEntity entity) {
         entity.setStatus(ExportRecordStatus.PROCESSING.getIntCode());
         if (entity.getDeleted() == null) {
@@ -43,8 +44,34 @@ public class ExportRecordService {
         return entity.getId();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSuccess(Long recordId, String objectKey, String contentType, Long fileSize, String storageType) {
+        markSuccessInternal(recordId, objectKey, contentType, fileSize, storageType);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markBatchSuccess(
+            Long recordId,
+            String objectKey,
+            String contentType,
+            Long fileSize,
+            String storageType,
+            List<Long> sourceRecordIds,
+            Long operatorId
+    ) {
+        markSuccessInternal(recordId, objectKey, contentType, fileSize, storageType);
+        for (Long sourceRecordId : sourceRecordIds) {
+            recordDownloadLinkAcquiredInternal(sourceRecordId, operatorId);
+        }
+    }
+
+    private void markSuccessInternal(
+            Long recordId,
+            String objectKey,
+            String contentType,
+            Long fileSize,
+            String storageType
+    ) {
         ExportRecordEntity entity = getActiveRequired(recordId);
         ensureStatus(entity, ExportRecordStatus.PROCESSING);
         entity.setStatus(ExportRecordStatus.SUCCESS.getIntCode());
@@ -56,7 +83,7 @@ public class ExportRecordService {
         exportRecordMapper.updateById(entity);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long recordId, String failCode, String failMessage) {
         ExportRecordEntity entity = getActiveRequired(recordId);
         ensureStatus(entity, ExportRecordStatus.PROCESSING);
@@ -100,9 +127,14 @@ public class ExportRecordService {
         return mybatisPlusQueryExecutor.selectPage(exportRecordMapper, queryAst, sceneQueryDefinition);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordDownloadLinkAcquired(Long recordId, Long operatorId) {
+        recordDownloadLinkAcquiredInternal(recordId, operatorId);
+    }
+
+    private void recordDownloadLinkAcquiredInternal(Long recordId, Long operatorId) {
         ExportRecordEntity entity = getActiveRequired(recordId);
+        ensureStatus(entity, ExportRecordStatus.SUCCESS);
         int nextDownloadCount = entity.getDownloadCount() == null ? 1 : entity.getDownloadCount() + 1;
         entity.setDownloadCount(nextDownloadCount);
         entity.setLastDownloadTime(LocalDateTime.now());

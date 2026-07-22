@@ -1,11 +1,16 @@
 package com.oigit.admin.core.export.model;
 
-public class RenderedExportFile {
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public class RenderedExportFile implements AutoCloseable {
 
     private String fileName;
     private String fileType;
     private String contentType;
-    private byte[] content;
+    private Path contentPath;
     private long fileSize;
 
     public String getFileName() {
@@ -32,12 +37,12 @@ public class RenderedExportFile {
         this.contentType = contentType;
     }
 
-    public byte[] getContent() {
-        return content;
+    public Path getContentPath() {
+        return contentPath;
     }
 
-    public void setContent(byte[] content) {
-        this.content = content;
+    public void setContentPath(Path contentPath) {
+        this.contentPath = contentPath;
     }
 
     public long getFileSize() {
@@ -46,5 +51,16 @@ public class RenderedExportFile {
 
     public void setFileSize(long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public InputStream openInputStream() throws IOException {
+        return Files.newInputStream(contentPath);
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (contentPath != null) {
+            Files.deleteIfExists(contentPath);
+        }
     }
 }

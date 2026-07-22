@@ -35,7 +35,7 @@ public class ExportCenterController {
         this.exportCenterAppService = exportCenterAppService;
     }
 
-    @Operation(summary = "提交导出任务", description = "按导出场景编码提交一次同步导出", operationId = "submitExport")
+    @Operation(summary = "提交导出任务", description = "创建导出记录并异步执行导出", operationId = "submitExport")
     @PostMapping("/submit")
     public R<ExportSubmitRspDTO> submit(@Valid @RequestBody ExportSubmitReqDTO reqDTO) {
         return R.ok(exportCenterAppService.submit(reqDTO));
@@ -59,7 +59,7 @@ public class ExportCenterController {
         return R.ok(exportCenterAppService.download(reqDTO.getRecordId()));
     }
 
-    @Operation(summary = "批量下载导出记录", description = "将多条可下载导出记录打包为 zip 并返回临时下载地址", operationId = "batchDownloadExportRecords")
+    @Operation(summary = "批量下载导出记录", description = "创建异步任务，将多条可下载导出记录流式打包为 zip", operationId = "batchDownloadExportRecords")
     @PostMapping("/download/batch")
     public R<ExportBatchDownloadRspDTO> batchDownload(@Valid @RequestBody ExportBatchDownloadReqDTO reqDTO) {
         return R.ok(exportCenterAppService.batchDownload(reqDTO));
