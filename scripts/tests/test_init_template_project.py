@@ -26,14 +26,15 @@ class InitTemplateProjectTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertTrue((target_dir / ".git").is_dir())
-            self.assertTrue((target_dir / "track-bench-boot").is_dir())
-            self.assertTrue((target_dir / "track-bench-core").is_dir())
-            self.assertTrue((target_dir / "track-bench-iam").is_dir())
-            self.assertTrue((target_dir / "track-bench-system").is_dir())
+            self.assertTrue((target_dir / "boot").is_dir())
+            self.assertTrue((target_dir / "core").is_dir())
+            self.assertTrue((target_dir / "iam").is_dir())
+            self.assertTrue((target_dir / "system").is_dir())
+            self.assertFalse((target_dir / "track-bench-boot").exists())
 
             boot_application = (
                 target_dir
-                / "track-bench-boot/src/main/java/com/trackbench/boot/BootApplication.java"
+                / "boot/src/main/java/com/trackbench/boot/BootApplication.java"
             )
             self.assertTrue(boot_application.is_file())
             self.assertIn("package com.trackbench.boot;", boot_application.read_text(encoding="utf-8"))
@@ -41,15 +42,27 @@ class InitTemplateProjectTests(unittest.TestCase):
             root_pom = (target_dir / "pom.xml").read_text(encoding="utf-8")
             self.assertIn("<groupId>com.trackbench</groupId>", root_pom)
             self.assertIn("<artifactId>track-bench</artifactId>", root_pom)
-            self.assertIn("<module>track-bench-boot</module>", root_pom)
+            self.assertIn("<module>boot</module>", root_pom)
 
-            application_yml = (
-                target_dir / "track-bench-boot/src/main/resources/application.yml"
-            ).read_text(encoding="utf-8")
+            boot_pom = (target_dir / "boot/pom.xml").read_text(encoding="utf-8")
+            self.assertIn("<artifactId>boot</artifactId>", boot_pom)
+            self.assertIn("<artifactId>core</artifactId>", boot_pom)
+            self.assertIn("<artifactId>iam</artifactId>", boot_pom)
+            self.assertIn("<artifactId>system</artifactId>", boot_pom)
+            self.assertNotIn("com.oigit.admin", boot_pom)
+
+            generated_initializer = (target_dir / "scripts/init_template_project.py").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn('SOURCE_PACKAGE = "com.trackbench"', generated_initializer)
+
+            application_yml = (target_dir / "boot/src/main/resources/application.yml").read_text(
+                encoding="utf-8"
+            )
             self.assertIn("name: track-bench", application_yml)
 
             application_dev_yml = (
-                target_dir / "track-bench-boot/src/main/resources/application-dev.yml"
+                target_dir / "boot/src/main/resources/application-dev.yml"
             ).read_text(encoding="utf-8")
             self.assertIn("jdbc:mysql://127.0.0.1:3300/track_bench", application_dev_yml)
             self.assertIn("${TRACK_BENCH_DATASOURCE_URL:", application_dev_yml)
@@ -59,20 +72,21 @@ class InitTemplateProjectTests(unittest.TestCase):
 
             readme = (target_dir / "README.md").read_text(encoding="utf-8")
             self.assertNotIn("java-admin-starter", readme)
-            self.assertNotIn("com.example.admin", readme)
-            self.assertNotIn("com/example/admin", readme)
-            self.assertIn("track-bench-{biz}", readme)
-            self.assertNotIn("admin-{biz}", readme)
+            self.assertNotIn("com.oigit.admin", readme)
+            self.assertNotIn("com/oigit/admin", readme)
+            self.assertIn("`{biz}`", readme)
+            self.assertNotIn("track-bench-{biz}", readme)
 
             contract_test = (
                 target_dir
-                / "track-bench-boot/src/test/java/com/trackbench/boot/contract/ErrorCodeContractTests.java"
+                / "boot/src/test/java/com/trackbench/boot/contract/ErrorCodeContractTests.java"
             ).read_text(encoding="utf-8")
             self.assertIn(
-                "track-bench-core/src/main/java/com/trackbench/core/web/R.java",
+                "core/src/main/java/com/trackbench/core/web/R.java",
                 contract_test,
             )
-            self.assertNotIn("com/example/admin", contract_test)
+            self.assertNotIn("com.oigit.admin", contract_test)
+            self.assertNotIn("com/oigit/admin", contract_test)
 
             second_target_dir = Path(temp_dir) / "inventory-service"
             second_result = subprocess.run(
@@ -89,10 +103,10 @@ class InitTemplateProjectTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(second_result.returncode, 0, msg=second_result.stderr)
-            self.assertTrue((second_target_dir / "inventory-service-boot").is_dir())
+            self.assertTrue((second_target_dir / "boot").is_dir())
             second_boot_application = (
                 second_target_dir
-                / "inventory-service-boot/src/main/java/com/inventory/boot/BootApplication.java"
+                / "boot/src/main/java/com/inventory/boot/BootApplication.java"
             )
             self.assertTrue(second_boot_application.is_file())
             self.assertIn(
@@ -128,20 +142,21 @@ class InitTemplateProjectTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertTrue((target_dir / "admin-service-boot").is_dir())
+            self.assertTrue((target_dir / "boot").is_dir())
+            self.assertFalse((target_dir / "admin-service-boot").exists())
 
             root_pom = (target_dir / "pom.xml").read_text(encoding="utf-8")
             self.assertIn("<artifactId>admin-service</artifactId>", root_pom)
             self.assertNotIn("admin-service-service", root_pom)
 
             application_yml = (
-                target_dir / "admin-service-boot/src/main/resources/application.yml"
+                target_dir / "boot/src/main/resources/application.yml"
             ).read_text(encoding="utf-8")
             self.assertIn("name: admin-service", application_yml)
             self.assertNotIn("name: admin-service-service", application_yml)
 
             application_dev_yml = (
-                target_dir / "admin-service-boot/src/main/resources/application-dev.yml"
+                target_dir / "boot/src/main/resources/application-dev.yml"
             ).read_text(encoding="utf-8")
             self.assertIn("jdbc:mysql://127.0.0.1:3300/admin_service_iam", application_dev_yml)
             self.assertNotIn("admin_service_service", application_dev_yml)

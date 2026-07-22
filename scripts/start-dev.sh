@@ -106,11 +106,11 @@ main() {
     log "已配置远程数据源，跳过本地 Docker/MySQL 启动。"
   fi
 
-  log "正在构建并安装 admin-boot 依赖模块..."
-  mvn -f "${ROOT_DIR}/pom.xml" -pl admin-boot -am install -DskipTests
+  log "正在构建并安装 boot 依赖模块..."
+  mvn -f "${ROOT_DIR}/pom.xml" -pl boot -am install -DskipTests
 
   log "正在以 dev profile 启动服务..."
-  cd "${ROOT_DIR}/admin-boot"
+  cd "${ROOT_DIR}/boot"
   exec mvn spring-boot:run -Dspring-boot.run.profiles=dev "$@"
 }
 

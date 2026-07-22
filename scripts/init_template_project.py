@@ -11,7 +11,9 @@ from pathlib import Path
 
 
 PACKAGE_SEGMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-MODULE_SUFFIXES = ("boot", "core", "iam", "system")
+SOURCE_PACKAGE = "com.oigit.admin"
+SOURCE_PACKAGE_PATH = SOURCE_PACKAGE.replace(".", "/")
+MODULE_NAMES = ("boot", "core", "iam", "system")
 EXCLUDE_NAMES = {
     ".git",
     ".DS_Store",
@@ -56,19 +58,6 @@ def ignore_entries(_: str, names: list[str]) -> set[str]:
 
 def copy_template(source_root: Path, target_dir: Path) -> None:
     shutil.copytree(source_root, target_dir, dirs_exist_ok=True, ignore=ignore_entries)
-
-
-def rename_module_directories(project_root: Path, project_name: str) -> dict[str, str]:
-    mapping: dict[str, str] = {}
-    for suffix in MODULE_SUFFIXES:
-        old_name = f"admin-{suffix}"
-        new_name = f"{project_name}-{suffix}"
-        source = project_root / old_name
-        target = project_root / new_name
-        if source.exists():
-            source.rename(target)
-        mapping[old_name] = new_name
-    return mapping
 
 
 def package_to_path(package_name: str) -> Path:
@@ -122,10 +111,9 @@ def build_replacements(
         ("java_admin_starter", database_name),
         ("admin_", f"{database_name}_"),
         ("AdminBootApplication", "BootApplication"),
-        ("com/example/admin", package_path),
-        ("com.example.admin", package_name),
+        (SOURCE_PACKAGE_PATH, package_path),
+        (SOURCE_PACKAGE, package_name),
         ("java-admin-starter", project_name),
-        ("admin-", f"{project_name}-"),
     ]
 
 
@@ -177,11 +165,10 @@ def main() -> int:
     ensure_target_directory(source_root, target_dir)
     copy_template(source_root, target_dir)
 
-    module_mapping = rename_module_directories(target_dir, project_name)
-    for module_dir_name in module_mapping.values():
-        move_package_tree(target_dir / module_dir_name, "com.example.admin", args.package)
+    for module_name in MODULE_NAMES:
+        move_package_tree(target_dir / module_name, SOURCE_PACKAGE, args.package)
 
-    rename_boot_application(target_dir, args.package, module_mapping["admin-boot"])
+    rename_boot_application(target_dir, args.package, "boot")
     replace_text_content(target_dir, build_replacements(project_name, args.package))
     init_git_repository(target_dir)
 
