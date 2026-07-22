@@ -46,7 +46,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void unknownNodeTypeShouldReturnWrappedParamError() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -64,7 +64,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void tooDeepConditionTreeShouldReturnBizError() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -126,7 +126,7 @@ class DynamicQueryContractIntegrationTests {
                         """.formatted(index))
                 .collect(Collectors.joining(","));
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -186,7 +186,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void eqWithNullShouldReturnWrappedValidationError() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -210,7 +210,7 @@ class DynamicQueryContractIntegrationTests {
         insertGlobalDictType(801L, "user_status", "用户状态", 0L, LocalDateTime.of(2026, 6, 1, 8, 0, 0));
         insertGlobalDictType(802L, "user_status_deleted", "已删除用户状态", 1L, LocalDateTime.of(2026, 6, 2, 8, 0, 0));
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -250,7 +250,7 @@ class DynamicQueryContractIntegrationTests {
                 ) values (?, ?, ?, current_timestamp, current_timestamp, ?, ?, ?)
                 """, 901L, "audit_type", "审计字典", 901L, 901L, 0L);
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pageNo\":1,\"pageSize\":10}"))
                 .andExpect(status().isOk())
