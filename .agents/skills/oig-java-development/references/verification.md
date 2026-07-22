@@ -12,7 +12,7 @@
 |---|---|---|
 | 文档改动 | `README`、`docs/**`、`.agents/**`、注释、纯文本配置 | 文本级自检，不强制跑 Maven |
 | 单模块改动 | 只改一个模块，且不影响启动装配、Flyway、OpenAPI、跨模块契约 | 跑对应模块编译 + 对应模块测试或指定测试类 |
-| 跨模块改动 | 改了共享契约、公共模块，或影响多个模块联动 | 先 `mvn clean install -DskipTests`，再跑受影响模块测试；如影响启动层，再跑 `admin-boot` 集成测试 |
+| 跨模块改动 | 改了共享契约、公共模块，或影响多个模块联动 | 先 `mvn clean install -DskipTests`，再跑受影响模块测试；如影响启动层，再跑 `boot` 集成测试 |
 | 提交前 | 准备提交中大改动，或自己不能确定影响面 | 跑 `mvn test`；涉及迁移再补 Flyway / 真实 MySQL 验证 |
 
 ## 对应命令
@@ -27,20 +27,20 @@
 示例：
 
 ```bash
-mvn compile -pl admin-core
-mvn test -pl admin-core -Dtest=指定测试类
+mvn compile -pl core
+mvn test -pl core -Dtest=指定测试类
 ```
 
 ### 跨模块改动
 
-修改非启动模块后，例如 `admin-core`、`admin-iam`、`admin-system`，在单独测试 `admin-boot` 前必须先执行：
+修改非启动模块后，例如 `core`、`iam`、`system`，在单独测试 `boot` 前必须先执行：
 
 ```bash
 mvn clean install -DskipTests
-mvn test -pl admin-boot -Dtest=要跑的测试类
+mvn test -pl boot -Dtest=要跑的测试类
 ```
 
-原因：`admin-boot` 的测试依赖其他兄弟模块安装到本地 Maven 仓库中的 jar。不先 install 会导致测试使用旧 jar，出现幽灵编译错误，或测试通过但实际运行不一致。
+原因：`boot` 的测试依赖其他兄弟模块安装到本地 Maven 仓库中的 jar。不先 install 会导致测试使用旧 jar，出现幽灵编译错误，或测试通过但实际运行不一致。
 
 ### 提交前
 
@@ -54,7 +54,7 @@ mvn test
 
 出现以下任一情况时，不再按“单模块改动”处理，至少升级到“跨模块改动”：
 
-- 改了 `admin-core` 中被多个模块依赖的公共契约、SPI、上下文、基础配置。
+- 改了 `core` 中被多个模块依赖的公共契约、SPI、上下文、基础配置。
 - 改了 `OpenApiConfig`、`SpringDocOperationIdConfig`、`EnumModelConverter` 等启动装配或 OpenAPI 生成逻辑。
 - 改了 Controller DTO、动态查询 schema、公共错误码、公共枚举，且可能影响其他模块或前端契约。
 - 改了 Flyway migration、数据库表结构、索引、约束。
@@ -65,14 +65,14 @@ mvn test
 
 ```bash
 # 只验证单模块编译
-mvn compile -pl admin-core
+mvn compile -pl core
 
 # 只验证单模块测试
-mvn test -pl admin-system -Dtest=指定测试类
+mvn test -pl system -Dtest=指定测试类
 
 # 非启动模块改动后验证启动层集成测试
 mvn clean install -DskipTests
-mvn test -pl admin-boot -Dtest=指定测试类
+mvn test -pl boot -Dtest=指定测试类
 
 # 需要提交跨模块较大改动时
 mvn test

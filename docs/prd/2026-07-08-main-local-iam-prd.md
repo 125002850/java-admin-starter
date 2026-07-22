@@ -80,14 +80,14 @@
 
 两个分支可以共享：
 
-- `admin-core` 中的统一响应、异常、校验、Jackson、MyBatis、动态查询、导出基础抽象。
-- `admin-system` 中的全局字典、导出中心、文件存储等系统级平台能力与外部系统集成能力。
+- `core` 中的统一响应、异常、校验、Jackson、MyBatis、动态查询、导出基础抽象。
+- `system` 中的全局字典、导出中心、文件存储等系统级平台能力与外部系统集成能力。
 
 ## 6. 模块定位
 
 ### 6.1 新增模块
 
-新增 `admin-iam` 模块，承载本地身份与权限能力。
+新增 `iam` 模块，承载本地身份与权限能力。
 
 模块职责：
 
@@ -99,15 +99,15 @@
 - 登录日志。
 - 操作日志。
 
-### 6.2 不放入 `admin-system`
+### 6.2 不放入 `system`
 
-IAM 不放入 `admin-system`。
+IAM 不放入 `system`。
 
 原因：
 
-- `admin-system` 面向系统级平台能力和外部服务集成。
+- `system` 面向系统级平台能力和外部服务集成。
 - IAM 涉及认证、token、安全上下文、权限校验和日志审计，是安全基础能力，不只是主数据。
-- 将 IAM 放入 `admin-system` 会导致系统平台模块承担安全网关职责，模块边界不清晰。
+- 将 IAM 放入 `system` 会导致系统平台模块承担安全网关职责，模块边界不清晰。
 
 ## 7. 角色与使用对象
 
@@ -880,7 +880,7 @@ IAM 新表的唯一约束必须兼容逻辑删除后的同名复用。
 
 ## 24. 错误码范围
 
-建议 `admin-iam` 使用独立错误码号段。
+建议 `iam` 使用独立错误码号段。
 
 | 领域 | 建议号段 |
 |------|----------|
@@ -1022,16 +1022,16 @@ IAM 新表的唯一约束必须兼容逻辑删除后的同名复用。
 14. OpenAPI 文档测试通过，确认 `iam` 接口和分组完整。
 15. 全量 `mvn -q test` 通过。
 
-`admin-iam` 最小 ArchUnit 规则：
+`iam` 最小 ArchUnit 规则：
 
-1. `admin-core` 不得依赖 `admin-iam`。
-2. `admin-iam` 可以依赖 `admin-core`。
-3. `admin-iam` 不得依赖已删除的 `admin-mdm` 实现包。
-4. `admin-iam` 不得依赖 `admin-system` 的实现包。
-5. `admin-boot` 可以依赖并装配 `admin-iam`。
-6. `admin-system` 不得反向依赖 `admin-iam` 实现包。
-7. `admin-iam` 的 Controller 不得直接依赖 Service、Mapper 或 Entity。
-8. `admin-iam` 的 AppService 是事务边界，不得在 Controller 中声明业务事务。
+1. `core` 不得依赖 `iam`。
+2. `iam` 可以依赖 `core`。
+3. `iam` 不得依赖已删除的 `admin-mdm` 实现包。
+4. `iam` 不得依赖 `system` 的实现包。
+5. `boot` 可以依赖并装配 `iam`。
+6. `system` 不得反向依赖 `iam` 实现包。
+7. `iam` 的 Controller 不得直接依赖 Service、Mapper 或 Entity。
+8. `iam` 的 AppService 是事务边界，不得在 Controller 中声明业务事务。
 
 建议验收命令：
 
@@ -1042,7 +1042,7 @@ mvn -q test
 建议文档和源码 sanity check：
 
 ```bash
-rg -n "X-User-Id|GatewayOperator|SSO|sso" README.md admin-core admin-iam admin-boot/src/main/java
+rg -n "X-User-Id|GatewayOperator|SSO|sso" README.md core iam boot/src/main/java
 ```
 
 预期：

@@ -2,10 +2,11 @@
 
 ## 版本化迁移
 
-- Flyway 版本化迁移文件统一放在 `admin-boot/src/main/resources/db/migration/`。
+- Flyway 版本化迁移文件统一放在 `boot/src/main/resources/db/migration/`。
 - 文件名必须匹配 `V*__*.sql`，新增迁移统一使用时间戳版本号，例如 `V20260709173500__add_xxx.sql`。
 - 新增迁移不得复用已有版本号。
-- 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名。
+- 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名文件名或内容。
+- 经明确批准的模块目录整体重命名，只允许把 migration 目录原样搬迁；必须确认所有历史文件均为 `R100`，不存在内容变化或遗漏。
 - 数据库结构变更必须新增版本号更高的迁移脚本。
 - 当前仓库已存在 `V1` 到 `V8` 多个历史迁移脚本；后续新增迁移统一切换为时间戳版本号，避免团队协作时发生顺序号冲突。
 
@@ -51,6 +52,6 @@ lefthook run pre-commit
 - 如需单独执行迁移：
 
 ```bash
-cd admin-boot
+cd boot
 mvn flyway:migrate
 ```
