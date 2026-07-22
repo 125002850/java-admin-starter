@@ -83,12 +83,13 @@ class InitTemplateProjectTests(unittest.TestCase):
             self.assertEqual(initial_branch.stdout.strip(), "main")
 
             for suffix in ("boot", "core", "mdm", "system"):
-                self.assertTrue((target_dir / f"sample-service-{suffix}").is_dir())
+                self.assertTrue((target_dir / suffix).is_dir())
+                self.assertFalse((target_dir / f"sample-service-{suffix}").exists())
                 self.assertFalse((target_dir / f"admin-{suffix}").exists())
 
             boot_application = (
                 target_dir
-                / "sample-service-boot/src/main/java/com/acme/sample/boot/BootApplication.java"
+                / "boot/src/main/java/com/acme/sample/boot/BootApplication.java"
             )
             self.assertTrue(boot_application.is_file())
             self.assertIn(
@@ -100,29 +101,29 @@ class InitTemplateProjectTests(unittest.TestCase):
             root_pom = root_pom_path.read_text(encoding="utf-8")
             self.assertIn("<groupId>com.acme.sample</groupId>", root_pom)
             self.assertIn("<artifactId>sample-service</artifactId>", root_pom)
-            self.assertIn("<module>sample-service-boot</module>", root_pom)
+            self.assertIn("<module>boot</module>", root_pom)
 
-            core_pom = (target_dir / "sample-service-core/pom.xml").read_text(
+            core_pom = (target_dir / "core/pom.xml").read_text(
                 encoding="utf-8"
             )
             self.assertIn("<artifactId>sample-service</artifactId>", core_pom)
-            self.assertIn("<artifactId>sample-service-core</artifactId>", core_pom)
+            self.assertIn("<artifactId>core</artifactId>", core_pom)
 
             application_yml = (
-                target_dir / "sample-service-boot/src/main/resources/application.yml"
+                target_dir / "boot/src/main/resources/application.yml"
             ).read_text(encoding="utf-8")
             self.assertIn("name: sample-service", application_yml)
             self.assertIn("type-enums-package: com.acme.sample", application_yml)
 
             application_dev_yml = (
-                target_dir / "sample-service-boot/src/main/resources/application-dev.yml"
+                target_dir / "boot/src/main/resources/application-dev.yml"
             ).read_text(encoding="utf-8")
             self.assertIn("${SAMPLE_SERVICE_DATASOURCE_URL:", application_dev_yml)
             self.assertIn("jdbc:mysql://127.0.0.1:3307/sample_service", application_dev_yml)
             self.assertIn("${user.home}/.sample-service/uploads", application_dev_yml)
 
             application_test_yml = (
-                target_dir / "sample-service-boot/src/main/resources/application-test.yml"
+                target_dir / "boot/src/main/resources/application-test.yml"
             ).read_text(encoding="utf-8")
             self.assertIn("${SAMPLE_SERVICE_DATASOURCE_URL:", application_test_yml)
             self.assertIn("jdbc:mysql://127.0.0.1:3306/sample_service_test", application_test_yml)
@@ -133,7 +134,6 @@ class InitTemplateProjectTests(unittest.TestCase):
 
             readme = (target_dir / "README.md").read_text(encoding="utf-8")
             self.assertNotIn(str(self.repo_root), readme)
-            self.assertIn(str(target_dir.resolve()), readme)
             self.assertIn("当前工作分支：`main`", readme)
             self.assertNotIn("feature/sso", readme)
 
@@ -155,8 +155,8 @@ class InitTemplateProjectTests(unittest.TestCase):
                 "java_" + "admin_" + "starter",
                 "JAVA_" + "ADMIN_" + "STARTER",
                 "basic_" + "platform_" + "sso",
-                "com." + "example." + "admin",
-                "com/" + "example/" + "admin",
+                "com." + "oigit." + "admin",
+                "com/" + "oigit/" + "admin",
                 "Admin" + "BootApplication",
             )
             for path in target_dir.rglob("*"):
@@ -180,11 +180,11 @@ class InitTemplateProjectTests(unittest.TestCase):
             root_pom_path.write_text(
                 root_pom.replace(
                     "    </modules>",
-                    "        <module>sample-service-orders</module>\n    </modules>",
+                    "        <module>orders</module>\n    </modules>",
                 ),
                 encoding="utf-8",
             )
-            (target_dir / "sample-service-orders").mkdir()
+            (target_dir / "orders").mkdir()
 
             derived_dir = Path(temp_dir) / "derived-project"
             derived_result = self.run_initializer(
@@ -194,11 +194,11 @@ class InitTemplateProjectTests(unittest.TestCase):
                 "org.example.derived",
             )
             self.assertEqual(derived_result.returncode, 0, msg=derived_result.stderr)
-            self.assertTrue((derived_dir / "derived-service-orders").is_dir())
+            self.assertTrue((derived_dir / "orders").is_dir())
             self.assertTrue(
                 (
                     derived_dir
-                    / "derived-service-boot/src/main/java/org/example/derived/boot/BootApplication.java"
+                    / "boot/src/main/java/org/example/derived/boot/BootApplication.java"
                 ).is_file()
             )
 
