@@ -30,6 +30,8 @@ description: Apply the java-admin-starter feature/sso gateway-SSO conventions wh
 
 ## Default Checks
 
+- 模块目录名必须与 Maven `artifactId` 一致，使用 `boot`、`core`、`mdm`、`system`、`{biz}` 等语义名，不添加 `admin-` 或项目名前缀。
+- 仓库基线 `groupId` 与 Java 根包使用 `com.oigit.admin`；生成新项目时由初始化参数替换命名空间。
 - Controller 不得绕过 AppService。
 - Web DTO、Entity、内部调用对象不得混用。
 - 依赖版本不得使用 `LATEST`、`RELEASE` 或动态范围。

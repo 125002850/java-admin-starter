@@ -18,22 +18,22 @@ mvn compile
 |---|---|
 | `.agents/**`、README、docs、注释 | 做文本、路径、命令、模块名和 skill 结构自检 |
 | 单模块代码 | 在三条全仓命令前，按需运行对应模块编译、测试或指定测试类 |
-| 公共契约、启动装配、OpenAPI、模块依赖 | 补受影响模块及 `admin-boot` 集成测试 |
+| 公共契约、启动装配、OpenAPI、模块依赖 | 补受影响模块及 `boot` 集成测试 |
 | Flyway、表结构、索引、约束 | 运行迁移拦截、Flyway 测试，并至少验证一套真实 MySQL 8 环境 |
 | 跨模块收缩、删除或重命名 | 在 clean checkout 或 detached worktree 中复验 |
 
-单独运行 `admin-boot` 测试且依赖兄弟模块最新产物时，先安装 reactor 产物：
+单独运行 `boot` 测试且依赖兄弟模块最新产物时，先安装 reactor 产物：
 
 ```bash
 mvn clean install -DskipTests
-mvn test -pl admin-boot -Dtest=指定测试类
+mvn test -pl boot -Dtest=指定测试类
 ```
 
 ## 升级条件
 
 出现以下任一情况时，除必跑验证外，必须追加跨模块或契约验证：
 
-- 改了 `admin-core` 中被多个模块依赖的公共契约、SPI、上下文、基础配置。
+- 改了 `core` 中被多个模块依赖的公共契约、SPI、上下文、基础配置。
 - 改了 `OpenApiConfig`、`SpringDocOperationIdConfig`、`EnumModelConverter` 等启动装配或 OpenAPI 生成逻辑。
 - 改了 Controller DTO、动态查询 schema、公共错误码、公共枚举，且可能影响其他模块或前端契约。
 - 改了 Flyway migration、数据库表结构、索引、约束。
@@ -44,14 +44,14 @@ mvn test -pl admin-boot -Dtest=指定测试类
 
 ```bash
 # 只验证单模块编译
-mvn compile -pl admin-core
+mvn compile -pl core
 
 # 只验证单模块测试
-mvn test -pl admin-system -Dtest=指定测试类
+mvn test -pl system -Dtest=指定测试类
 
 # 非启动模块改动后验证启动层集成测试
 mvn clean install -DskipTests
-mvn test -pl admin-boot -Dtest=指定测试类
+mvn test -pl boot -Dtest=指定测试类
 
 # 需要提交跨模块较大改动时
 mvn clean test
