@@ -7,8 +7,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication(scanBasePackages = "com.oigit.admin")
 @MapperScan(basePackages = {
-    "com.oigit.admin.core.operator",
-    "com.oigit.admin.dict.infra.mapper",
+    "com.oigit.admin.staff.infra.persistence.mapper",
+    "com.oigit.admin.dict.infra.persistence.mapper",
     "com.oigit.admin.export.infra.mapper"
 }, annotationClass = Mapper.class)
 public class AdminBootApplication {

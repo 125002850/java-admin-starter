@@ -120,32 +120,37 @@ class OpenApiDocumentationTests {
     }
 
     @Test
-    void enumSchemasShouldUseCodesForRequestsAndEnumVoForResponses() throws Exception {
+    void enumSchemasShouldExposeStableCodesAndDictionaryMetadata() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.components.schemas.GlobalDictItemCreateReqDTO.properties.status.enum",
                     contains("enable", "disable")))
             .andExpect(jsonPath("$.components.schemas.GlobalDictItemUpdateReqDTO.properties.status.enum",
                     contains("enable", "disable")))
-            .andExpect(jsonPath("$.components.schemas.EnumVO").exists())
-            .andExpect(jsonPath("$.components.schemas.EnumVO.type").value("object"))
-            .andExpect(jsonPath("$.components.schemas.EnumVO.properties.code.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.EnumVO.properties.desc.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.EnumVO").doesNotExist())
             .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.status.type").value("string"))
             .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.status.enum").isArray())
             .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.status.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.status.enum").isArray());
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.status.enum").isArray())
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.status.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.status.enum",
+                    contains("1", "2", "3", "4", "5")))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.status['x-dict-type']")
+                    .value("EXPORT_RECORD_STATUS"));
     }
 
     @Test
-    void auditResponseSchemasShouldExposeUsernamesAsStrings() throws Exception {
+    void auditResponseSchemasShouldExposeIdsAndTranslatedNames() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.createBy.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.updateBy.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.createBy.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.updateBy.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.createBy.type").value("string"));
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.updateById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.updateByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.createByName.type").value("string"));
     }
 
     @Test

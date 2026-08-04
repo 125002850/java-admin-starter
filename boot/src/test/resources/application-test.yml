@@ -7,6 +7,8 @@ spring:
     enabled: true
 
 platform:
+  http-logging:
+    enabled: false
   file:
     storage:
       type: local

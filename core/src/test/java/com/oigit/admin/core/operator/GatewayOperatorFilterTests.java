@@ -21,12 +21,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class GatewayOperatorFilterTests {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private CacheUserService cacheUserService;
+    private OperatorUserCacheWriter operatorUserCacheWriter;
     private TaskExecutor taskExecutor;
 
     @BeforeEach
     void setUp() {
-        cacheUserService = Mockito.mock(CacheUserService.class);
+        operatorUserCacheWriter = Mockito.mock(OperatorUserCacheWriter.class);
         taskExecutor = Runnable::run;
     }
 
@@ -57,7 +57,7 @@ class GatewayOperatorFilterTests {
         filter.doFilter(request, response, filterChain);
 
         assertThat(chainCalled.get()).isTrue();
-        verify(cacheUserService).upsert(100L, "test user", "13800138000", "张三", "U100");
+        verify(operatorUserCacheWriter).upsert(100L, "test user", "13800138000", "张三", "U100");
         assertThat(OperatorContext.getOperatorId()).isNull();
         assertThat(OperatorContext.getOperatorName()).isNull();
         assertThat(OperatorContext.getOperatorRealName()).isNull();
@@ -75,7 +75,7 @@ class GatewayOperatorFilterTests {
 
         assertThat(chainCalled.get()).isTrue();
         assertThat(OperatorContext.getOperatorId()).isNull();
-        verifyNoInteractions(cacheUserService);
+        verifyNoInteractions(operatorUserCacheWriter);
     }
 
     @Test
@@ -94,7 +94,7 @@ class GatewayOperatorFilterTests {
         assertThat(response.getStatus()).isEqualTo(400);
         assertThat(jsonNode.get("code").asInt()).isEqualTo(400);
         assertThat(jsonNode.get("msg").asText()).isEqualTo("X-User-Id 值非法: not-a-number");
-        verifyNoInteractions(cacheUserService);
+        verifyNoInteractions(operatorUserCacheWriter);
     }
 
     @Test
@@ -109,7 +109,7 @@ class GatewayOperatorFilterTests {
         filter.doFilter(secondRequest, new MockHttpServletResponse(), filterChain);
 
         assertThat(chainCalled.get()).isTrue();
-        verify(cacheUserService, times(1)).upsert(100L, "test user", null, null, "U100");
+        verify(operatorUserCacheWriter, times(1)).upsert(100L, "test user", null, null, "U100");
     }
 
     @Test
@@ -123,8 +123,8 @@ class GatewayOperatorFilterTests {
         filter.doFilter(firstRequest, new MockHttpServletResponse(), filterChain);
         filter.doFilter(secondRequest, new MockHttpServletResponse(), filterChain);
 
-        verify(cacheUserService).upsert(100L, "test user", null, null, "U100");
-        verify(cacheUserService).upsert(100L, "test user", null, "张三", "U100");
+        verify(operatorUserCacheWriter).upsert(100L, "test user", null, null, "U100");
+        verify(operatorUserCacheWriter).upsert(100L, "test user", null, "张三", "U100");
     }
 
     @Test
@@ -136,11 +136,17 @@ class GatewayOperatorFilterTests {
 
         filter.doFilter(request, new MockHttpServletResponse(), filterChain);
 
-        verifyNoInteractions(cacheUserService);
+        verifyNoInteractions(operatorUserCacheWriter);
     }
 
     private GatewayOperatorFilter newFilter(java.util.function.LongSupplier currentTimeMillisSupplier) {
-        return new GatewayOperatorFilter(objectMapper, cacheUserService, taskExecutor, 600_000L, currentTimeMillisSupplier);
+        return new GatewayOperatorFilter(
+                objectMapper,
+                operatorUserCacheWriter,
+                taskExecutor,
+                600_000L,
+                currentTimeMillisSupplier
+        );
     }
 
     private MockHttpServletRequest buildUserRequest(String userId,

@@ -2,10 +2,10 @@ package com.oigit.admin.export.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.oigit.admin.core.enums.BaseEnum;
+import com.oigit.admin.core.enums.DictionaryEnum;
 
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@DictionaryEnum("EXPORT_DELETE_REASON")
 public enum ExportDeleteReason implements BaseEnum {
 
     MANUAL(1, "手动删除"),

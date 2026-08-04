@@ -39,9 +39,12 @@ GatewayOperatorFilter → OperatorContext.set(userId, userName, userPhone, realN
                        → OperatorContext.clear()
 ```
 
-`GatewayOperatorFilter` 同时将网关透传的用户展示信息写入 `sys_user_cache`。对外响应中的
-`createBy` / `updateBy` 由应用服务显式批量解析为 `user_name`：当前操作人优先使用本次请求的
-`X-User-Name`，其他操作人从缓存批量读取。数据库实体和内部任务对象仍保持 `Long` ID。
+`GatewayOperatorFilter` 通过 `OperatorUserCacheWriter` 端口异步保存网关透传的用户展示信息。
+`sys_user_cache` 的具体 Entity、Mapper 和 MyBatis-Plus Service 位于 `staff/infra/persistence`，不再放入 core。
+对外响应统一返回 `createById/createByName/updateById/updateByName`：应用服务只映射 Long ID，
+`TranslationResponseBodyAdvice` 在序列化前收集并去重全部 ID，再通过用户 provider 一次批量解析名称。
+当前操作人优先使用本次请求的 `X-User-Name`，其他操作人从缓存批量读取。
+数据库实体和内部任务对象始终保持 Long ID。
 导出异步任务在提交时快照 `OperatorContext` 与 MDC，工作线程执行结束后必须清理，避免线程池上下文串扰。
 
 ### CommonMetaObjectHandler
@@ -63,14 +66,14 @@ GatewayOperatorFilter → OperatorContext.set(userId, userName, userPhone, realN
 | `POST /api/system/auth/login` | 已删除 | 由网关 SSO 承接 |
 | `POST /api/system/tenant/**` | 已删除 | 不再提供 |
 | `POST /api/system/user/**` | 已删除 | 不再提供 |
-| `POST /api/mdm/dict/items/by-type` | 已删除 | `POST /api/mdm/dict/global/items/by-type` |
-| `POST /api/mdm/dict/types/list` | 已删除 | `POST /api/mdm/dict/global/types/list` |
-| `POST /api/mdm/dict/type/create` | 已删除 | `POST /api/mdm/dict/global/type/create` |
-| `POST /api/mdm/dict/type/update` | 已删除 | `POST /api/mdm/dict/global/type/update` |
-| `POST /api/mdm/dict/type/delete` | 已删除 | `POST /api/mdm/dict/global/type/delete` |
-| `POST /api/mdm/dict/item/create` | 已删除 | `POST /api/mdm/dict/global/item/create` |
-| `POST /api/mdm/dict/item/update` | 已删除 | `POST /api/mdm/dict/global/item/update` |
-| `POST /api/mdm/dict/item/delete` | 已删除 | `POST /api/mdm/dict/global/item/delete` |
+| `POST /api/mdm/dict/items/by-type` | 已删除 | `POST /api/system/dict/global/items/options` |
+| `POST /api/mdm/dict/types/list` | 已删除 | `POST /api/system/dict/global/types/list` |
+| `POST /api/mdm/dict/type/create` | 已删除 | `POST /api/system/dict/global/type/create` |
+| `POST /api/mdm/dict/type/update` | 已删除 | `POST /api/system/dict/global/type/update` |
+| `POST /api/mdm/dict/type/delete` | 已删除 | `POST /api/system/dict/global/type/delete` |
+| `POST /api/mdm/dict/item/create` | 已删除 | `POST /api/system/dict/global/item/create` |
+| `POST /api/mdm/dict/item/update` | 已删除 | `POST /api/system/dict/global/item/update` |
+| `POST /api/mdm/dict/item/delete` | 已删除 | `POST /api/system/dict/global/item/delete` |
 
 ## 本地开发
 

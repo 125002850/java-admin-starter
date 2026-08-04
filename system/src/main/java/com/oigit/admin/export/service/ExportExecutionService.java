@@ -22,12 +22,15 @@ import com.oigit.admin.core.export.spi.ExportSceneRegistry;
 import com.oigit.admin.core.export.spi.PackageableExportHandler;
 import com.oigit.admin.core.query.ast.QueryAst;
 import com.oigit.admin.core.query.support.DynamicQuerySummaryRenderer;
+import com.oigit.admin.core.translation.TranslationEngine;
+import com.oigit.admin.core.translation.TranslationScene;
 import com.oigit.admin.export.enums.ExportCenterErrorCode;
 import com.oigit.admin.export.infra.entity.ExportRecordEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -62,6 +65,7 @@ public class ExportExecutionService {
     private final ObjectMapper objectMapper;
     private final DynamicQuerySummaryRenderer dynamicQuerySummaryRenderer;
     private final ExportTaskDispatcher exportTaskDispatcher;
+    private final TranslationEngine translationEngine;
 
     public ExportExecutionService(
             ExportSceneRegistry exportSceneRegistry,
@@ -70,7 +74,8 @@ public class ExportExecutionService {
             ExportRecordService exportRecordService,
             ObjectMapper objectMapper,
             DynamicQuerySummaryRenderer dynamicQuerySummaryRenderer,
-            ExportTaskDispatcher exportTaskDispatcher
+            ExportTaskDispatcher exportTaskDispatcher,
+            ObjectProvider<TranslationEngine> translationEngineProvider
     ) {
         this.exportSceneRegistry = exportSceneRegistry;
         this.exportRendererRegistry = exportRendererRegistry;
@@ -79,6 +84,7 @@ public class ExportExecutionService {
         this.objectMapper = objectMapper;
         this.dynamicQuerySummaryRenderer = dynamicQuerySummaryRenderer;
         this.exportTaskDispatcher = exportTaskDispatcher;
+        this.translationEngine = translationEngineProvider.getIfAvailable(() -> new TranslationEngine(List.of()));
     }
 
     public ExportRecordEntity submit(String sceneCode, JsonNode queryNode) {
@@ -145,6 +151,7 @@ public class ExportExecutionService {
         try {
             List<ExportColumn> columns = defaultIfNull(handler.columns(query));
             List<?> rows = defaultIfNull(handler.queryRows(query));
+            translationEngine.translate(rows, TranslationScene.EXPORT);
             ExportRenderer renderer = resolveRenderer(record.getFileType());
             ExportRenderRequest renderRequest = new ExportRenderRequest();
             renderRequest.setFileName(record.getFileName());
@@ -332,6 +339,7 @@ public class ExportExecutionService {
                 long chunkEnd = Math.min(window.endRow(), chunkStart + chunkSize - 1L);
                 Q chunkQuery = copyWithRange(handler, query, chunkStart, chunkEnd);
                 List<?> rows = defaultIfNull(handler.queryRows(chunkQuery));
+                translationEngine.translate(rows, TranslationScene.EXPORT);
                 writeCsvEntry(
                         zipOutputStream,
                         csvRenderer,

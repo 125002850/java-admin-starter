@@ -8,8 +8,8 @@ import com.oigit.admin.core.query.ast.QueryLogicOperator;
 import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.scene.DynamicQueryAstMapper;
 import com.oigit.admin.core.query.scene.SceneQueryMapper;
-import com.oigit.admin.export.controller.dto.query.ExportRecordDynamicCriteriaReqDTO;
-import com.oigit.admin.export.controller.dto.query.ExportRecordDynamicPageReqDTO;
+import com.oigit.admin.export.dto.req.query.ExportRecordDynamicCriteriaReqDTO;
+import com.oigit.admin.export.dto.req.query.ExportRecordDynamicPageReqDTO;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

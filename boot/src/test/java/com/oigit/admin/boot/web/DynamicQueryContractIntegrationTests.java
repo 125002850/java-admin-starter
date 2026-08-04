@@ -255,8 +255,10 @@ class DynamicQueryContractIntegrationTests {
                         .content("{\"pageNo\":1,\"pageSize\":10}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.list[0].createBy").value("audit_admin"))
-                .andExpect(jsonPath("$.data.list[0].updateBy").value("audit_admin"));
+                .andExpect(jsonPath("$.data.list[0].createById").value(901))
+                .andExpect(jsonPath("$.data.list[0].createByName").value("audit_admin"))
+                .andExpect(jsonPath("$.data.list[0].updateById").value(901))
+                .andExpect(jsonPath("$.data.list[0].updateByName").value("audit_admin"));
     }
 
     private void cleanTables() {

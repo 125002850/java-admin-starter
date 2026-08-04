@@ -15,7 +15,7 @@
 - Controller 返回必须使用 `R.ok(...)` / `R.fail(...)`。
 - 所有接口统一使用 `POST`。
 - URL 格式：`/api/{模块名}/{资源名}/{动作}`。
-- 请求对象命名为 `XxxReqDTO`，响应对象命名为 `XxxRspDTO`。
+- 请求对象命名为 `XxxReqDTO` 并放在 `dto.req`，响应对象命名为 `XxxRspDTO` 并放在 `dto.rsp`；动态查询请求放在 `dto.req.query`。
 - Web DTO 禁止复用数据库 Entity。
 - 资源按 ID 批量操作时使用 `List<Long> ids`，单资源且业务规则只允许单个对象时可使用 `Long id`；文件对象等非 ID 资源使用其真实业务标识。批量能力不是独立业务语义时，不单独建 `/xxx-batch` 端点。
 - Controller 类上使用 `@Tag`，方法上使用 `@Operation`。
@@ -49,7 +49,7 @@
 | 列名 | 直接表达当前业务语义 | `dict_type_code`、`export_biz_code` |
 | Java 类名 | 使用完整业务语义，不强制 `Track` 前缀 | `GlobalDictTypeEntity`、`ExportRecordEntity` |
 | 枚举 | 使用完整业务语义 | `EnableStatusEnum`、`ExportRecordStatus` |
-| REST 路径 | 按模块语义组织 | `/api/mdm/dict/global`、`/api/mdm/export` |
+| REST 路径 | 按模块语义组织 | `/api/system/dict/global`、`/api/mdm/export` |
 | 错误码 | 按模块或领域语义命名 | `GLOBAL_DICT_TYPE_NOT_FOUND` |
 | 索引/约束 | 跟随真实表名与语义 | `uk_sys_dict_type_global_code` |
 
@@ -57,12 +57,13 @@
 
 ## 枚举规范
 
-业务枚举必须：
+影响后端业务分支的枚举必须：
 
-- 实现 `BaseEnum`，提供 `getCode()` 和 `getDesc()`。
-- 标注 `@JsonFormat(shape = JsonFormat.Shape.OBJECT)`，响应序列化为 `{"code":"...","desc":"..."}`。
+- 实现 `BaseEnum`，提供稳定的 `getCode()` 和仅供后端维护/兜底的 `getDesc()`。
+- JSON 和 OpenAPI 只暴露 code 字符串，不返回 `{code, desc}` 对象；前端无需理解 Java 枚举结构。
 - 标注 `@JsonCreator(mode = JsonCreator.Mode.DELEGATING)`，请求接收 code 字符串反序列化。
 - 使用 `@EnumValue` 标注持久化字段，MyBatis-Plus 写入 `code` 值。
+- 使用 `@DictionaryEnum("DICT_TYPE_CODE")` 绑定同编码的全局字典类型；Java 枚举 code 是后端逻辑权威，字典项名称是展示文案权威。
 - `code` 统一使用 `String`；int 型 code 的枚举额外提供 `getIntCode()` 供内部比较。
 - 枚举名使用完整业务含义，例如 `EnableStatusEnum`，不要缩写成 `StatusEnum`。
 
@@ -71,10 +72,10 @@
 ```java
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.oigit.admin.core.enums.BaseEnum;
+import com.oigit.admin.core.enums.DictionaryEnum;
 
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@DictionaryEnum("ENABLE_STATUS")
 public enum EnableStatusEnum implements BaseEnum {
 
     ENABLE("enable", "启用"),
@@ -114,19 +115,22 @@ public enum EnableStatusEnum implements BaseEnum {
 }
 ```
 
-`EnumModelConverter` 会将实现了 `BaseEnum` 的枚举字段映射为 `EnumVO` schema，DTO 字段只需写：
+`EnumModelConverter` 会将实现了 `BaseEnum` 的字段映射为 string schema，并写入可选值和 `x-dict-type`。DTO 字段只需写：
 
 ```java
 @Schema(description = "状态")
 private EnableStatusEnum status;
 ```
 
-枚举与字典选择：
+枚举与字典协作：
 
 | 场景 | 使用 |
 |---|---|
-| 影响后端逻辑分支 | `Enum` |
-| 仅用于前端展示或筛选 | 数据库字典表 |
+| 影响后端逻辑分支 | Java `Enum`，同时建立同 code 的字典项 |
+| 前端展示、筛选和表单选项 | 全局字典批量接口，前端翻译 |
+| 后端导出 | `@Translate` + 字典 provider 批量翻译 |
+
+枚举字典类型及 item code 受保护：后台不得删除、改码或手工增减，展示名称、启停、排序和备注可以维护。新增或修改枚举 code 时必须追加 Flyway migration，并通过枚举/字典一致性测试。
 
 ## 数据规范
 
@@ -139,13 +143,14 @@ private EnableStatusEnum status;
 
 ## 对象模型
 
-第一阶段只保留三类核心对象：
+业务模块保留以下核心对象：
 
 | 对象 | 用途 |
 |---|---|
+| Domain Model | 表达业务状态与规则，不携带 ORM 注解 |
 | `Entity` | 数据库持久化对象 |
 | `ReqDTO` / `RspDTO` | Web 层请求/响应对象 |
 | `XxxQuery` | 复杂查询场景，按需引入 |
 
-禁止提前引入 `VO`、`BO`、`DO`、`Param`、`Form`、`Command` 等多套近义对象。
-现有 `EnumVO` 仅用于通用枚举 schema/序列化基础设施，不作为新增业务响应对象的命名模板。
+Domain Model 与 Entity 在 Infra Repository 中转换，App/Domain 不得接触持久化 Entity。禁止提前引入 `VO`、`BO`、`DO`、`Param`、`Form`、`Command` 等多套近义对象。
+`EnumVO` 不再用于业务枚举响应；新增接口不得恢复枚举对象序列化。

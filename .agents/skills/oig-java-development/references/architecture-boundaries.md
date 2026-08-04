@@ -17,12 +17,18 @@
 强制调用链：
 
 ```text
-Controller -> AppService -> Domain/Service -> Infra/Mapper
+Controller -> AppService -> Domain
+                           ^
+                  Infra implements Repository
+                           |
+                  IService/ServiceImpl -> Mapper
 ```
 
-- `controller` 禁止绕过 `AppService` 直接调用 `service`、`infra` 或 `mapper`。
+- `controller` 禁止绕过 `AppService` 直接调用 `domain`、`infra` 或 `mapper`。
 - `AppService` 是事务边界所在层。
-- `AppService` 禁止直接面向 Web DTO 编写持久化逻辑，持久化访问统一下沉到 `service` / `infra`。
+- `AppService` 禁止依赖 Entity、Mapper、MyBatis-Plus Service 或具体 Repository 实现。
+- `domain` 只包含领域模型、业务规则、领域服务和 Repository 接口，不依赖 Spring、MyBatis、Controller 或 Infra。
+- MyBatis-Plus `IService/ServiceImpl` 属于持久化基础设施，只能位于 `infra/persistence/service`。
 - 业务链路对外部厂商能力的调用必须通过 `system` 内对应 provider / client 适配层。
 
 ## 分包规范
@@ -32,22 +38,35 @@ Controller -> AppService -> Domain/Service -> Infra/Mapper
 ```text
 com.oigit.admin.{module}
 ├── controller
-│   └── dto
+├── dto
+│   ├── req
+│   │   └── query
+│   └── rsp
 ├── app
-├── service
-├── config
+├── domain
+│   ├── model
+│   ├── repository
+│   └── service
 ├── infra
-│   ├── entity
-│   ├── mapper
-│   └── provider
+│   ├── persistence
+│   │   ├── entity
+│   │   ├── mapper
+│   │   ├── service
+│   │   │   └── impl
+│   │   └── repository
+│   ├── query
+│   ├── provider
+│   └── config
 └── enums
 ```
 
 - 按业务领域分包，不按技术类型散乱拆包。
+- DTO 与 `controller`、`app` 同级，作为应用用例输入输出对象供两层共用；请求对象放 `dto.req`，响应对象放 `dto.rsp`，动态查询请求放 `dto.req.query`；DTO 不得依赖 Controller、App、Domain 或 Infra 实现。
 - 模块之间禁止直接依赖对方实现包。
 - 需要同步返回值的跨模块调用，通过独立 `-api` 契约包完成。
+- 跨模块公开的接口、DTO、事件和枚举放 `-api`；仅实现内部使用的枚举留在 impl 的 `enums`，Entity、Mapper 和实现类不得进入 API 契约。
 - 不需要返回值的事后通知，通过 Spring `ApplicationEvent` 解耦。
-- `service/query`、`openapi`、`convert` 只在确有需要时创建。
+- 没有真实领域规则时不创建空 Domain Service，AppService 可以直接依赖 Domain Repository 接口。
 
 ## 网关 SSO 与操作人上下文
 
@@ -57,11 +76,19 @@ com.oigit.admin.{module}
 - 业务代码通过 `OperatorContext.getOperatorId()`、`getOperatorName()`、`getOperatorPhone()`、`getOperatorRealName()` 读取当前操作人。
 - `create_by` / `update_by` 由 MyBatis-Plus `MetaObjectHandler` 自动填充，Service 层不要手工赋值。
 - 开发/测试环境缺失 `X-User-Id` 时，审计字段回退为 `0L`；生产环境依赖网关可信边界提供操作人。
-- `sys_user_cache` 只缓存 SSO 用户展示信息，不构成本地 IAM 或授权数据源。
+- `sys_user_cache` 只缓存 SSO 用户展示信息，不构成本地 IAM 或授权数据源；Entity、Mapper 和 MyBatis-Plus Service 位于 `staff/infra/persistence`，`core/operator` 只保留上下文与读写端口。
+
+## HTTP 请求日志
+
+- HTTP 完成日志统一由 `core/logging` 的过滤器输出，业务模块不得自行打印完整请求体或响应体。
+- 过滤器顺序必须保持 `TraceIdFilter -> HttpRequestLoggingFilter -> GatewayOperatorFilter`，保证 traceId 和网关拒绝响应都能记录。
+- 请求/响应正文必须限长，并按字段名递归脱敏；multipart、二进制、文件访问、健康检查和 OpenAPI 资源不得打印正文或完成日志。
+- Spring Web 的日志级别不得开启到会输出反序列化请求/响应对象的 DEBUG，避免绕过统一脱敏。
+- HTTP 请求日志不代替 ERP 业务操作审计；单据状态变化和关键字段前后值由业务域另行记录。
 
 ## 当前模块能力映射
 
-- 全局字典能力位于 `system` 的 `dict` 包，接口统一暴露 `/api/mdm/dict/global/**`。
+- 全局字典能力位于 `system` 的 `dict` 包，接口统一暴露 `/api/system/dict/global/**`。
 - 导出中心能力位于 `system` 的 `export` 包，接口统一暴露 `/api/mdm/export/**`。
 - 员工信息查询能力位于 `system/staff`，接口统一暴露 `/api/staff/**`。
 - 文件存储能力位于 `system/file`，接口统一暴露 `/api/file/storage/**`。
@@ -71,7 +98,7 @@ com.oigit.admin.{module}
 - 文件能力位于 `system/file`，对外统一暴露 `/api/file/storage/**`。
 - provider 通过 `platform.file.storage.type=local|qiniu|minio` 切换。
 - `qiniu` / `minio` SDK 只允许出现在 `system` 的 file provider 适配层。
-- 业务链路保持 `Controller -> AppService -> Service -> Provider`。
+- 当前文件适配链路为 `Controller -> AppService -> Service -> Provider`；新增持久化能力仍必须遵守 Domain Repository 与 Infra Persistence 边界。
 - 当前阶段对象元信息只存在于对象存储，不新增数据库表。
 - 七牛真实网络集成测试使用 `qiniu-it` profile 和 `FILE_STORAGE_QINIU_*` 环境变量。
 - MinIO 真实网络集成测试使用 `minio-it` profile 和 `FILE_STORAGE_MINIO_*` 环境变量。

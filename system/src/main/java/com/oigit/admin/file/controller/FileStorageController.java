@@ -12,15 +12,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.file.app.FileAppService;
-import com.oigit.admin.file.controller.dto.DeleteFileReqDTO;
-import com.oigit.admin.file.controller.dto.FetchDirectUploadCredentialReqDTO;
-import com.oigit.admin.file.controller.dto.FetchDirectUploadCredentialRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlBatchReqDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlBatchRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlReqDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlRspDTO;
-import com.oigit.admin.file.controller.dto.StoredFileRspDTO;
-import com.oigit.admin.file.controller.dto.UploadFileReqDTO;
+import com.oigit.admin.file.dto.req.DeleteFileReqDTO;
+import com.oigit.admin.file.dto.req.FetchDirectUploadCredentialReqDTO;
+import com.oigit.admin.file.dto.req.FetchTempUrlBatchReqDTO;
+import com.oigit.admin.file.dto.req.FetchTempUrlReqDTO;
+import com.oigit.admin.file.dto.req.UploadFileReqDTO;
+import com.oigit.admin.file.dto.rsp.FetchDirectUploadCredentialRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlBatchRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlRspDTO;
+import com.oigit.admin.file.dto.rsp.StoredFileRspDTO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

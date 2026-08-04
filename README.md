@@ -65,6 +65,7 @@ java-admin-starter/
 │       │   ├── validation/                          #     Bean Validation 集成
 │       │   ├── jackson/                             #     Jackson 全局配置
 │       │   ├── trace/                               #     TraceId 过滤器与 MDC
+│       │   ├── logging/                             #     HTTP 完成日志、脱敏与限长缓存
 │       │   ├── operator/                            #     网关操作人上下文与过滤器
 │       │   └── mybatis/                             #     MyBatis-Plus 配置、审计字段自动填充
 │       └── test/java/com/oigit/admin/core/                 #     核心基础设施单元测试
@@ -104,21 +105,36 @@ java-admin-starter/
 ```
 com.oigit.admin.{module}
 ├── controller          # 输入输出适配
-│   └── dto             # ReqDTO / RspDTO
+├── dto                 # Controller 与 AppService 共用的传输对象
+│   ├── req             # 请求 DTO
+│   │   └── query       # 动态查询请求 DTO（按需创建）
+│   └── rsp             # 响应 DTO
 ├── app                 # AppService，事务边界与流程编排
-├── service             # 领域服务 / 核心业务规则
-├── config              # 模块私有配置（按需创建）
+├── domain              # 领域模型、业务规则与 Repository 接口
+│   ├── model
+│   ├── repository
+│   └── service         # 仅在存在真实领域规则时创建
 ├── infra
-│   ├── entity          # 持久化实体（按需创建）
-│   ├── mapper          # 数据库访问，Mapper 统一归 infra
-│   └── provider        # 三方能力适配（按需创建）
+│   ├── persistence
+│   │   ├── entity      # 持久化实体（按需创建）
+│   │   ├── mapper      # Mapper 统一归 infra
+│   │   ├── service     # MyBatis-Plus IService / ServiceImpl
+│   │   └── repository  # Domain Repository 实现
+│   ├── query           # 持久化查询场景定义（按需创建）
+│   ├── provider        # 三方能力适配（按需创建）
+│   └── config          # 模块实现装配（按需创建）
 └── enums               # 模块私有枚举（按需创建）
 ```
 
 补充说明：
 
+跨端审计、字典、枚举和主数据翻译的完整决策见 [能力分层与批量翻译架构](docs/architecture/2026-08-04-capability-layering-and-translation.md)。
+
 - `src/test/java` 与 `src/test/resources` 默认随模块创建，用于模块级单测、冒烟测试和测试专用配置。
-- 以下目录只在需要时创建：`service/query`、`openapi`、`convert`。
+- DTO 与 `controller`、`app` 同级，不放在 `controller` 内；请求对象放 `dto.req`，响应对象放 `dto.rsp`，动态查询请求放 `dto.req.query`；DTO 不依赖 Controller、App、Domain 或 Infra 实现。
+- MyBatis-Plus 的 `IService` / `ServiceImpl` 是持久化能力，只能位于 `infra/persistence/service`，不能冒充领域服务。
+- 跨模块同步契约按实际消费者创建独立 `-api` 模块；公开接口、DTO、事件和枚举放契约模块，Entity、Mapper 和实现内部枚举不得进入契约模块。
+- 没有真实业务规则时不要创建空的 Domain Service；AppService 可以直接依赖 Domain Repository 接口。
 
 ## 模板项目初始化
 
@@ -160,11 +176,16 @@ python3 scripts/init_template_project.py \
 ### 调用链路（强约束）
 
 ```
-Controller → AppService → Domain/Service → Infra/Mapper
+Controller → AppService → Domain
+                           ↑
+                  Infra implements Repository
+                           ↓
+                  IService/ServiceImpl → Mapper
 ```
 
-- `controller` 禁止绕过 `AppService` 直接调用 `service`、`infra` 或 `mapper`。
-- `AppService` 禁止直接面向 Web DTO 编写持久化逻辑，持久化访问统一下沉到 `service` / `infra`。
+- `controller` 禁止绕过 `AppService` 直接调用 `domain`、`infra` 或 `mapper`。
+- `AppService` 禁止依赖 Entity、Mapper、MyBatis-Plus Service 或具体 Repository 实现。
+- `domain` 只定义模型、规则和 Repository 接口，不依赖 Spring、MyBatis、Controller 或 Infra。
 - `AppService` 是事务边界所在层。
 
 ### 分包规范
@@ -205,31 +226,34 @@ Controller → AppService → Domain/Service → Infra/Mapper
 
 ### 对象模型
 
-第一阶段只保留三类核心对象：
+业务模块保留以下核心对象：
 
 | 对象 | 用途 |
 |------|------|
+| Domain Model | 表达业务状态与规则，不携带 ORM 注解 |
 | `Entity` | 数据库持久化对象 |
 | `ReqDTO` / `RspDTO` | Web 层请求/响应对象 |
 | `XxxQuery` | 复杂查询场景（按需引入） |
 
-不提前引入 `VO`、`BO`、`DO`、`Param`、`Form`、`Command` 等多套近义对象。
+Domain Model 与 Entity 必须在 Infra Repository 中转换。不得为了搬运字段提前引入 `VO`、`BO`、`DO`、`Param`、`Form`、`Command` 等多套近义对象。
 
 ### 扩展能力（按需引入）
 
 - **文件存储**：当前已落地 `system` 下的 `file` 子模块，默认本地实现，支持通过配置切换到七牛或 MinIO。
 - **导出基础抽象**：如需引入 handler、renderer、sink、file lifecycle 等与具体业务解耦的原生抽象，优先放在 `core`。
 - **平台型业务能力**：如需沉淀跨业务复用、带明确业务语义的统一服务，优先放在 `mdm`。
-- **翻译引擎**：ID 转名称走翻译机制，不在 SQL 中写大量 `LEFT JOIN`。
+- **翻译引擎**：审计 ID、主数据编码和导出字典走两阶段批量翻译，不在 AppService 手工逐条 set，也不产生 N+1 查询。
 - **导出**：使用独立 `ExportDTO`，不污染接口响应对象。
 - **状态枚举**：影响后端逻辑分支用 `Enum`，仅用于展示/筛选用 `Dict`。
-- **操作日志**：首个真实业务模块接入后再补全链路。
+- **HTTP 请求日志**：由 `core/logging` 统一输出 method、URI、traceId、userId、IP、query、请求/响应正文、状态和耗时；正文执行脱敏、限长和类型过滤。详见 [HTTP 请求日志规范](docs/architecture/2026-08-04-http-request-logging.md)。
+- **业务操作审计**：与 HTTP 请求日志分离，随真实单据业务补充领域操作记录。
 
 ### 开发环境
 
 - 提供 `dev`、`test` 两套 profile。
 - 开发态配置最小 CORS。
 - 日志中必须输出 `traceId`。
+- HTTP 请求日志默认开启；不得在 Controller 或 AppService 重复打印完整请求/响应，也不得记录 token、ticket、密码、Cookie、文件正文等敏感内容。
 - 健康检查端点可访问。
 
 ### 网关-SSO 边界摘要
@@ -251,7 +275,7 @@ Controller → AppService → Domain/Service → Infra/Mapper
   - `/api/file/storage/direct-upload/credential/fetch`
 - provider 切换：`platform.file.storage.type=local|qiniu|minio`。
 - `local` 模式默认通过 `/local-files/**` 暴露文件访问；`dev` profile 下本地文件根目录固定到 `${user.home}/.java-admin-starter/uploads`，避免临时目录被系统清理。
-- `qiniu` 模式只在 `system` 的 `file` provider 适配层内依赖七牛 SDK；业务链路仍保持 `Controller -> AppService -> Service -> Provider`。
+- `qiniu` 模式只在 `system` 的 file provider 适配层内依赖七牛 SDK；厂商实现不得越过 Infra 边界进入 Controller 或 DTO。
 - `minio` 模式只在 `system` 的 `file` provider 适配层内依赖 MinIO Java SDK，当前支持服务端上传、删除和临时下载地址；直传凭证暂未开放。
 - 文件对象元信息只存在于对象存储，不做数据库持久化；导出中心和 SSO 用户展示缓存通过 Flyway migration 维护平台表。
 - 文件模块额外支持字节数组上传、对象下载和批量临时 URL，供导出中心复用。
@@ -332,7 +356,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 当前基座公开端点范围：
 
-- `/api/mdm/dict/global/**`
+- `/api/system/dict/global/**`
 - `/api/mdm/export/**`
 - `/api/file/storage/**`
 - `/api/staff/list-all`
@@ -396,7 +420,7 @@ lefthook run pre-commit
 
 - 微服务拆分、MQ、分布式事务
 - 全量业务模块 / `-api` 契约包预建
-- 大而全的动态查询 DSL、翻译类型体系
+- 未被实际审计、字典、枚举或主数据场景使用的额外翻译 provider
 - 没有业务支撑的主数据实体
 - 为复用而复用的抽象基类体系
 
@@ -421,7 +445,3 @@ lefthook run pre-commit
 - 禁止引入 `VO`、`BO`、`DO`、`Command` 等额外对象层，除非文档明确更新。
 - 禁止使用动态依赖版本。
 - 禁止提前创建空模块、空包、空接口。
-
-## todo list
-
-- 日志

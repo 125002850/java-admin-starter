@@ -8,12 +8,16 @@ import com.oigit.admin.core.query.executor.MybatisPlusQueryExecutor;
 import com.oigit.admin.core.query.support.DynamicQueryGuard;
 import com.oigit.admin.core.query.support.QueryComplexityScorer;
 import com.oigit.admin.dict.app.DictAppService;
+import com.oigit.admin.dict.app.query.GlobalDictItemSceneQueryMapper;
+import com.oigit.admin.dict.app.query.GlobalDictTypeSceneQueryMapper;
 import com.oigit.admin.dict.controller.GlobalDictController;
-import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
-import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
-import com.oigit.admin.dict.query.globaldict.GlobalDictItemSceneQueryMapper;
-import com.oigit.admin.dict.query.globaldict.GlobalDictItemSceneQueryDefinition;
-import com.oigit.admin.dict.service.DictService;
+import com.oigit.admin.dict.infra.config.DictDomainConfiguration;
+import com.oigit.admin.dict.infra.persistence.repository.MybatisGlobalDictItemRepository;
+import com.oigit.admin.dict.infra.persistence.repository.MybatisGlobalDictTypeRepository;
+import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictItemPersistenceServiceImpl;
+import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictTypePersistenceServiceImpl;
+import com.oigit.admin.dict.infra.query.GlobalDictItemSceneQueryDefinition;
+import com.oigit.admin.dict.infra.query.GlobalDictTypeSceneQueryDefinition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -169,7 +173,7 @@ class DictModuleSmokeTests {
     }
 
     @Test
-    void listGlobalTypes_should_return_audit_usernames() throws Exception {
+    void listGlobalTypes_should_return_audit_ids_for_translation_advice() throws Exception {
         jdbcTemplate.update(
                 "insert into sys_dict_type_global "
                         + "(id, dict_type_code, dict_type_name, create_time, update_time, create_by, update_by, deleted) "
@@ -181,8 +185,8 @@ class DictModuleSmokeTests {
                         .content("{\"pageNo\":1,\"pageSize\":10}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.list[0].createBy").value("admin"))
-                .andExpect(jsonPath("$.data.list[0].updateBy").value("admin"));
+                .andExpect(jsonPath("$.data.list[0].createById").value(1))
+                .andExpect(jsonPath("$.data.list[0].updateById").value(1));
     }
 
     @Test
@@ -577,12 +581,44 @@ class DictModuleSmokeTests {
                 .andExpect(jsonPath("$.data.list[1].dictItemCode").value("FEMALE"));
     }
 
+    @Test
+    void listGlobalOptions_should_batch_types_and_keep_disabled_history_labels() throws Exception {
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, deleted) values "
+                        + "(901, 'ORDER_STATUS', '订单状态', 0), (902, 'YES_NO', '是否', 0)"
+        );
+        jdbcTemplate.update(
+                "insert into sys_dict_item_global "
+                        + "(id, dict_type_code, dict_item_code, dict_item_name, status, sort_order, deleted) values "
+                        + "(911, 'ORDER_STATUS', 'NEW', '新建', 'enable', 1, 0),"
+                        + "(912, 'ORDER_STATUS', 'OLD', '历史状态', 'disable', 2, 0),"
+                        + "(913, 'ORDER_STATUS', 'REMOVED', '已删除', 'enable', 3, 99),"
+                        + "(914, 'YES_NO', '1', '是', 'enable', 1, 0)"
+        );
+
+        mockMvc.perform(post("/api/system/dict/global/items/options")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"dictTypeCodes\":[\"ORDER_STATUS\",\"YES_NO\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].dictTypeCode").value("ORDER_STATUS"))
+                .andExpect(jsonPath("$.data[0].items.length()").value(2))
+                .andExpect(jsonPath("$.data[0].items[1].code").value("OLD"))
+                .andExpect(jsonPath("$.data[0].items[1].status").value("disable"))
+                .andExpect(jsonPath("$.data[1].dictTypeCode").value("YES_NO"));
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({
             GlobalDictController.class,
             DictAppService.class,
-            DictService.class,
+            DictDomainConfiguration.class,
+            MybatisGlobalDictTypeRepository.class,
+            MybatisGlobalDictItemRepository.class,
+            GlobalDictTypePersistenceServiceImpl.class,
+            GlobalDictItemPersistenceServiceImpl.class,
             QueryComplexityScorer.class,
             DynamicQueryGuard.class,
             MybatisPlusQueryExecutor.class,

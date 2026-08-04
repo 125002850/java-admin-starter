@@ -3,6 +3,8 @@
 `docs` 只维护当前仍然生效的架构契约和可执行开发指南：
 
 - [网关 SSO 边界契约](architecture/2026-05-19-gateway-sso-boundary.md)
+- [能力分层、审计与批量翻译架构](architecture/2026-08-04-capability-layering-and-translation.md)
+- [HTTP 请求日志规范](architecture/2026-08-04-http-request-logging.md)
 - [分支开发数据库说明](dev/2026-05-19-branch-database.md)
 
 已完成的实施计划、阶段性 TODO、代码评审快照和被后续重构取代的设计稿不在这里长期保留，需要追溯时使用 Git 提交历史。

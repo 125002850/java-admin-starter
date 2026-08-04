@@ -2,10 +2,10 @@ package com.oigit.admin.export.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.oigit.admin.core.enums.BaseEnum;
+import com.oigit.admin.core.enums.DictionaryEnum;
 
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@DictionaryEnum("EXPORT_RECORD_STATUS")
 public enum ExportRecordStatus implements BaseEnum {
 
     PROCESSING(1, "处理中"),

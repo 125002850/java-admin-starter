@@ -39,7 +39,7 @@ public class GatewayOperatorFilter extends OncePerRequestFilter {
     private static final String HEADER_USER_CODE = "X-User-Code";
 
     private final ObjectMapper objectMapper;
-    private final CacheUserService cacheUserService;
+    private final OperatorUserCacheWriter operatorUserCacheWriter;
     private final TaskExecutor cacheUserTaskExecutor;
     private final long cacheUserUpdateWindowMillis;
     private final LongSupplier currentTimeMillisSupplier;
@@ -47,20 +47,20 @@ public class GatewayOperatorFilter extends OncePerRequestFilter {
 
     @Autowired
     public GatewayOperatorFilter(ObjectMapper objectMapper,
-                                 CacheUserService cacheUserService,
+                                 OperatorUserCacheWriter operatorUserCacheWriter,
                                  @Qualifier("cacheUserTaskExecutor") TaskExecutor cacheUserTaskExecutor,
                                  CacheUserProperties cacheUserProperties) {
-        this(objectMapper, cacheUserService, cacheUserTaskExecutor,
+        this(objectMapper, operatorUserCacheWriter, cacheUserTaskExecutor,
                 cacheUserProperties.getUpdateWindowSeconds() * 1000L, System::currentTimeMillis);
     }
 
     GatewayOperatorFilter(ObjectMapper objectMapper,
-                          CacheUserService cacheUserService,
+                          OperatorUserCacheWriter operatorUserCacheWriter,
                           TaskExecutor cacheUserTaskExecutor,
                           long cacheUserUpdateWindowMillis,
                           LongSupplier currentTimeMillisSupplier) {
         this.objectMapper = objectMapper;
-        this.cacheUserService = cacheUserService;
+        this.operatorUserCacheWriter = operatorUserCacheWriter;
         this.cacheUserTaskExecutor = cacheUserTaskExecutor;
         this.cacheUserUpdateWindowMillis = Math.max(0L, cacheUserUpdateWindowMillis);
         this.currentTimeMillisSupplier = currentTimeMillisSupplier;
@@ -118,7 +118,7 @@ public class GatewayOperatorFilter extends OncePerRequestFilter {
         try {
             cacheUserTaskExecutor.execute(() -> {
                 try {
-                    cacheUserService.upsert(userId, userName, userPhone, realName, userCode);
+                    operatorUserCacheWriter.upsert(userId, userName, userPhone, realName, userCode);
                 } catch (Exception e) {
                     log.warn("Failed to upsert cache_user for userId={}", userId, e);
                 }

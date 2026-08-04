@@ -11,6 +11,7 @@ public enum DictErrorCode implements ErrorCode {
     GLOBAL_DICT_TYPE_HAS_ITEMS(3001010, "全局字典类型下存在字典项，不能删除"),
     GLOBAL_DICT_TYPE_CODE_CONFLICT_WITH_ITEMS(3001012, "全局字典类型编码变更后与现有字典项冲突"),
     GLOBAL_DICT_EXPORT_ROW_LIMIT_EXCEEDED(3001013, "全局字典导出结果行数超限"),
+    ENUM_DICT_CONTRACT_PROTECTED(3001014, "枚举字典编码由后端契约维护，不能通过管理接口变更"),
     DICT_TYPE_NOT_FOUND(3001004, "租户字典类型不存在"),
     DICT_TYPE_CODE_DUPLICATED(3001005, "租户字典类型编码已存在"),
     DICT_ITEM_NOT_FOUND(3001006, "租户字典项不存在"),

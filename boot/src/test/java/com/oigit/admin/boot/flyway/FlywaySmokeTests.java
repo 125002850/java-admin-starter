@@ -10,6 +10,8 @@ import java.util.Set;
 
 import javax.sql.DataSource;
 
+import com.oigit.admin.dict.infra.config.ClasspathEnumDictionaryPolicy;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,9 @@ class FlywaySmokeTests {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private ClasspathEnumDictionaryPolicy enumDictionaryPolicy;
+
     @Test
     void flywayMigrationMatchesPlatformSchemaContract() {
         assertThat(tableExists("flyway_schema_history")).isTrue();
@@ -56,6 +61,7 @@ class FlywaySmokeTests {
         assertThat(hasSuccessfulMigration("6")).isTrue();
         assertThat(hasSuccessfulMigration("7")).isTrue();
         assertThat(hasSuccessfulMigration("8")).isTrue();
+        assertThat(hasSuccessfulMigration("20260804170000")).isTrue();
 
         assertThat(tableExists("sys_tenant_global")).isFalse();
         assertThat(tableExists("sys_user")).isFalse();
@@ -101,6 +107,16 @@ class FlywaySmokeTests {
         assertThat(tableExists("sys_user_cache")).isTrue();
         assertThat(tableColumns("sys_user_cache"))
             .contains("user_id", "user_name", "user_phone", "real_name", "user_code", "create_time", "update_time");
+    }
+
+    @Test
+    void enumDictionaryCodesMustMatchFlywaySeedData() {
+        assertThat(enumDictionaryPolicy.contracts()).isNotEmpty();
+        enumDictionaryPolicy.contracts().forEach((dictTypeCode, expectedCodes) ->
+                assertThat(queryDictItemCodes(dictTypeCode))
+                        .as("dictionary codes for %s", dictTypeCode)
+                        .containsExactlyInAnyOrderElementsOf(expectedCodes)
+        );
     }
 
     @Test
@@ -198,6 +214,23 @@ class FlywaySmokeTests {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to query audit timestamp count", exception);
+        }
+    }
+
+    private Set<String> queryDictItemCodes(String dictTypeCode) {
+        String sql = "select dict_item_code from sys_dict_item_global where dict_type_code = ? and deleted = 0";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, dictTypeCode);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                Set<String> codes = new LinkedHashSet<>();
+                while (resultSet.next()) {
+                    codes.add(resultSet.getString(1));
+                }
+                return codes;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("failed to query enum dictionary codes", exception);
         }
     }
 

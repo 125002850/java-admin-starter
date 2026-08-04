@@ -1,6 +1,7 @@
 package com.oigit.admin.boot.config;
 
 import com.oigit.admin.core.enums.BaseEnum;
+import com.oigit.admin.core.enums.DictionaryEnum;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.media.Discriminator;
 import io.swagger.v3.oas.models.info.Contact;
@@ -31,20 +32,20 @@ import java.util.regex.Pattern;
 public class OpenApiConfig {
 
     private static final String CONDITION_PROPERTY = "condition";
-    private static final String ENUM_VO_REF = "#/components/schemas/EnumVO";
     private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of(
         "com.oigit.admin.core",
-        "com.oigit.admin.file.controller.dto",
-        "com.oigit.admin.dict.controller.dto",
-        "com.oigit.admin.export.controller.dto",
-        "com.oigit.admin.staff.controller.dto"
+        "com.oigit.admin.file.dto",
+        "com.oigit.admin.dict.dto.req",
+        "com.oigit.admin.dict.dto.rsp",
+        "com.oigit.admin.export.dto",
+        "com.oigit.admin.staff.dto"
     );
 
     private static final List<DynamicQuerySceneSchema> DYNAMIC_QUERY_SCENE_SCHEMAS = List.of(
         new DynamicQuerySceneSchema(
             "GlobalDictTypeDynamicListReqDTO",
             "GlobalDictTypeConditionNode",
-            Map.of(
+            orderedMappings(
                 "GlobalDictTypeGroupCondition", "compose",
                 "GlobalDictTypeTextCondition", "text",
                 "GlobalDictTypeDateTimeCondition", "dateTime"
@@ -53,7 +54,7 @@ public class OpenApiConfig {
         new DynamicQuerySceneSchema(
             "ExportRecordDynamicPageReqDTO",
             "ExportRecordConditionNode",
-            Map.of(
+            orderedMappings(
                 "ExportRecordGroupCondition", "compose",
                 "ExportRecordTextCondition", "text",
                 "ExportRecordDateTimeCondition", "dateTime",
@@ -63,7 +64,7 @@ public class OpenApiConfig {
         new DynamicQuerySceneSchema(
             "GlobalDictItemDynamicPageReqDTO",
             "GlobalDictItemConditionNode",
-            Map.of(
+            orderedMappings(
                 "GlobalDictItemGroupCondition", "compose",
                 "GlobalDictItemTextCondition", "text",
                 "GlobalDictItemDateTimeCondition", "dateTime"
@@ -79,23 +80,6 @@ public class OpenApiConfig {
                 .description("java-admin-starter 项目接口文档")
                 .version("v1")
                 .contact(new Contact().name("java-admin-starter")));
-    }
-
-    @Bean
-    public OpenApiCustomizer enumVoSchemaCustomizer() {
-        return openApi -> {
-            if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) {
-                return;
-            }
-            if (openApi.getComponents().getSchemas().containsKey("EnumVO")) {
-                return;
-            }
-            Schema<?> enumVo = new Schema<>()
-                .type("object")
-                .addProperty("code", new StringSchema().description("编码"))
-                .addProperty("desc", new StringSchema().description("描述"));
-            openApi.getComponents().addSchemas("EnumVO", enumVo);
-        };
     }
 
     @Bean
@@ -186,20 +170,14 @@ public class OpenApiConfig {
         if (schema == null) {
             return;
         }
-        boolean requestSchema = schemaName.endsWith("ReqDTO");
-        boolean responseSchema = schemaName.endsWith("RspDTO");
-        if (!requestSchema && !responseSchema) {
+        if (!schemaName.endsWith("ReqDTO") && !schemaName.endsWith("RspDTO")) {
             return;
         }
         getAllFields(schemaClass).forEach(field -> {
             if (!BaseEnum.class.isAssignableFrom(field.getType())) {
                 return;
             }
-            if (requestSchema) {
-                rewriteBaseEnumRequestProperty(schema, field);
-            } else {
-                rewriteBaseEnumResponseProperty(schema, field.getName());
-            }
+            rewriteBaseEnumProperty(schema, field);
         });
     }
 
@@ -214,7 +192,7 @@ public class OpenApiConfig {
     }
 
     @SuppressWarnings("unchecked")
-    private static void rewriteBaseEnumRequestProperty(Schema<?> schema, Field field) {
+    private static void rewriteBaseEnumProperty(Schema<?> schema, Field field) {
         Schema<?> propertySchema = findPropertySchema(schema, field.getName());
         if (propertySchema == null) {
             return;
@@ -223,14 +201,10 @@ public class OpenApiConfig {
         propertySchema.setType("string");
         propertySchema.setFormat(null);
         setEnumValues(propertySchema, enumCodes((Class<? extends BaseEnum>) field.getType()));
-    }
-
-    private static void rewriteBaseEnumResponseProperty(Schema<?> schema, String propertyName) {
-        Map<String, Schema> properties = schema.getProperties();
-        if (properties == null || !properties.containsKey(propertyName)) {
-            return;
+        DictionaryEnum dictionaryEnum = field.getType().getAnnotation(DictionaryEnum.class);
+        if (dictionaryEnum != null) {
+            propertySchema.addExtension("x-dict-type", dictionaryEnum.value());
         }
-        properties.put(propertyName, new Schema<>().$ref(ENUM_VO_REF));
     }
 
     private static Schema<?> findPropertySchema(Schema<?> schema, String propertyName) {
@@ -484,6 +458,17 @@ public class OpenApiConfig {
         if (!required.contains("nodeType")) {
             required.add("nodeType");
         }
+    }
+
+    private static Map<String, String> orderedMappings(String... pairs) {
+        if (pairs.length % 2 != 0) {
+            throw new IllegalArgumentException("schema mappings must contain name/value pairs");
+        }
+        Map<String, String> mappings = new LinkedHashMap<>();
+        for (int index = 0; index < pairs.length; index += 2) {
+            mappings.put(pairs[index], pairs[index + 1]);
+        }
+        return Collections.unmodifiableMap(mappings);
     }
 
     private record DynamicQuerySceneSchema(
