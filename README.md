@@ -70,8 +70,11 @@ boot
 **模块内调用链路**：
 
 ```
-Controller → AppService → Service → Mapper / Provider
-  (DTO)       (事务边界)    (领域逻辑)   (持久化/外部)
+Controller → AppService → Domain
+                           ↑
+                  Infra implements port
+                           ↓
+                  IService/ServiceImpl → Mapper
 ```
 
 ## 项目结构
@@ -138,9 +141,9 @@ java-admin-starter/
 └── system/                                          # 系统管理与平台能力模块
     └── src/main/java/com/oigit/admin/
         ├── dict/                                    # 全局字典
-        ├── export/                                  # 导出中心与导出记录生命周期
-        ├── file/                                    # 文件存储与 local/qiniu/minio provider
-        └── staff/                                   # SSO staff 查询兼容能力（默认关闭）
+        ├── export/                                  # 导出领域模型、编排与记录持久化适配
+        ├── file/                                    # 文件领域规则、存储端口与 provider 适配
+        └── staff/                                   # 员工目录端口与 CI SDK 适配（默认关闭）
 ```
 
 ## 模块职责

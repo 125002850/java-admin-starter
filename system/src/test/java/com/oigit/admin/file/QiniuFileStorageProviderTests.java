@@ -1,11 +1,11 @@
 package com.oigit.admin.file;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.domain.model.DirectUploadCredential;
+import com.oigit.admin.file.domain.model.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 import com.oigit.admin.file.infra.provider.qiniu.QiniuFileStorageProvider;
 import com.oigit.admin.file.infra.provider.qiniu.QiniuOperations;
-import com.oigit.admin.file.service.DirectUploadCredential;
-import com.oigit.admin.file.service.StoredFile;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -31,7 +31,8 @@ class QiniuFileStorageProviderTests {
 
         QiniuFileStorageProvider provider = new QiniuFileStorageProvider(properties(true), qiniuOperations);
 
-        DirectUploadCredential credential = provider.fetchDirectUploadCredential("avatar/user/2026/05/19/test.png");
+        DirectUploadCredential credential = provider.fetchDirectUploadCredential("avatar/user/2026/05/19/test.png")
+                .orElseThrow();
 
         assertThat(credential.getProvider()).isEqualTo("qiniu");
         assertThat(credential.getCredential()).isEqualTo("upload-token");

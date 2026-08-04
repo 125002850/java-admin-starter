@@ -4,22 +4,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
+import java.util.Optional;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.domain.gateway.FileStorageGateway;
+import com.oigit.admin.file.domain.model.DirectUploadCredential;
+import com.oigit.admin.file.domain.model.StoredFile;
 import com.oigit.admin.file.enums.FileErrorCode;
-import com.oigit.admin.file.infra.provider.DirectUploadCapable;
-import com.oigit.admin.file.infra.provider.FileStorageProvider;
-import com.oigit.admin.file.service.DirectUploadCredential;
-import com.oigit.admin.file.service.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 
 @Component
 @ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "qiniu")
-public class QiniuFileStorageProvider implements FileStorageProvider, DirectUploadCapable {
+public class QiniuFileStorageProvider implements FileStorageGateway {
 
     private static final String PROVIDER = "qiniu";
 
@@ -97,16 +97,16 @@ public class QiniuFileStorageProvider implements FileStorageProvider, DirectUplo
     }
 
     @Override
-    public DirectUploadCredential fetchDirectUploadCredential(String objectKey) {
+    public Optional<DirectUploadCredential> fetchDirectUploadCredential(String objectKey) {
         try {
             String credential = qiniuOperations.createUploadToken(bucketName, objectKey, uploadTokenExpireSeconds);
-            return new DirectUploadCredential(
+            return Optional.of(new DirectUploadCredential(
                     PROVIDER,
                     credential,
                     objectKey,
                     buildOriginUrl(objectKey),
                     uploadHost
-            );
+            ));
         } catch (Exception ex) {
             throw new BizException(FileErrorCode.DIRECT_UPLOAD_CREDENTIAL_GENERATE_FAILED);
         }

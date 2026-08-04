@@ -1,17 +1,13 @@
 package com.oigit.admin.staff.app;
 
-import com.oigit.appcik.CIClient;
-import com.oigit.appcik.core.service.sso.model.StaffInfoPageQueryReq;
-import com.oigit.appcik.core.service.sso.model.StaffInfoRsp;
-import com.oigit.common.page.PageInfo;
+import com.oigit.admin.staff.domain.gateway.StaffDirectoryGateway;
+import com.oigit.admin.staff.domain.model.StaffDirectoryQuery;
+import com.oigit.admin.staff.domain.model.StaffInfo;
 import com.oigit.admin.staff.dto.req.query.StaffListAllReqDTO;
 import com.oigit.admin.staff.dto.rsp.StaffInfoRspDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Function;
@@ -21,21 +17,22 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(prefix = "platform.sso-staff", name = "enabled", havingValue = "true")
 public class StaffAppService {
 
-    private static final int CIK_PAGE_SIZE = 500;
+    private final StaffDirectoryGateway staffDirectoryGateway;
 
-    private final CIClient ciClient;
-
-    public StaffAppService(CIClient ciClient) {
-        this.ciClient = ciClient;
+    public StaffAppService(StaffDirectoryGateway staffDirectoryGateway) {
+        this.staffDirectoryGateway = staffDirectoryGateway;
     }
 
     public List<StaffInfoRspDTO> listAll(StaffListAllReqDTO req) {
-        List<StaffInfoRsp> cikRows = fetchAllFromCik(req);
-        if (cikRows.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<StaffInfoRspDTO> list = cikRows.stream()
+        StaffDirectoryQuery query = new StaffDirectoryQuery(
+                req.getKeyword(),
+                req.getStaffCode(),
+                req.getUserName(),
+                req.getAccount(),
+                req.getMobile(),
+                req.getSex()
+        );
+        List<StaffInfoRspDTO> list = staffDirectoryGateway.listAll(query).stream()
                 .map(this::toRspDTO)
                 .collect(Collectors.toMap(
                         StaffInfoRspDTO::getStaffCode,
@@ -44,96 +41,41 @@ public class StaffAppService {
                         LinkedHashMap::new
                 ))
                 .values().stream()
-                .collect(Collectors.toList());
+                .toList();
 
-        if (StringUtils.hasText(req.getKeyword())) {
-            String kw = req.getKeyword().toLowerCase();
-            list = list.stream()
-                    .filter(dto -> matchesKeyword(dto, kw))
-                    .collect(Collectors.toList());
+        if (hasText(req.getKeyword())) {
+            String keyword = req.getKeyword().toLowerCase();
+            list = list.stream().filter(dto -> matchesKeyword(dto, keyword)).toList();
         }
-        if (StringUtils.hasText(req.getSex())) {
-            list = list.stream()
-                    .filter(dto -> req.getSex().equals(dto.getSex()))
-                    .collect(Collectors.toList());
+        if (hasText(req.getSex())) {
+            list = list.stream().filter(dto -> req.getSex().equals(dto.getSex())).toList();
         }
-
         return list;
     }
 
-    private List<StaffInfoRsp> fetchAllFromCik(StaffListAllReqDTO req) {
-        List<StaffInfoRsp> rows = new ArrayList<>();
-        long total = -1L;
-        int page = 1;
-
-        while (true) {
-            StaffInfoPageQueryReq cikReq = buildCikReq(req, page);
-            PageInfo<StaffInfoRsp> cikResult = ciClient.sso().staff().pageQuery(cikReq);
-            if (cikResult == null || cikResult.getList() == null || cikResult.getList().isEmpty()) {
-                break;
-            }
-
-            List<StaffInfoRsp> pageRows = cikResult.getList();
-            rows.addAll(pageRows);
-            if (cikResult.getTotal() > 0) {
-                total = cikResult.getTotal();
-            }
-            if ((total > 0 && rows.size() >= total) || pageRows.size() < CIK_PAGE_SIZE) {
-                break;
-            }
-            page++;
-        }
-
-        return rows;
+    private boolean matchesKeyword(StaffInfoRspDTO dto, String keyword) {
+        return containsIgnoreCase(dto.getStaffCode(), keyword)
+                || containsIgnoreCase(dto.getUserName(), keyword)
+                || containsIgnoreCase(dto.getAccount(), keyword)
+                || containsIgnoreCase(dto.getMobile(), keyword);
     }
 
-    private StaffInfoPageQueryReq buildCikReq(StaffListAllReqDTO req, int page) {
-        StaffInfoPageQueryReq cikReq = new StaffInfoPageQueryReq();
-        cikReq.setPageSize(CIK_PAGE_SIZE);
-        cikReq.setPage(page);
-        cikReq.setStatus(1);
-        cikReq.setStaffStatus(0);
-
-        if (StringUtils.hasText(req.getKeyword())) {
-            String kw = req.getKeyword();
-            cikReq.setStaffCode(kw);
-        } else {
-            if (StringUtils.hasText(req.getStaffCode())) {
-                cikReq.setStaffCode(req.getStaffCode());
-            }
-            if (StringUtils.hasText(req.getUserName())) {
-                cikReq.setName(req.getUserName());
-            }
-            if (StringUtils.hasText(req.getAccount())) {
-                cikReq.setAccount(req.getAccount());
-            }
-        }
-        if (StringUtils.hasText(req.getMobile())) {
-            cikReq.setMobile(req.getMobile());
-        }
-
-        return cikReq;
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword);
     }
 
-    private boolean matchesKeyword(StaffInfoRspDTO dto, String kw) {
-        return containsIgnoreCase(dto.getStaffCode(), kw)
-                || containsIgnoreCase(dto.getUserName(), kw)
-                || containsIgnoreCase(dto.getAccount(), kw)
-                || containsIgnoreCase(dto.getMobile(), kw);
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
-    private boolean containsIgnoreCase(String value, String kw) {
-        return value != null && value.toLowerCase().contains(kw);
-    }
-
-    private StaffInfoRspDTO toRspDTO(StaffInfoRsp cikRsp) {
+    private StaffInfoRspDTO toRspDTO(StaffInfo staffInfo) {
         StaffInfoRspDTO dto = new StaffInfoRspDTO();
-        dto.setStaffCode(cikRsp.getStaffCode());
-        dto.setSsoAccountId(cikRsp.getSsoAccountId());
-        dto.setUserName(cikRsp.getUserName());
-        dto.setSex(cikRsp.getSex());
-        dto.setAccount(cikRsp.getAccount());
-        dto.setMobile(cikRsp.getMobile());
+        dto.setStaffCode(staffInfo.staffCode());
+        dto.setSsoAccountId(staffInfo.ssoAccountId());
+        dto.setUserName(staffInfo.userName());
+        dto.setSex(staffInfo.sex());
+        dto.setAccount(staffInfo.account());
+        dto.setMobile(staffInfo.mobile());
         return dto;
     }
 }
