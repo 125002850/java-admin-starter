@@ -14,10 +14,7 @@ import com.oigit.admin.iam.enums.OperationLogAction;
 import com.oigit.admin.iam.enums.OperationLogModule;
 import com.oigit.admin.iam.infra.entity.IamRoleEntity;
 import com.oigit.admin.iam.service.IamRoleService;
-import com.oigit.admin.iam.service.IamStaffService;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,19 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoleAppService {
 
     private final IamRoleService roleService;
-    private final IamStaffService staffService;
 
-    public RoleAppService(IamRoleService roleService, IamStaffService staffService) {
+    public RoleAppService(IamRoleService roleService) {
         this.roleService = roleService;
-        this.staffService = staffService;
     }
 
     @Transactional(readOnly = true)
     public PageResult<RoleRspDTO> page(RolePageReqDTO reqDTO) {
         Page<IamRoleEntity> page = roleService.page(reqDTO);
-        Map<Long, String> usernames = auditUsernames(page.getRecords());
         List<RoleRspDTO> records = page.getRecords().stream()
-                .map(entity -> toRsp(entity, usernames))
+                .map(this::toRsp)
                 .toList();
         return new PageResult<>(records, page.getTotal());
     }
@@ -45,7 +39,7 @@ public class RoleAppService {
     @Transactional(readOnly = true)
     public RoleRspDTO detail(Long roleId) {
         IamRoleEntity entity = roleService.requireById(roleId);
-        return toRsp(entity, auditUsernames(List.of(entity)));
+        return toRsp(entity);
     }
 
     @Transactional
@@ -84,33 +78,22 @@ public class RoleAppService {
         roleService.assignDataScope(reqDTO);
     }
 
-    private RoleRspDTO toRsp(IamRoleEntity entity, Map<Long, String> usernames) {
+    private RoleRspDTO toRsp(IamRoleEntity entity) {
         RoleRspDTO dto = new RoleRspDTO();
         dto.roleId = entity.getId();
         dto.roleCode = entity.getRoleCode();
         dto.roleName = entity.getRoleName();
         dto.sortOrder = entity.getSortOrder();
-        dto.status = entity.getStatus() == null ? null : entity.getStatus().getCode();
-        dto.dataScopeType = entity.getDataScopeType() == null ? null : entity.getDataScopeType().getCode();
+        dto.status = entity.getStatus();
+        dto.dataScopeType = entity.getDataScopeType();
         dto.systemBuiltIn = entity.getSystemBuiltIn();
         dto.remark = entity.getRemark();
         dto.menuIds = roleService.listMenuIds(entity.getId());
         dto.dataScopeDeptIds = roleService.listDataScopeDeptIds(entity.getId());
-        dto.createTime = entity.getCreateTime();
-        dto.updateTime = entity.getUpdateTime();
-        dto.createBy = auditUsername(usernames, entity.getCreateBy());
-        dto.updateBy = auditUsername(usernames, entity.getUpdateBy());
+        dto.setCreateTime(entity.getCreateTime());
+        dto.setUpdateTime(entity.getUpdateTime());
+        dto.setCreateById(entity.getCreateBy());
+        dto.setUpdateById(entity.getUpdateBy());
         return dto;
-    }
-
-    private Map<Long, String> auditUsernames(List<IamRoleEntity> roles) {
-        List<Long> staffIds = roles.stream()
-                .flatMap(role -> Stream.of(role.getCreateBy(), role.getUpdateBy()))
-                .toList();
-        return staffService.resolveUsernames(staffIds);
-    }
-
-    private String auditUsername(Map<Long, String> usernames, Long staffId) {
-        return staffId == null ? null : usernames.get(staffId);
     }
 }

@@ -118,7 +118,9 @@ java-admin-starter/
 │       ├── validation/                              # Bean Validation 集成
 │       ├── jackson/                                 # Jackson 全局配置
 │       ├── trace/                                   # TraceId 过滤器与 MDC
+│       ├── logging/                                 # HTTP 完成日志、脱敏与限长缓存
 │       ├── operator/                                # 操作人上下文与可选网关过滤器
+│       ├── translation/                             # 审计、字典和主数据批量翻译引擎
 │       ├── mybatis/                                 # MyBatis-Plus 配置、审计字段自动填充
 │       ├── export/                                  # 导出框架 SPI 与通用模型
 │       └── query/                                   # 动态查询 DSL 框架
@@ -184,6 +186,18 @@ java-admin-starter/
 - 验证命令、跨模块测试与完成标准：`.agents/skills/oig-java-development/references/verification.md`
 
 README 只保留项目说明、架构概览、启动方式和关键入口，避免开发规范与项目介绍混在一起。
+
+业务能力内部统一采用 `controller / dto(req,rsp) / app / domain / infra / enums` 分层。`AppService`
+负责用例编排和事务边界，持久化调用下沉到 `infra/persistence`；MyBatis-Plus
+`IService/ServiceImpl` 只能作为 Infra 实现使用。详细设计见
+[能力分层与翻译架构](docs/architecture/2026-08-04-capability-layering-and-translation.md)。
+
+审计字段保留 `createById/updateById`，响应另提供批量翻译后的 `createByName/updateByName`。
+字典值在普通页面响应中保持编码，由前端批量字典组件显示名称；导出场景由后端翻译。所有翻译先收集、去重，
+再按类型批量查询，禁止逐行或逐单元格查询。
+
+HTTP 请求完成日志由 `core/logging` 统一输出并携带 `traceId`，正文执行类型过滤、字段脱敏和大小限制。
+详见 [HTTP 请求日志规范](docs/architecture/2026-08-04-http-request-logging.md)。
 
 ## 启动方式
 
@@ -256,7 +270,7 @@ export IAM_CLIENT_IP_TRUSTED_PROXY_CIDRS='127.0.0.1/32,10.20.30.0/24'
 - `/api/iam/role/**`
 - `/api/iam/menu/**`
 - `/api/iam/log/**`
-- `/api/mdm/dict/global/**`
+- `/api/system/dict/global/**`
 - `/api/mdm/export/**`
 - `/api/file/storage/**`
 
@@ -299,7 +313,7 @@ docker compose down -v
 ## 数据库迁移
 
 - 版本化迁移文件统一放在 `boot/src/main/resources/db/migration/`。
-- 当前历史迁移已演进到 `V20260713113400__drop_legacy_sso_user_cache.sql`。
+- 当前历史迁移已演进到 `V20260804170000__complete_enum_dictionary_contract.sql`。
 - 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名文件名或内容；结构变更通过新增下一版本 migration 演进。经批准的模块目录整体重命名只允许随目录原样搬迁。
 - 仓库 `pre-commit` 通过 `scripts/check-migrations.sh` 拦截历史版本化 migration 的修改。
 - 完整迁移规范见 `.agents/skills/oig-java-development/references/database-migrations.md`。

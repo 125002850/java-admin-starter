@@ -39,7 +39,7 @@ public class LoginLogService {
         entity.setResult(result);
         entity.setStaffId(staffId);
         entity.setUsername(username);
-        entity.setFailureReason(failureReason == null ? null : failureReason.getCode());
+        entity.setFailureReason(failureReason);
         entity.setTokenId(tokenId);
         entity.setIp(requestInfo.ip());
         entity.setUserAgent(requestInfo.userAgent());

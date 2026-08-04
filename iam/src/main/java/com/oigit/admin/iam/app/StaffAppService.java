@@ -25,8 +25,6 @@ import com.oigit.admin.iam.service.PermissionSnapshot;
 import com.oigit.admin.iam.service.PermissionSnapshotMapper;
 import com.oigit.admin.iam.service.RefreshTokenService;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -58,9 +56,8 @@ public class StaffAppService {
                 .map(principal -> principal.getSnapshot())
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException("not authenticated"));
         Page<IamStaffEntity> page = staffService.page(reqDTO, snapshot);
-        Map<Long, String> usernames = auditUsernames(page.getRecords());
         List<StaffRspDTO> records = page.getRecords().stream()
-                .map(entity -> toRsp(entity, usernames))
+                .map(this::toRsp)
                 .toList();
         return new PageResult<>(records, page.getTotal());
     }
@@ -70,7 +67,7 @@ public class StaffAppService {
         PermissionSnapshot snapshot = currentSnapshot();
         staffService.assertInDataScope(staffId, snapshot);
         IamStaffEntity entity = staffService.requireById(staffId);
-        return toRsp(entity, auditUsernames(List.of(entity)));
+        return toRsp(entity);
     }
 
     @Transactional
@@ -131,7 +128,7 @@ public class StaffAppService {
         staffService.assignRoles(reqDTO.getStaffId(), reqDTO.getRoleIds());
     }
 
-    private StaffRspDTO toRsp(IamStaffEntity entity, Map<Long, String> usernames) {
+    private StaffRspDTO toRsp(IamStaffEntity entity) {
         StaffRspDTO dto = new StaffRspDTO();
         IamDeptEntity dept = staffService.findDept(entity.getDeptId());
         DeptSummaryRspDTO deptSummary = PermissionSnapshotMapper.toDeptSummary(dept);
@@ -144,26 +141,15 @@ public class StaffAppService {
         dto.setPhone(entity.getPhone());
         dto.setEmail(entity.getEmail());
         dto.setAvatar(entity.getAvatar());
-        dto.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
+        dto.setStatus(entity.getStatus());
         dto.setMustChangePassword(Boolean.TRUE.equals(entity.getMustChangePassword()));
         dto.setRemark(entity.getRemark());
         dto.setRoles(roleSummaries(entity.getId()));
         dto.setCreateTime(entity.getCreateTime());
         dto.setUpdateTime(entity.getUpdateTime());
-        dto.setCreateBy(auditUsername(usernames, entity.getCreateBy()));
-        dto.setUpdateBy(auditUsername(usernames, entity.getUpdateBy()));
+        dto.setCreateById(entity.getCreateBy());
+        dto.setUpdateById(entity.getUpdateBy());
         return dto;
-    }
-
-    private Map<Long, String> auditUsernames(List<IamStaffEntity> staff) {
-        List<Long> staffIds = staff.stream()
-                .flatMap(entity -> Stream.of(entity.getCreateBy(), entity.getUpdateBy()))
-                .toList();
-        return staffService.resolveUsernames(staffIds);
-    }
-
-    private String auditUsername(Map<Long, String> usernames, Long staffId) {
-        return staffId == null ? null : usernames.get(staffId);
     }
 
     private PermissionSnapshot currentSnapshot() {

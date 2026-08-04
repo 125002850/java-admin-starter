@@ -17,6 +17,9 @@
 ## 3. 仓库硬约束
 
 - API 响应体统一使用 `R.ok(...)` / `R.fail(...)`，业务异常统一使用 `BizException(ErrorCode)`。
+- 业务能力包统一使用 `controller/dto/app/domain/infra/enums`，DTO 分 `req/rsp`；Controller 不得绕过 AppService，App/Domain 不得依赖 Mapper 或 Infra 实现。
+- MyBatis-Plus `IService/ServiceImpl` 只位于 `infra/persistence/service[/impl]`；审计与名称转换必须使用批量翻译机制，禁止 N+1 查询。
+- HTTP 访问日志统一由 `core/logging` 过滤器输出；业务代码不得打印完整请求/响应，不得绕过脱敏、正文大小限制和文件/健康检查排除规则。
 
 ## 4. 参考文档
 

@@ -9,6 +9,8 @@ spring:
 platform:
   iam:
     jwt-secret: test-only-secret-do-not-use-in-production-32chars
+  http-logging:
+    enabled: false
   file:
     storage:
       type: local

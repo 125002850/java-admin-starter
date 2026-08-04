@@ -1,5 +1,7 @@
 package com.oigit.admin.core.web;
 
+import com.oigit.admin.core.translation.Translate;
+import com.oigit.admin.core.translation.TranslationTypes;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -15,11 +17,19 @@ public abstract class AuditRspDTO {
     @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
-    @Schema(description = "创建人用户名", example = "admin")
-    private String createBy;
+    @Translate(type = TranslationTypes.USER_NAME, targetField = "createByName")
+    @Schema(description = "创建人ID", example = "10001")
+    private Long createById;
 
-    @Schema(description = "更新人用户名", example = "admin")
-    private String updateBy;
+    @Schema(description = "创建人名称", example = "admin", accessMode = Schema.AccessMode.READ_ONLY)
+    private String createByName;
+
+    @Translate(type = TranslationTypes.USER_NAME, targetField = "updateByName")
+    @Schema(description = "更新人ID", example = "10001")
+    private Long updateById;
+
+    @Schema(description = "更新人名称", example = "admin", accessMode = Schema.AccessMode.READ_ONLY)
+    private String updateByName;
 
     public LocalDateTime getCreateTime() {
         return createTime;
@@ -37,19 +47,35 @@ public abstract class AuditRspDTO {
         this.updateTime = updateTime;
     }
 
-    public String getCreateBy() {
-        return createBy;
+    public Long getCreateById() {
+        return createById;
     }
 
-    public void setCreateBy(String createBy) {
-        this.createBy = createBy;
+    public void setCreateById(Long createById) {
+        this.createById = createById;
     }
 
-    public String getUpdateBy() {
-        return updateBy;
+    public String getCreateByName() {
+        return createByName;
     }
 
-    public void setUpdateBy(String updateBy) {
-        this.updateBy = updateBy;
+    public void setCreateByName(String createByName) {
+        this.createByName = createByName;
+    }
+
+    public Long getUpdateById() {
+        return updateById;
+    }
+
+    public void setUpdateById(Long updateById) {
+        this.updateById = updateById;
+    }
+
+    public String getUpdateByName() {
+        return updateByName;
+    }
+
+    public void setUpdateByName(String updateByName) {
+        this.updateByName = updateByName;
     }
 }

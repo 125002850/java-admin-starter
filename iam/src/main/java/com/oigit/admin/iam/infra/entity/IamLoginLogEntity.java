@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.oigit.admin.core.mybatis.BaseEntity;
 import com.oigit.admin.iam.enums.LoginEventType;
+import com.oigit.admin.iam.enums.LoginFailureReason;
 import com.oigit.admin.iam.enums.LoginResult;
 import java.time.LocalDateTime;
 
@@ -27,7 +28,7 @@ public class IamLoginLogEntity extends BaseEntity {
     private LoginResult result;
 
     @TableField("failure_reason")
-    private String failureReason;
+    private LoginFailureReason failureReason;
 
     @TableField("ip")
     private String ip;
@@ -81,11 +82,11 @@ public class IamLoginLogEntity extends BaseEntity {
         this.result = result;
     }
 
-    public String getFailureReason() {
+    public LoginFailureReason getFailureReason() {
         return failureReason;
     }
 
-    public void setFailureReason(String failureReason) {
+    public void setFailureReason(LoginFailureReason failureReason) {
         this.failureReason = failureReason;
     }
 

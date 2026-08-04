@@ -2,10 +2,10 @@ package com.oigit.admin.iam.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.oigit.admin.core.enums.BaseEnum;
+import com.oigit.admin.core.enums.DictionaryEnum;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@DictionaryEnum("IAM_LOGIN_FAILURE_REASON")
 public enum LoginFailureReason implements BaseEnum {
 
     BAD_CREDENTIALS("BAD_CREDENTIALS", "用户名或密码错误"),

@@ -5,8 +5,8 @@ import com.oigit.appcik.core.service.sso.SsoService;
 import com.oigit.appcik.core.service.sso.model.StaffInfoPageQueryReq;
 import com.oigit.appcik.core.service.sso.model.StaffInfoRsp;
 import com.oigit.common.page.PageInfo;
-import com.oigit.admin.staff.controller.dto.StaffInfoRspDTO;
-import com.oigit.admin.staff.controller.dto.query.StaffListAllReqDTO;
+import com.oigit.admin.staff.dto.req.query.StaffListAllReqDTO;
+import com.oigit.admin.staff.dto.rsp.StaffInfoRspDTO;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

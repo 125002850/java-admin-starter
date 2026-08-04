@@ -4,17 +4,19 @@ import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.dict.app.DictAppService;
-import com.oigit.admin.dict.controller.dto.DictItemRspDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictItemCreateReqDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictItemDeleteReqDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictItemUpdateReqDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictTypeCreateReqDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictTypeDeleteReqDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictTypeListReqDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictTypeRspDTO;
-import com.oigit.admin.dict.controller.dto.GlobalDictTypeUpdateReqDTO;
-import com.oigit.admin.dict.controller.dto.query.GlobalDictItemDynamicPageReqDTO;
-import com.oigit.admin.dict.controller.dto.query.GlobalDictTypeDynamicListReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictItemCreateReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictItemDeleteReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictItemUpdateReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictOptionsReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictTypeCreateReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictTypeDeleteReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictTypeListReqDTO;
+import com.oigit.admin.dict.dto.req.GlobalDictTypeUpdateReqDTO;
+import com.oigit.admin.dict.dto.req.query.GlobalDictItemDynamicPageReqDTO;
+import com.oigit.admin.dict.dto.req.query.GlobalDictTypeDynamicListReqDTO;
+import com.oigit.admin.dict.dto.rsp.DictItemRspDTO;
+import com.oigit.admin.dict.dto.rsp.DictOptionGroupRspDTO;
+import com.oigit.admin.dict.dto.rsp.GlobalDictTypeRspDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,7 +31,7 @@ import java.util.List;
 @Validated
 @RestController
 @Tag(name = "全局字典", description = "平台级全局字典维护与查询相关接口")
-@RequestMapping("/api/mdm/dict/global")
+@RequestMapping("/api/system/dict/global")
 @RequiresPermission("mdm:dict:manage")
 public class GlobalDictController {
 
@@ -97,5 +99,14 @@ public class GlobalDictController {
     @PostMapping("/items/by-type")
     public R<PageResult<DictItemRspDTO>> listGlobalItemsByType(@Valid @RequestBody GlobalDictItemDynamicPageReqDTO reqDTO) {
         return R.ok(dictAppService.listGlobalItemsByType(reqDTO));
+    }
+
+    @Operation(
+            summary = "批量查询字典选项",
+            description = "前端翻译专用精简接口；单次批量查询，返回启用和禁用的未删除字典项"
+    )
+    @PostMapping("/items/options")
+    public R<List<DictOptionGroupRspDTO>> listGlobalOptions(@Valid @RequestBody GlobalDictOptionsReqDTO reqDTO) {
+        return R.ok(dictAppService.listGlobalOptions(reqDTO));
     }
 }

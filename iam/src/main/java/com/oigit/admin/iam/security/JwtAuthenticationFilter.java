@@ -65,6 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
             OperatorContext.set(principal.getStaffId(), principal.getUsername(), null, principal.getStaffName());
+            request.setAttribute(OperatorContext.REQUEST_ATTRIBUTE_OPERATOR_ID, principal.getStaffId());
             if (snapshot.isMustChangePassword() && !isMustChangePasswordAllowed(request.getRequestURI())) {
                 IamAccessDeniedHandler.writeForbidden(objectMapper, response, R.fail(IamErrorCode.AUTH_MUST_CHANGE_PASSWORD));
                 return;

@@ -50,7 +50,7 @@
 
 1. 定义 `CriteriaReqDTO`
 
-- 位置：`controller/dto/query/`。
+- 位置：对应能力的 `dto/req/query/` 包；`dto` 与 `controller`、`app` 同级。
 - 继承 `BaseDynamicCriteriaReqDTO<N, S>`。
 - 声明内部枚举：`TextField`、`DateTimeField`、`SortField`。
 - 声明 `ConditionNode` 接口，用 `@JsonTypeInfo` + `@JsonSubTypes` 标注多态子类型。
@@ -110,7 +110,7 @@ new DynamicQuerySceneSchema(
 
 4. 实现 `SceneQueryDefinition`
 
-- 位置：对应模块的 `query/` 包。
+- 位置：对应能力的 `infra/query/` 包，因为定义包含 Entity 字段映射和 MyBatis-Plus lambda。
 - 实现 `SceneQueryDefinition<Entity>`。
 - 返回全局唯一 `sceneCode()`，建议格式 `{模块}.{领域}.{实体}.{动作}`。
 - 提供 `textFields()`、`dateTimeFields()`、`enumFields()`、`sortFields()` 四个 Map。
@@ -120,6 +120,7 @@ new DynamicQuerySceneSchema(
 
 5. 实现 `SceneQueryMapper`
 
+- 位置：对应能力的 `app/query/` 包，只负责把请求条件转换为内部 AST，不依赖 Entity、Mapper 或 Infra 查询定义。
 - 实现 `SceneQueryMapper<CriteriaReqDTO>`。
 - `toQueryAst(reqDTO)` 使用 `DynamicQueryAstMapper.toQueryAst(reqDTO.getCondition(), reqDTO.getSort())` 将 DTO 条件树转换为内部 AST。
 - `IN` 操作符的 `typedValue` 为 `List`。
@@ -131,6 +132,7 @@ new DynamicQuerySceneSchema(
 
 - 接收 `*DynamicListReqDTO` 或 `*DynamicPageReqDTO`。
 - 只调用 AppService，不直接访问 Service/Mapper。
+- AppService 通过 Domain Repository 查询；Infra Repository 使用 `SceneQueryDefinition` 与 MyBatis-Plus ServiceImpl 执行查询。
 
 ## 字段枚举约定
 

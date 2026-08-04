@@ -9,7 +9,6 @@ import com.oigit.admin.iam.dto.IamLogDTO.LoginLogPageReqDTO;
 import com.oigit.admin.iam.dto.IamLogDTO.LoginLogRspDTO;
 import com.oigit.admin.iam.dto.IamLogDTO.OperationLogPageReqDTO;
 import com.oigit.admin.iam.dto.IamLogDTO.OperationLogRspDTO;
-import com.oigit.admin.iam.enums.LoginResult;
 import com.oigit.admin.iam.infra.entity.IamLoginLogEntity;
 import com.oigit.admin.iam.infra.entity.IamOperationLogEntity;
 import com.oigit.admin.iam.infra.entity.IamStaffEntity;
@@ -17,10 +16,7 @@ import com.oigit.admin.iam.infra.mapper.IamLoginLogMapper;
 import com.oigit.admin.iam.infra.mapper.IamOperationLogMapper;
 import com.oigit.admin.iam.infra.mapper.IamStaffMapper;
 import com.oigit.admin.core.exception.CommonErrorCode;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -63,8 +59,8 @@ public class LogAppService {
                 query.in(IamLoginLogEntity::getStaffId, staffIds);
             }
         }
-        if (StringUtils.hasText(reqDTO.result)) {
-            query.eq(IamLoginLogEntity::getResult, LoginResult.valueOf(reqDTO.result));
+        if (reqDTO.result != null) {
+            query.eq(IamLoginLogEntity::getResult, reqDTO.result);
         }
         if (StringUtils.hasText(reqDTO.ip)) {
             query.like(IamLoginLogEntity::getIp, reqDTO.ip);
@@ -78,9 +74,8 @@ public class LogAppService {
             }
         }
         Page<IamLoginLogEntity> page = loginLogMapper.selectPage(new Page<>(reqDTO.getPageNo(), reqDTO.getPageSize()), query);
-        Map<Long, String> staffNameMap = loadStaffNames(page.getRecords());
         return new PageResult<>(
-                page.getRecords().stream().map(entity -> toLoginLogRsp(entity, staffNameMap)).toList(),
+                page.getRecords().stream().map(this::toLoginLogRsp).toList(),
                 page.getTotal()
         );
     }
@@ -91,7 +86,7 @@ public class LogAppService {
         if (entity == null) {
             throw new BizException(CommonErrorCode.NOT_FOUND);
         }
-        return toLoginLogRsp(entity, loadStaffNames(List.of(entity)));
+        return toLoginLogRsp(entity);
     }
 
     @Transactional(readOnly = true)
@@ -108,10 +103,10 @@ public class LogAppService {
         if (StringUtils.hasText(reqDTO.operatorStaffName)) {
             query.like(IamOperationLogEntity::getOperatorStaffName, reqDTO.operatorStaffName);
         }
-        if (StringUtils.hasText(reqDTO.module)) {
+        if (reqDTO.module != null) {
             query.eq(IamOperationLogEntity::getModule, reqDTO.module);
         }
-        if (StringUtils.hasText(reqDTO.action)) {
+        if (reqDTO.action != null) {
             query.eq(IamOperationLogEntity::getAction, reqDTO.action);
         }
         if (reqDTO.success != null) {
@@ -141,29 +136,13 @@ public class LogAppService {
         return toOperationLogRsp(entity);
     }
 
-    private Map<Long, String> loadStaffNames(List<IamLoginLogEntity> loginLogs) {
-        List<Long> staffIds = loginLogs.stream()
-                .map(IamLoginLogEntity::getStaffId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        if (staffIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<Long, String> staffNameMap = new HashMap<>();
-        staffMapper.selectList(Wrappers.<IamStaffEntity>lambdaQuery().in(IamStaffEntity::getId, staffIds))
-                .forEach(staff -> staffNameMap.put(staff.getId(), staff.getStaffName()));
-        return staffNameMap;
-    }
-
-    private LoginLogRspDTO toLoginLogRsp(IamLoginLogEntity entity, Map<Long, String> staffNameMap) {
+    private LoginLogRspDTO toLoginLogRsp(IamLoginLogEntity entity) {
         LoginLogRspDTO dto = new LoginLogRspDTO();
         dto.logId = entity.getId();
         dto.staffId = entity.getStaffId();
         dto.username = entity.getUsername();
-        dto.staffName = entity.getStaffId() == null ? null : staffNameMap.get(entity.getStaffId());
-        dto.eventType = entity.getEventType() == null ? null : entity.getEventType().name();
-        dto.result = entity.getResult() == null ? null : entity.getResult().name();
+        dto.eventType = entity.getEventType();
+        dto.result = entity.getResult();
         dto.failureReason = entity.getFailureReason();
         dto.ip = entity.getIp();
         dto.userAgent = entity.getUserAgent();
@@ -178,8 +157,8 @@ public class LogAppService {
         dto.operatorId = entity.getOperatorId();
         dto.operatorUsername = entity.getOperatorUsername();
         dto.operatorStaffName = entity.getOperatorStaffName();
-        dto.module = entity.getModule() == null ? null : entity.getModule().name();
-        dto.action = entity.getAction() == null ? null : entity.getAction().name();
+        dto.module = entity.getModule();
+        dto.action = entity.getAction();
         dto.requestPath = entity.getRequestPath();
         dto.httpMethod = entity.getHttpMethod();
         dto.requestSummary = entity.getRequestSummary();

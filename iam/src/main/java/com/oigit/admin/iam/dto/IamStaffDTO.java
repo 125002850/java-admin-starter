@@ -1,13 +1,13 @@
 package com.oigit.admin.iam.dto;
 
 import com.oigit.admin.core.web.PageReqDTO;
+import com.oigit.admin.core.web.AuditRspDTO;
 import com.oigit.admin.iam.dto.IamCommonDTO.DateTimeRangeReqDTO;
 import com.oigit.admin.iam.enums.IamStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -414,7 +414,7 @@ public final class IamStaffDTO {
     }
 
     @Schema(description = "员工响应")
-    public static class StaffRspDTO {
+    public static class StaffRspDTO extends AuditRspDTO {
         private Long staffId;
         private String username;
         private String staffCode;
@@ -424,16 +424,10 @@ public final class IamStaffDTO {
         private String phone;
         private String email;
         private String avatar;
-        private String status;
+        private IamStatus status;
         private boolean mustChangePassword;
         private String remark;
         private List<IamAuthDTO.RoleSummaryRspDTO> roles = new ArrayList<>();
-        private LocalDateTime createTime;
-        private LocalDateTime updateTime;
-        @Schema(description = "创建人用户名", example = "admin")
-        private String createBy;
-        @Schema(description = "更新人用户名", example = "admin")
-        private String updateBy;
 
         public Long getStaffId() {
             return staffId;
@@ -507,11 +501,11 @@ public final class IamStaffDTO {
             this.avatar = avatar;
         }
 
-        public String getStatus() {
+        public IamStatus getStatus() {
             return status;
         }
 
-        public void setStatus(String status) {
+        public void setStatus(IamStatus status) {
             this.status = status;
         }
 
@@ -539,36 +533,5 @@ public final class IamStaffDTO {
             this.roles = roles;
         }
 
-        public LocalDateTime getCreateTime() {
-            return createTime;
-        }
-
-        public void setCreateTime(LocalDateTime createTime) {
-            this.createTime = createTime;
-        }
-
-        public LocalDateTime getUpdateTime() {
-            return updateTime;
-        }
-
-        public void setUpdateTime(LocalDateTime updateTime) {
-            this.updateTime = updateTime;
-        }
-
-        public String getCreateBy() {
-            return createBy;
-        }
-
-        public void setCreateBy(String createBy) {
-            this.createBy = createBy;
-        }
-
-        public String getUpdateBy() {
-            return updateBy;
-        }
-
-        public void setUpdateBy(String updateBy) {
-            this.updateBy = updateBy;
-        }
     }
 }
