@@ -10,7 +10,6 @@ public class ExportTaskResult {
     private String fileName;
     private String fileType;
     private Integer status;
-    private String statusName;
     private String contentType;
     private Long fileSize;
     private Integer downloadCount;
@@ -67,14 +66,6 @@ public class ExportTaskResult {
 
     public void setStatus(Integer status) {
         this.status = status;
-    }
-
-    public String getStatusName() {
-        return statusName;
-    }
-
-    public void setStatusName(String statusName) {
-        this.statusName = statusName;
     }
 
     public String getContentType() {

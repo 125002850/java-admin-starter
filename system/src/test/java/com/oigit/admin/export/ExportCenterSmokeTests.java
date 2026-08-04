@@ -23,6 +23,11 @@ import com.oigit.admin.core.query.support.DynamicQueryGuard;
 import com.oigit.admin.core.query.support.DynamicQuerySummaryRenderer;
 import com.oigit.admin.core.query.support.QueryComplexityScorer;
 import com.oigit.admin.export.app.ExportCenterAppService;
+import com.oigit.admin.export.app.ExportBatchDownloadAppService;
+import com.oigit.admin.export.app.ExportDownloadAppService;
+import com.oigit.admin.export.app.ExportExecutionAppService;
+import com.oigit.admin.export.app.ExportRecordLifecycleAppService;
+import com.oigit.admin.export.app.query.ExportRecordSceneQueryMapper;
 import com.oigit.admin.export.controller.ExportCenterController;
 import com.oigit.admin.dict.app.DictAppService;
 import com.oigit.admin.dict.app.query.GlobalDictItemSceneQueryMapper;
@@ -36,14 +41,11 @@ import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictTypePersist
 import com.oigit.admin.dict.infra.query.GlobalDictItemSceneQueryDefinition;
 import com.oigit.admin.dict.infra.query.GlobalDictTypeSceneQueryDefinition;
 import com.oigit.admin.export.enums.ExportRecordStatus;
-import com.oigit.admin.export.infra.entity.ExportRecordEntity;
-import com.oigit.admin.export.query.ExportRecordSceneQueryDefinition;
-import com.oigit.admin.export.query.ExportRecordSceneQueryMapper;
-import com.oigit.admin.export.service.ExportBatchDownloadService;
-import com.oigit.admin.export.service.ExportDownloadService;
-import com.oigit.admin.export.service.ExportExecutionService;
-import com.oigit.admin.export.service.ExportRecordService;
-import com.oigit.admin.export.service.ExportTaskDispatcher;
+import com.oigit.admin.export.domain.model.ExportRecord;
+import com.oigit.admin.export.infra.async.AsyncExportTaskDispatcher;
+import com.oigit.admin.export.infra.persistence.repository.MybatisExportRecordRepository;
+import com.oigit.admin.export.infra.persistence.service.impl.ExportRecordPersistenceServiceImpl;
+import com.oigit.admin.export.infra.query.ExportRecordSceneQueryDefinition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -94,7 +96,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(
         classes = ExportCenterSmokeTests.TestApplication.class,
         properties = {
-                "spring.datasource.url=jdbc:h2:mem:java-admin-starter-mdm-export;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
+                "spring.datasource.url=jdbc:h2:mem:oig-export-erp-mdm-export;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
                 "spring.datasource.driver-class-name=org.h2.Driver",
                 "spring.datasource.username=sa",
                 "spring.datasource.password=",
@@ -116,7 +118,7 @@ class ExportCenterSmokeTests {
     private InMemoryExportGateway exportGateway;
 
     @Autowired
-    private ExportRecordService exportRecordService;
+    private ExportRecordLifecycleAppService exportRecordLifecycleAppService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -318,7 +320,7 @@ class ExportCenterSmokeTests {
     @Test
     void lifecycle_updates_should_survive_outer_transaction_rollback() {
         OperatorContext.set(8801L, "导出人", null);
-        ExportRecordEntity record = new ExportRecordEntity();
+        ExportRecord record = new ExportRecord();
         record.setExportBizCode("transaction.boundary.test");
         record.setExportBizName("事务边界测试");
         record.setFileName("transaction-boundary.csv");
@@ -332,8 +334,8 @@ class ExportCenterSmokeTests {
 
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.executeWithoutResult(status -> {
-            exportRecordService.createProcessingRecord(record);
-            exportRecordService.markFailed(record.getId(), "EXPECTED_FAILURE", "模拟失败");
+            exportRecordLifecycleAppService.createProcessingRecord(record);
+            exportRecordLifecycleAppService.markFailed(record.getId(), "EXPECTED_FAILURE", "模拟失败");
             status.setRollbackOnly();
         });
 
@@ -643,7 +645,7 @@ class ExportCenterSmokeTests {
 
     @Test
     void pageMyExports_should_reject_oversized_in_values() throws Exception {
-        String values = java.util.stream.IntStream.rangeClosed(1, 201)
+        String values = java.util.stream.IntStream.rangeClosed(1, 1001)
                 .mapToObj(String::valueOf)
                 .collect(java.util.stream.Collectors.joining(","));
 
@@ -669,7 +671,7 @@ class ExportCenterSmokeTests {
     @EnableAutoConfiguration
     @MapperScan({
             "com.oigit.admin.dict.infra.persistence.mapper",
-            "com.oigit.admin.export.infra.mapper"
+            "com.oigit.admin.export.infra.persistence.mapper"
     })
     @Import({
             GlobalExceptionHandler.class,
@@ -691,14 +693,16 @@ class ExportCenterSmokeTests {
             DictAppService.class,
             ExportRecordSceneQueryDefinition.class,
             ExportRecordSceneQueryMapper.class,
+            ExportRecordPersistenceServiceImpl.class,
+            MybatisExportRecordRepository.class,
+            ExportRecordLifecycleAppService.class,
             ExportCenterAppService.class,
             ExportCenterController.class,
-            ExportExecutionService.class,
-            ExportDownloadService.class,
-            ExportBatchDownloadService.class,
-            ExportRecordService.class,
+            ExportExecutionAppService.class,
+            ExportDownloadAppService.class,
+            ExportBatchDownloadAppService.class,
             GlobalDictTypeListExportHandler.class,
-            ExportTaskDispatcher.class,
+            AsyncExportTaskDispatcher.class,
             SpringExportSceneRegistry.class,
             SpringExportRendererRegistry.class,
             CsvExportRenderer.class,

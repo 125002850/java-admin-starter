@@ -144,39 +144,14 @@ class ModuleBoundaryTests {
     }
 
     @Test
-    void dict_controller_must_not_bypass_application_layer() {
+    void capability_controllers_must_not_bypass_application_layer() {
         ArchRule rule = noClasses()
-                .that().resideInAPackage("com.oigit.admin.dict.controller..")
+                .that().resideInAPackage("..controller..")
                 .should().dependOnClassesThat().resideInAnyPackage(
-                        "com.oigit.admin.dict.domain..",
-                        "com.oigit.admin.dict.infra.."
+                        "..domain..",
+                        "..infra.."
                 );
         rule.check(allClasses);
-    }
-
-    @Test
-    void dict_request_and_response_dtos_must_use_directional_subpackages() {
-        classes()
-                .that().resideInAPackage("com.oigit.admin.dict..")
-                .and().haveSimpleNameEndingWith("ReqDTO")
-                .should().resideInAPackage("com.oigit.admin.dict.dto.req..")
-                .check(allClasses);
-
-        classes()
-                .that().resideInAPackage("com.oigit.admin.dict..")
-                .and().haveSimpleNameEndingWith("RspDTO")
-                .should().resideInAPackage("com.oigit.admin.dict.dto.rsp..")
-                .check(allClasses);
-
-        noClasses()
-                .that().resideInAPackage("com.oigit.admin.dict.dto..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "com.oigit.admin.dict.controller..",
-                        "com.oigit.admin.dict.app..",
-                        "com.oigit.admin.dict.domain..",
-                        "com.oigit.admin.dict.infra.."
-                )
-                .check(allClasses);
     }
 
     @Test
@@ -221,79 +196,115 @@ class ModuleBoundaryTests {
                         "com.oigit.admin.staff.controller.dto.."
                 )
                 .check(allClasses);
+
+        noClasses()
+                .that().resideInAnyPackage(
+                        "com.oigit.admin.dict.dto..",
+                        "com.oigit.admin.export.dto..",
+                        "com.oigit.admin.file.dto..",
+                        "com.oigit.admin.staff.dto.."
+                )
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "..controller..",
+                        "..app..",
+                        "..domain..",
+                        "..infra.."
+                )
+                .check(allClasses);
     }
 
     @Test
-    void dict_application_and_domain_must_not_depend_on_infrastructure() {
+    void capability_application_and_domain_must_not_depend_on_infrastructure() {
         ArchRule rule = noClasses()
                 .that().resideInAnyPackage(
-                        "com.oigit.admin.dict.app..",
-                        "com.oigit.admin.dict.domain.."
+                        "..app..",
+                        "..domain.."
                 )
-                .should().dependOnClassesThat().resideInAPackage("com.oigit.admin.dict.infra..");
+                .should().dependOnClassesThat().resideInAPackage("..infra..");
         rule.check(allClasses);
     }
 
     @Test
-    void dict_domain_must_not_depend_on_framework_or_web_adapter() {
+    void capability_domain_must_not_depend_on_framework_or_web_adapter() {
         ArchRule rule = noClasses()
-                .that().resideInAPackage("com.oigit.admin.dict.domain..")
+                .that().resideInAPackage("..domain..")
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "com.baomidou..",
                         "org.apache.ibatis..",
                         "org.springframework..",
-                        "com.oigit.admin.dict.controller..",
-                        "com.oigit.admin.dict.app.."
+                        "..controller..",
+                        "..app..",
+                        "..infra.."
                 );
         rule.check(allClasses);
     }
 
     @Test
-    void dict_mappers_must_reside_in_infrastructure_persistence() {
+    void capability_mappers_must_reside_in_infrastructure_persistence() {
         ArchRule rule = classes()
                 .that().areAnnotatedWith(Mapper.class)
-                .and().resideInAPackage("com.oigit.admin.dict..")
-                .should().resideInAPackage("com.oigit.admin.dict.infra.persistence.mapper");
+                .should().resideInAPackage("..infra.persistence.mapper");
         rule.check(allClasses);
     }
 
     @Test
-    void dict_persistence_services_must_use_mybatis_plus_service_contracts() {
+    void capability_persistence_services_must_use_mybatis_plus_service_contracts() {
         classes()
                 .that().haveSimpleNameEndingWith("PersistenceService")
-                .and().resideInAPackage("com.oigit.admin.dict.infra.persistence.service")
+                .and().resideInAPackage("..infra.persistence.service")
                 .should().beAssignableTo(IService.class)
                 .check(allClasses);
 
         classes()
                 .that().haveSimpleNameEndingWith("PersistenceServiceImpl")
-                .and().resideInAPackage("com.oigit.admin.dict.infra.persistence.service.impl")
+                .and().resideInAPackage("..infra.persistence.service.impl")
                 .should().beAssignableTo(ServiceImpl.class)
                 .check(allClasses);
     }
 
     @Test
-    void staff_cache_persistence_must_use_mybatis_plus_service_contracts() {
-        classes()
-                .that().haveSimpleName("CacheUserPersistenceService")
-                .should().beAssignableTo(IService.class)
-                .check(allClasses);
-
-        classes()
-                .that().haveSimpleName("CacheUserPersistenceServiceImpl")
-                .should().beAssignableTo(ServiceImpl.class)
+    void application_layer_must_not_depend_on_persistence_or_web_transport_types() {
+        noClasses()
+                .that().resideInAPackage("..app..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "com.baomidou..",
+                        "org.apache.ibatis..",
+                        "org.springframework.web.multipart.."
+                )
                 .check(allClasses);
     }
 
     @Test
-    void dict_must_not_reintroduce_legacy_service_or_query_packages() {
+    void capabilities_must_not_reintroduce_legacy_top_level_packages() {
         ArchRule rule = noClasses()
                 .should().resideInAnyPackage(
                         "com.oigit.admin.dict.service..",
                         "com.oigit.admin.dict.query..",
-                        "com.oigit.admin.dict.export.."
+                        "com.oigit.admin.dict.config..",
+                        "com.oigit.admin.dict.export..",
+                        "com.oigit.admin.export.service..",
+                        "com.oigit.admin.export.query..",
+                        "com.oigit.admin.export.config..",
+                        "com.oigit.admin.file.service..",
+                        "com.oigit.admin.file.query..",
+                        "com.oigit.admin.file.config..",
+                        "com.oigit.admin.file.export..",
+                        "com.oigit.admin.staff.service..",
+                        "com.oigit.admin.staff.query..",
+                        "com.oigit.admin.staff.config.."
                 );
         rule.check(allClasses);
+    }
+
+    @Test
+    void external_staff_sdk_must_stay_in_staff_infrastructure() {
+        noClasses()
+                .that().resideOutsideOfPackage("com.oigit.admin.staff.infra..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "com.oigit.appcik..",
+                        "com.oigit.common.."
+                )
+                .check(allClasses);
     }
 
     @Test

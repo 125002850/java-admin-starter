@@ -1,9 +1,9 @@
 package com.oigit.admin.file;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.domain.model.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 import com.oigit.admin.file.infra.provider.local.LocalFileStorageProvider;
-import com.oigit.admin.file.service.StoredFile;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

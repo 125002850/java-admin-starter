@@ -6,10 +6,10 @@ import java.io.InputStream;
 import org.junit.jupiter.api.Test;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.domain.model.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 import com.oigit.admin.file.infra.provider.minio.MinioFileStorageProvider;
 import com.oigit.admin.file.infra.provider.minio.MinioOperations;
-import com.oigit.admin.file.service.StoredFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -91,7 +91,7 @@ class MinioFileStorageProviderTests {
     void fetchTempUrl_should_create_private_download_url_when_bucket_is_private() throws Exception {
         MinioOperations minioOperations = mock(MinioOperations.class);
         when(minioOperations.createPrivateDownloadUrl("admin-bucket", "avatar/user/2026/05/19/test.png", 1200L))
-                .thenReturn("https://minio.example.com/oigit/admin-bucket/avatar/user/2026/05/19/test.png?X-Amz-Signature=abc");
+                .thenReturn("https://minio.example.com/oig/export-bucket/avatar/user/2026/05/19/test.png?X-Amz-Signature=abc");
         MinioFileStorageProvider provider = new MinioFileStorageProvider(properties(true), minioOperations);
 
         String tempUrl = provider.buildTempUrl("avatar/user/2026/05/19/test.png");

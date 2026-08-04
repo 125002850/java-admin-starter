@@ -1,6 +1,5 @@
 package com.oigit.admin.export.app;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oigit.admin.core.exception.BizException;
 import com.oigit.admin.core.exception.CommonErrorCode;
 import com.oigit.admin.core.export.model.ExportTaskResult;
@@ -16,16 +15,12 @@ import com.oigit.admin.export.dto.rsp.ExportBatchDownloadRspDTO;
 import com.oigit.admin.export.dto.rsp.ExportDownloadRspDTO;
 import com.oigit.admin.export.dto.rsp.ExportRecordRspDTO;
 import com.oigit.admin.export.dto.rsp.ExportSubmitRspDTO;
+import com.oigit.admin.export.app.query.ExportRecordSceneQueryMapper;
+import com.oigit.admin.export.domain.model.ExportRecord;
+import com.oigit.admin.export.domain.model.ExportRecordPage;
+import com.oigit.admin.export.domain.repository.ExportRecordRepository;
 import com.oigit.admin.export.enums.ExportCenterErrorCode;
 import com.oigit.admin.export.enums.ExportDeleteReason;
-import com.oigit.admin.export.enums.ExportRecordStatus;
-import com.oigit.admin.export.infra.entity.ExportRecordEntity;
-import com.oigit.admin.export.query.ExportRecordSceneQueryDefinition;
-import com.oigit.admin.export.query.ExportRecordSceneQueryMapper;
-import com.oigit.admin.export.service.ExportDownloadService;
-import com.oigit.admin.export.service.ExportBatchDownloadService;
-import com.oigit.admin.export.service.ExportExecutionService;
-import com.oigit.admin.export.service.ExportRecordService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,78 +36,77 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
 
     private static final Long FALLBACK_OPERATOR_ID = 0L;
 
-    private final ExportExecutionService exportExecutionService;
-    private final ExportDownloadService exportDownloadService;
-    private final ExportBatchDownloadService exportBatchDownloadService;
-    private final ExportRecordService exportRecordService;
+    private final ExportExecutionAppService exportExecutionAppService;
+    private final ExportDownloadAppService exportDownloadAppService;
+    private final ExportBatchDownloadAppService exportBatchDownloadAppService;
+    private final ExportRecordLifecycleAppService exportRecordLifecycleAppService;
+    private final ExportRecordRepository exportRecordRepository;
     private final DynamicQueryGuard dynamicQueryGuard;
     private final ExportRecordSceneQueryMapper exportRecordSceneQueryMapper;
-    private final ExportRecordSceneQueryDefinition exportRecordSceneQueryDefinition;
 
     public ExportCenterAppService(
-            ExportExecutionService exportExecutionService,
-            ExportDownloadService exportDownloadService,
-            ExportBatchDownloadService exportBatchDownloadService,
-            ExportRecordService exportRecordService,
+            ExportExecutionAppService exportExecutionAppService,
+            ExportDownloadAppService exportDownloadAppService,
+            ExportBatchDownloadAppService exportBatchDownloadAppService,
+            ExportRecordLifecycleAppService exportRecordLifecycleAppService,
+            ExportRecordRepository exportRecordRepository,
             DynamicQueryGuard dynamicQueryGuard,
-            ExportRecordSceneQueryMapper exportRecordSceneQueryMapper,
-            ExportRecordSceneQueryDefinition exportRecordSceneQueryDefinition
+            ExportRecordSceneQueryMapper exportRecordSceneQueryMapper
     ) {
-        this.exportExecutionService = exportExecutionService;
-        this.exportDownloadService = exportDownloadService;
-        this.exportBatchDownloadService = exportBatchDownloadService;
-        this.exportRecordService = exportRecordService;
+        this.exportExecutionAppService = exportExecutionAppService;
+        this.exportDownloadAppService = exportDownloadAppService;
+        this.exportBatchDownloadAppService = exportBatchDownloadAppService;
+        this.exportRecordLifecycleAppService = exportRecordLifecycleAppService;
+        this.exportRecordRepository = exportRecordRepository;
         this.dynamicQueryGuard = dynamicQueryGuard;
         this.exportRecordSceneQueryMapper = exportRecordSceneQueryMapper;
-        this.exportRecordSceneQueryDefinition = exportRecordSceneQueryDefinition;
     }
 
     public ExportSubmitRspDTO submit(ExportSubmitReqDTO reqDTO) {
-        ExportRecordEntity record = exportExecutionService.submit(reqDTO.getSceneCode(), reqDTO.getQuery());
+        ExportRecord record = exportExecutionAppService.submit(reqDTO.getSceneCode(), reqDTO.getQuery());
         return toSubmitRsp(record, null);
     }
 
     @Override
     public ExportTaskResult submit(String sceneCode, com.fasterxml.jackson.databind.JsonNode query) {
-        ExportRecordEntity record = exportExecutionService.submit(sceneCode, query);
+        ExportRecord record = exportExecutionAppService.submit(sceneCode, query);
         return toTaskResult(record, null);
     }
 
     @Transactional(readOnly = true)
     public PageResult<ExportRecordRspDTO> pageMyExports(ExportRecordDynamicPageReqDTO reqDTO) {
         QueryAst queryAst = exportRecordSceneQueryMapper.map(reqDTO, currentOperatorId());
-        dynamicQueryGuard.validate(queryAst, exportRecordSceneQueryDefinition.maxComplexityScore());
-        Page<ExportRecordEntity> page = exportRecordService.pageMyRecords(queryAst, exportRecordSceneQueryDefinition);
-        List<ExportRecordRspDTO> records = page.getRecords().stream()
+        dynamicQueryGuard.validate(queryAst, exportRecordRepository.maxQueryComplexityScore());
+        ExportRecordPage page = exportRecordRepository.page(queryAst);
+        List<ExportRecordRspDTO> records = page.records().stream()
                 .map(this::toRecordRsp)
                 .toList();
-        return new PageResult<>(records, page.getTotal());
+        return new PageResult<>(records, page.total());
     }
 
     @Transactional(readOnly = true)
     public ExportRecordRspDTO detail(Long recordId) {
-        ExportRecordEntity entity = exportRecordService.getActiveRequired(recordId);
-        ensureOwnedByCurrentOperator(entity);
-        return toRecordRsp(entity);
+        ExportRecord record = exportRecordLifecycleAppService.getActiveRequired(recordId);
+        record.requireOwnedBy(currentOperatorId());
+        return toRecordRsp(record);
     }
 
     public ExportDownloadRspDTO download(Long recordId) {
-        ExportRecordEntity entity = exportRecordService.getActiveRequired(recordId);
-        ensureOwnedByCurrentOperator(entity);
-        String downloadUrl = exportDownloadService.fetchDownloadUrl(entity, currentOperatorId());
+        ExportRecord record = exportRecordLifecycleAppService.getActiveRequired(recordId);
+        record.requireOwnedBy(currentOperatorId());
+        String downloadUrl = exportDownloadAppService.fetchDownloadUrl(record, currentOperatorId());
         ExportDownloadRspDTO rspDTO = new ExportDownloadRspDTO();
-        rspDTO.setRecordId(entity.getId());
-        rspDTO.setFileName(entity.getFileName());
+        rspDTO.setRecordId(record.getId());
+        rspDTO.setFileName(record.getFileName());
         rspDTO.setDownloadUrl(downloadUrl);
         return rspDTO;
     }
 
     public ExportBatchDownloadRspDTO batchDownload(ExportBatchDownloadReqDTO reqDTO) {
-        ExportRecordEntity record = exportBatchDownloadService.submitPackageRecords(reqDTO.getIds(), currentOperatorId());
-        ExportRecordStatus status = ExportRecordStatus.fromCode(String.valueOf(record.getStatus()));
+        ExportRecord record = exportBatchDownloadAppService.submitPackageRecords(reqDTO.getIds(), currentOperatorId());
         ExportBatchDownloadRspDTO rspDTO = new ExportBatchDownloadRspDTO();
         rspDTO.setRecordId(record.getId());
-        rspDTO.setStatus(status);
+        rspDTO.setStatus(record.getStatus());
         rspDTO.setFileName(record.getFileName());
         rspDTO.setContentType(record.getContentType());
         rspDTO.setFileSize(record.getFileSize());
@@ -122,13 +116,11 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
     @Transactional
     public void delete(List<Long> recordIds) {
         List<Long> normalizedRecordIds = normalizeRecordIds(recordIds);
-        List<ExportRecordEntity> records = listRequiredRecords(normalizedRecordIds);
-        for (ExportRecordEntity record : records) {
-            ensureOwnedByCurrentOperator(record);
+        List<ExportRecord> records = listRequiredRecords(normalizedRecordIds);
+        for (ExportRecord record : records) {
+            record.requireOwnedBy(currentOperatorId());
         }
-        for (Long recordId : normalizedRecordIds) {
-            exportRecordService.markDeleted(recordId, ExportDeleteReason.MANUAL);
-        }
+        exportRecordLifecycleAppService.markDeleted(normalizedRecordIds, ExportDeleteReason.MANUAL);
     }
 
     private List<Long> normalizeRecordIds(List<Long> recordIds) {
@@ -148,18 +140,18 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         return new ArrayList<>(distinctIds);
     }
 
-    private List<ExportRecordEntity> listRequiredRecords(List<Long> recordIds) {
-        List<ExportRecordEntity> records = exportRecordService.listByIds(recordIds);
+    private List<ExportRecord> listRequiredRecords(List<Long> recordIds) {
+        List<ExportRecord> records = exportRecordLifecycleAppService.listActiveByIds(recordIds);
         if (records.size() != recordIds.size()) {
             throw new BizException(ExportCenterErrorCode.EXPORT_RECORD_NOT_FOUND);
         }
-        Map<Long, ExportRecordEntity> recordMap = new LinkedHashMap<>();
-        for (ExportRecordEntity record : records) {
+        Map<Long, ExportRecord> recordMap = new LinkedHashMap<>();
+        for (ExportRecord record : records) {
             recordMap.put(record.getId(), record);
         }
-        List<ExportRecordEntity> orderedRecords = new ArrayList<>();
+        List<ExportRecord> orderedRecords = new ArrayList<>();
         for (Long recordId : recordIds) {
-            ExportRecordEntity record = recordMap.get(recordId);
+            ExportRecord record = recordMap.get(recordId);
             if (record == null) {
                 throw new BizException(ExportCenterErrorCode.EXPORT_RECORD_NOT_FOUND);
             }
@@ -168,28 +160,19 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         return orderedRecords;
     }
 
-    private void ensureOwnedByCurrentOperator(ExportRecordEntity entity) {
-        Long currentOperatorId = currentOperatorId();
-        Long ownerId = entity.getCreateBy() == null ? FALLBACK_OPERATOR_ID : entity.getCreateBy();
-        if (!ownerId.equals(currentOperatorId)) {
-            throw new BizException(ExportCenterErrorCode.EXPORT_RECORD_FORBIDDEN);
-        }
-    }
-
     private Long currentOperatorId() {
         Long operatorId = OperatorContext.getOperatorId();
         return operatorId == null ? FALLBACK_OPERATOR_ID : operatorId;
     }
 
-    private ExportRecordRspDTO toRecordRsp(ExportRecordEntity entity) {
-        ExportRecordStatus status = ExportRecordStatus.fromCode(String.valueOf(entity.getStatus()));
+    private ExportRecordRspDTO toRecordRsp(ExportRecord entity) {
         ExportRecordRspDTO rspDTO = new ExportRecordRspDTO();
         rspDTO.setRecordId(entity.getId());
         rspDTO.setExportBizCode(entity.getExportBizCode());
         rspDTO.setExportBizName(entity.getExportBizName());
         rspDTO.setFileName(entity.getFileName());
         rspDTO.setFileType(entity.getFileType());
-        rspDTO.setStatus(status);
+        rspDTO.setStatus(entity.getStatus());
         rspDTO.setContentType(entity.getContentType());
         rspDTO.setFileSize(entity.getFileSize());
         rspDTO.setDownloadCount(entity.getDownloadCount());
@@ -203,15 +186,14 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         return rspDTO;
     }
 
-    private ExportSubmitRspDTO toSubmitRsp(ExportRecordEntity entity, String downloadUrl) {
-        ExportRecordStatus status = ExportRecordStatus.fromCode(String.valueOf(entity.getStatus()));
+    private ExportSubmitRspDTO toSubmitRsp(ExportRecord entity, String downloadUrl) {
         ExportSubmitRspDTO rspDTO = new ExportSubmitRspDTO();
         rspDTO.setRecordId(entity.getId());
         rspDTO.setExportBizCode(entity.getExportBizCode());
         rspDTO.setExportBizName(entity.getExportBizName());
         rspDTO.setFileName(entity.getFileName());
         rspDTO.setFileType(entity.getFileType());
-        rspDTO.setStatus(status);
+        rspDTO.setStatus(entity.getStatus());
         rspDTO.setContentType(entity.getContentType());
         rspDTO.setFileSize(entity.getFileSize());
         rspDTO.setDownloadCount(entity.getDownloadCount());
@@ -226,16 +208,14 @@ public class ExportCenterAppService implements ExportTaskSubmitter {
         return rspDTO;
     }
 
-    private ExportTaskResult toTaskResult(ExportRecordEntity entity, String downloadUrl) {
-        ExportRecordStatus status = ExportRecordStatus.fromCode(String.valueOf(entity.getStatus()));
+    private ExportTaskResult toTaskResult(ExportRecord entity, String downloadUrl) {
         ExportTaskResult result = new ExportTaskResult();
         result.setRecordId(entity.getId());
         result.setExportBizCode(entity.getExportBizCode());
         result.setExportBizName(entity.getExportBizName());
         result.setFileName(entity.getFileName());
         result.setFileType(entity.getFileType());
-        result.setStatus(entity.getStatus());
-        result.setStatusName(status == null ? null : status.name());
+        result.setStatus(entity.getStatus() == null ? null : entity.getStatus().getIntCode());
         result.setContentType(entity.getContentType());
         result.setFileSize(entity.getFileSize());
         result.setDownloadCount(entity.getDownloadCount());

@@ -29,7 +29,7 @@ Controller -> AppService -> Domain
 - `AppService` 禁止依赖 Entity、Mapper、MyBatis-Plus Service 或具体 Repository 实现。
 - `domain` 只包含领域模型、业务规则、领域服务和 Repository 接口，不依赖 Spring、MyBatis、Controller 或 Infra。
 - MyBatis-Plus `IService/ServiceImpl` 属于持久化基础设施，只能位于 `infra/persistence/service`。
-- 业务链路对外部厂商能力的调用必须通过 `system` 内对应 provider / client 适配层。
+- 业务链路对外部厂商能力的调用必须在 Domain 定义 gateway，由 `system` 内对应 provider / client 适配层实现；AppService 不得直接依赖厂商 SDK 或具体 adapter。
 
 ## 分包规范
 
@@ -55,7 +55,9 @@ com.oigit.admin.{module}
 │   │   │   └── impl
 │   │   └── repository
 │   ├── query
-│   ├── provider
+│   ├── provider/client
+│   ├── translation
+│   ├── export
 │   └── config
 └── enums
 ```
@@ -98,7 +100,7 @@ com.oigit.admin.{module}
 - 文件能力位于 `system/file`，对外统一暴露 `/api/file/storage/**`。
 - provider 通过 `platform.file.storage.type=local|qiniu|minio` 切换。
 - `qiniu` / `minio` SDK 只允许出现在 `system` 的 file provider 适配层。
-- 当前文件适配链路为 `Controller -> AppService -> Service -> Provider`；新增持久化能力仍必须遵守 Domain Repository 与 Infra Persistence 边界。
+- 当前文件适配链路为 `Controller -> FileAppService -> FileStorageGateway <- Infra Provider`；对象键生成与校验由 Domain Policy 承担，AppService 不依赖具体 provider。
 - 当前阶段对象元信息只存在于对象存储，不新增数据库表。
 - 七牛真实网络集成测试使用 `qiniu-it` profile 和 `FILE_STORAGE_QINIU_*` 环境变量。
 - MinIO 真实网络集成测试使用 `minio-it` profile 和 `FILE_STORAGE_MINIO_*` 环境变量。

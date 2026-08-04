@@ -3,10 +3,10 @@ package com.oigit.admin.file;
 import com.oigit.admin.core.export.model.ExportStoreRequest;
 import com.oigit.admin.core.export.model.ExportStoredFile;
 import com.oigit.admin.core.export.model.RenderedExportFile;
-import com.oigit.admin.file.config.FileStorageProperties;
-import com.oigit.admin.file.export.FileStorageExportGateway;
-import com.oigit.admin.file.service.FileService;
-import com.oigit.admin.file.service.StoredFile;
+import com.oigit.admin.file.app.FileAppService;
+import com.oigit.admin.file.domain.model.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
+import com.oigit.admin.file.infra.export.FileStorageExportGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -28,10 +28,10 @@ class FileStorageExportGatewayTests {
 
     @Test
     void store_should_delegate_to_file_service_and_return_export_file_metadata() throws Exception {
-        FileService fileService = mock(FileService.class);
+        FileAppService fileAppService = mock(FileAppService.class);
         FileStorageProperties properties = new FileStorageProperties();
         properties.setType("local");
-        when(fileService.upload(
+        when(fileAppService.store(
                 any(InputStream.class),
                 eq(4L),
                 eq("export/demo"),
@@ -41,7 +41,7 @@ class FileStorageExportGatewayTests {
         ))
             .thenReturn(new StoredFile("export/demo/file.csv", "http://origin", "demo.csv", "text/csv;charset=UTF-8", 32L));
 
-        FileStorageExportGateway gateway = new FileStorageExportGateway(fileService, properties);
+        FileStorageExportGateway gateway = new FileStorageExportGateway(fileAppService, properties);
         Path contentPath = tempDir.resolve("demo.csv");
         Files.writeString(contentPath, "demo");
         RenderedExportFile file = new RenderedExportFile();
@@ -59,7 +59,7 @@ class FileStorageExportGatewayTests {
         assertThat(storedFile.getStorageType()).isEqualTo("local");
         assertThat(storedFile.getContentType()).isEqualTo("text/csv;charset=UTF-8");
         assertThat(storedFile.getFileSize()).isEqualTo(32L);
-        verify(fileService).upload(
+        verify(fileAppService).store(
                 any(InputStream.class),
                 eq(4L),
                 eq("export/demo"),
@@ -71,14 +71,14 @@ class FileStorageExportGatewayTests {
 
     @Test
     void fetchTempUrl_should_delegate_to_file_service() {
-        FileService fileService = mock(FileService.class);
+        FileAppService fileAppService = mock(FileAppService.class);
         FileStorageProperties properties = new FileStorageProperties();
-        when(fileService.fetchTempUrl("export/demo/file.csv")).thenReturn("http://download");
+        when(fileAppService.fetchTempUrl("export/demo/file.csv")).thenReturn("http://download");
 
-        FileStorageExportGateway gateway = new FileStorageExportGateway(fileService, properties);
+        FileStorageExportGateway gateway = new FileStorageExportGateway(fileAppService, properties);
         String url = gateway.fetchTempUrl("export/demo/file.csv");
 
         assertThat(url).isEqualTo("http://download");
-        verify(fileService).fetchTempUrl("export/demo/file.csv");
+        verify(fileAppService).fetchTempUrl("export/demo/file.csv");
     }
 }

@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @MapperScan(basePackages = {
     "com.oigit.admin.staff.infra.persistence.mapper",
     "com.oigit.admin.dict.infra.persistence.mapper",
-    "com.oigit.admin.export.infra.mapper"
+    "com.oigit.admin.export.infra.persistence.mapper"
 }, annotationClass = Mapper.class)
 public class AdminBootApplication {
 

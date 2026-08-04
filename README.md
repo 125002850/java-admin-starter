@@ -7,12 +7,49 @@
 - 当前工作分支：`feature/sso`
 - boot/core/mdm 底座已完成（原登录/租户 system 业务模块已移除，鉴权与租户由网关 SSO 承接）
 - `dev` profile 支持通过环境变量连接独立 MySQL 库 `basic_platform_sso`，未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL
-- `system` 系统集成模块已落地，当前承载 `file` 子模块，支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换
+- `system` 已落地全局字典、导出中心、SSO 员工目录和文件存储；文件支持 `local` / `qiniu` / `minio` 三种 provider
 - 动态查询 DSL 已在 `core` 落地，当前接入全局字典类型、字典项和导出记录分页场景
 - `mdm` 当前无源码，保留为空模块（通用业务平台扩展预留空间）
 - 顶层模块边界约定为：`boot` 负责启动，`core` 负责底层通用能力与原生抽象，`mdm` 承载通用业务服务，`system` 承载外部服务集成，`{biz}` 承载具体业务
 - 模块目录名与 Maven `artifactId` 保持一致，统一使用仓库内语义名，不重复添加 `admin-` 或项目名前缀
 - 仓库基线 Maven `groupId` 与 Java 根包统一使用 `com.oigit.admin`；初始化业务项目时由 `--package` 替换为目标命名空间
+
+## 架构总览
+
+```
+                     HTTP / 可信 SSO 网关请求头
+                                │
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                     boot                                     │
+│                       Spring Boot 启动 · 配置装配 · Bean 扫描                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                system ─────────▶ core ◀───────── mdm                          │
+│      dict / export / file / staff       通用基础能力       （业务扩展预留）     │
+│                                                                              │
+└───────────────────────────────┬──────────────────────────────────────────────┘
+                                │
+          MySQL 8 / Flyway · Local/Qiniu/MinIO · CI 员工服务
+```
+
+**模块依赖方向**：
+
+```
+boot
+   ├──▶ system ──▶ core
+   └──▶ mdm ─────▶ core
+```
+
+**模块内调用链路**：
+
+```
+Controller → AppService → Domain
+                           ↑
+                  Infra implements port
+                           ↓
+                  IService/ServiceImpl → Mapper
+```
 
 ## 项目结构
 
@@ -73,10 +110,10 @@ java-admin-starter/
 ├── system/                                     # 系统集成模块：对接对象存储、短信、邮件、支付等外部服务
 │   └── src/
 │       ├── main/java/com/oigit/admin/
-│       │   ├── file/                                #     文件存储接口与 provider 适配
-│       │   ├── dict/                                #     全局字典管理与导出场景 handler
-│       │   ├── staff/                               #     SSO 员工查询
-│       │   └── export/                              #     导出中心能力
+│       │   ├── file/                                #     文件领域规则、存储端口与 provider 适配
+│       │   ├── dict/                                #     全局字典领域与持久化适配
+│       │   ├── staff/                               #     员工目录端口、缓存与 CI SDK 适配
+│       │   └── export/                              #     导出领域模型、编排与记录持久化适配
 │       └── test/java/com/oigit/admin/               #     file/dict/export/staff 模块测试
 │
 └── mdm/                                        # 通用业务服务模块（当前无源码，保留为空模块）

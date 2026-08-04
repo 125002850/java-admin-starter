@@ -41,8 +41,9 @@ com.oigit.admin.{capability}
 │   │   │   └── impl
 │   │   └── repository
 │   ├── query
-│   ├── provider
+│   ├── provider/client
 │   ├── translation
+│   ├── export
 │   └── config
 └── enums
 ```
@@ -68,7 +69,9 @@ Controller -> AppService -> Domain Model / Domain Service / Repository port
 - 没有真实领域规则时不制造空 Domain Service；AppService 可以直接依赖 Domain Repository 端口。
 - 模块私有枚举放本能力的 `enums`。需要跨模块同步使用的枚举、DTO、接口或事件，按真实消费者建立独立 API 契约模块，禁止把 Entity/Mapper 暴露出去。
 
-全局字典是上述结构的参考实现。仓库级 ArchUnit 已锁定字典层间依赖、MyBatis-Plus persistence 位置和现有能力的 DTO 方向；新增能力必须同步扩展架构测试。
+全局字典、导出中心、文件存储和 SSO 员工目录均按上述结构落地。仓库级 ArchUnit 以通用包规则锁定这些能力的 Controller、DTO、App、Domain、Infra、MyBatis-Plus persistence 和外部 SDK 依赖方向；新增能力只要遵守标准包名即可自动纳入通用检查，新增特殊边界时再扩展架构测试。
+
+外部能力使用 Domain gateway/Repository 作为端口，由 Infra adapter 实现。例如文件 AppService 依赖 `FileStorageGateway`，对象存储 provider 位于 `file/infra/provider`；员工 AppService 依赖 `StaffDirectoryGateway`，公司 CI SDK 只允许出现在 `staff/infra/client`。技术适配类不得成为 AppService 的直接依赖。
 
 ## 2. 审计字段契约
 

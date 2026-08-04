@@ -1,7 +1,7 @@
 package com.oigit.admin.export;
 
 import com.oigit.admin.core.operator.OperatorContext;
-import com.oigit.admin.export.service.ExportTaskDispatcher;
+import com.oigit.admin.export.infra.async.AsyncExportTaskDispatcher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -30,7 +30,7 @@ class ExportTaskDispatcherTests {
         executor.setThreadNamePrefix("export-dispatch-test-");
         executor.initialize();
         try {
-            ExportTaskDispatcher dispatcher = new ExportTaskDispatcher(executor);
+            AsyncExportTaskDispatcher dispatcher = new AsyncExportTaskDispatcher(executor);
             OperatorContext.set(8801L, "exporter", "13800000000", "导出人");
             MDC.put("traceId", "trace-export-1");
 
