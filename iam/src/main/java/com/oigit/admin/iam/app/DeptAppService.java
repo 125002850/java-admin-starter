@@ -10,13 +10,11 @@ import com.oigit.admin.iam.enums.OperationLogAction;
 import com.oigit.admin.iam.enums.OperationLogModule;
 import com.oigit.admin.iam.infra.entity.IamDeptEntity;
 import com.oigit.admin.iam.service.IamDeptService;
-import com.oigit.admin.iam.service.IamStaffService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,23 +22,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeptAppService {
 
     private final IamDeptService deptService;
-    private final IamStaffService staffService;
 
-    public DeptAppService(IamDeptService deptService, IamStaffService staffService) {
+    public DeptAppService(IamDeptService deptService) {
         this.deptService = deptService;
-        this.staffService = staffService;
     }
 
     @Transactional(readOnly = true)
     public List<DeptRspDTO> tree(DeptTreeReqDTO reqDTO) {
         List<IamDeptEntity> depts = deptService.listAll(reqDTO == null ? null : reqDTO.keyword);
-        return buildTree(depts, auditUsernames(depts));
+        return buildTree(depts);
     }
 
     @Transactional(readOnly = true)
     public DeptRspDTO detail(Long deptId) {
         IamDeptEntity entity = deptService.requireById(deptId);
-        return toRsp(entity, auditUsernames(List.of(entity)));
+        return toRsp(entity);
     }
 
     @Transactional
@@ -67,12 +63,12 @@ public class DeptAppService {
         deptService.updateStatus(reqDTO.deptId, reqDTO.status);
     }
 
-    private List<DeptRspDTO> buildTree(List<IamDeptEntity> depts, Map<Long, String> usernames) {
+    private List<DeptRspDTO> buildTree(List<IamDeptEntity> depts) {
         Map<Long, DeptRspDTO> byId = new LinkedHashMap<>();
         depts.stream()
                 .sorted(Comparator.comparing((IamDeptEntity item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
                         .thenComparing(IamDeptEntity::getId))
-                .forEach(dept -> byId.put(dept.getId(), toRsp(dept, usernames)));
+                .forEach(dept -> byId.put(dept.getId(), toRsp(dept)));
         List<DeptRspDTO> roots = new ArrayList<>();
         for (IamDeptEntity dept : depts) {
             DeptRspDTO node = byId.get(dept.getId());
@@ -85,7 +81,7 @@ public class DeptAppService {
         return roots;
     }
 
-    private DeptRspDTO toRsp(IamDeptEntity entity, Map<Long, String> usernames) {
+    private DeptRspDTO toRsp(IamDeptEntity entity) {
         DeptRspDTO dto = new DeptRspDTO();
         dto.deptId = entity.getId();
         dto.parentId = entity.getParentId();
@@ -93,23 +89,12 @@ public class DeptAppService {
         dto.deptName = entity.getDeptName();
         dto.fullPath = entity.getFullPath();
         dto.sortOrder = entity.getSortOrder();
-        dto.status = entity.getStatus() == null ? null : entity.getStatus().getCode();
+        dto.status = entity.getStatus();
         dto.remark = entity.getRemark();
-        dto.createTime = entity.getCreateTime();
-        dto.updateTime = entity.getUpdateTime();
-        dto.createBy = auditUsername(usernames, entity.getCreateBy());
-        dto.updateBy = auditUsername(usernames, entity.getUpdateBy());
+        dto.setCreateTime(entity.getCreateTime());
+        dto.setUpdateTime(entity.getUpdateTime());
+        dto.setCreateById(entity.getCreateBy());
+        dto.setUpdateById(entity.getUpdateBy());
         return dto;
-    }
-
-    private Map<Long, String> auditUsernames(List<IamDeptEntity> depts) {
-        List<Long> staffIds = depts.stream()
-                .flatMap(dept -> Stream.of(dept.getCreateBy(), dept.getUpdateBy()))
-                .toList();
-        return staffService.resolveUsernames(staffIds);
-    }
-
-    private String auditUsername(Map<Long, String> usernames, Long staffId) {
-        return staffId == null ? null : usernames.get(staffId);
     }
 }

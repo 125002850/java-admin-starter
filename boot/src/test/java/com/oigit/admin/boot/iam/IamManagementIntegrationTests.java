@@ -187,10 +187,7 @@ class IamManagementIntegrationTests {
         assertThat(pageResponse.path("code").asInt()).isEqualTo(200);
         assertThat(pageResponse.path("data").path("total").asLong()).isEqualTo(1);
         JsonNode role = pageResponse.path("data").path("list").get(0);
-        assertThat(role.path("createBy").isTextual()).isTrue();
-        assertThat(role.path("createBy").asText()).isEqualTo("admin");
-        assertThat(role.path("updateBy").isTextual()).isTrue();
-        assertThat(role.path("updateBy").asText()).isEqualTo("admin");
+        assertTranslatedAuditFields(role);
     }
 
     @Test
@@ -211,10 +208,7 @@ class IamManagementIntegrationTests {
         assertThat(pageResponse.path("code").asInt()).isEqualTo(200);
         assertThat(pageResponse.path("data").path("total").asLong()).isEqualTo(1);
         JsonNode staff = pageResponse.path("data").path("list").get(0);
-        assertThat(staff.path("createBy").isTextual()).isTrue();
-        assertThat(staff.path("createBy").asText()).isEqualTo("admin");
-        assertThat(staff.path("updateBy").isTextual()).isTrue();
-        assertThat(staff.path("updateBy").asText()).isEqualTo("admin");
+        assertTranslatedAuditFields(staff);
     }
 
     @Test
@@ -231,10 +225,7 @@ class IamManagementIntegrationTests {
         assertThat(treeResponse.path("code").asInt()).isEqualTo(200);
         JsonNode dept = treeResponse.path("data").get(0);
         assertThat(dept.path("deptCode").asText()).isEqualTo(deptCode);
-        assertThat(dept.path("createBy").isTextual()).isTrue();
-        assertThat(dept.path("createBy").asText()).isEqualTo("admin");
-        assertThat(dept.path("updateBy").isTextual()).isTrue();
-        assertThat(dept.path("updateBy").asText()).isEqualTo("admin");
+        assertTranslatedAuditFields(dept);
     }
 
     @Test
@@ -251,10 +242,7 @@ class IamManagementIntegrationTests {
         assertThat(treeResponse.path("code").asInt()).isEqualTo(200);
         JsonNode menu = treeResponse.path("data").get(0);
         assertThat(menu.path("menuCode").asText()).isEqualTo(menuCode);
-        assertThat(menu.path("createBy").isTextual()).isTrue();
-        assertThat(menu.path("createBy").asText()).isEqualTo("admin");
-        assertThat(menu.path("updateBy").isTextual()).isTrue();
-        assertThat(menu.path("updateBy").asText()).isEqualTo("admin");
+        assertTranslatedAuditFields(menu);
     }
 
     @Test
@@ -617,6 +605,13 @@ class IamManagementIntegrationTests {
                 Long.class,
                 menuCode
         );
+    }
+
+    private void assertTranslatedAuditFields(JsonNode response) {
+        assertThat(response.path("createById").asLong()).isEqualTo(1L);
+        assertThat(response.path("createByName").asText()).isEqualTo("超级管理员");
+        assertThat(response.path("updateById").asLong()).isEqualTo(1L);
+        assertThat(response.path("updateByName").asText()).isEqualTo("超级管理员");
     }
 
     private JsonNode postJson(String path, String body, String accessToken, int expectedStatus) throws Exception {

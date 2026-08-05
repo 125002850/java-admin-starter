@@ -13,25 +13,38 @@ import com.oigit.admin.core.mybatis.CommonMetaObjectHandler;
 import com.oigit.admin.core.mybatis.MybatisPlusConfig;
 import com.oigit.admin.core.operator.OperatorContext;
 import com.oigit.admin.core.operator.OperatorUsernameResolver;
+import com.oigit.admin.core.translation.TranslationEngine;
+import com.oigit.admin.core.translation.TranslationKey;
+import com.oigit.admin.core.translation.TranslationProvider;
+import com.oigit.admin.core.translation.TranslationTypes;
 import com.oigit.admin.core.query.executor.MybatisPlusQueryExecutor;
 import com.oigit.admin.core.query.support.DynamicQueryGuard;
 import com.oigit.admin.core.query.support.DynamicQuerySummaryRenderer;
 import com.oigit.admin.core.query.support.QueryComplexityScorer;
 import com.oigit.admin.export.app.ExportCenterAppService;
+import com.oigit.admin.export.app.ExportBatchDownloadAppService;
+import com.oigit.admin.export.app.ExportDownloadAppService;
+import com.oigit.admin.export.app.ExportExecutionAppService;
+import com.oigit.admin.export.app.ExportRecordLifecycleAppService;
+import com.oigit.admin.export.app.query.ExportRecordSceneQueryMapper;
 import com.oigit.admin.export.controller.ExportCenterController;
-import com.oigit.admin.dict.export.GlobalDictTypeListExportHandler;
+import com.oigit.admin.dict.app.DictAppService;
+import com.oigit.admin.dict.app.query.GlobalDictItemSceneQueryMapper;
+import com.oigit.admin.dict.app.query.GlobalDictTypeSceneQueryMapper;
+import com.oigit.admin.dict.infra.config.DictDomainConfiguration;
+import com.oigit.admin.dict.infra.export.GlobalDictTypeListExportHandler;
+import com.oigit.admin.dict.infra.persistence.repository.MybatisGlobalDictItemRepository;
+import com.oigit.admin.dict.infra.persistence.repository.MybatisGlobalDictTypeRepository;
+import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictItemPersistenceServiceImpl;
+import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictTypePersistenceServiceImpl;
+import com.oigit.admin.dict.infra.query.GlobalDictItemSceneQueryDefinition;
+import com.oigit.admin.dict.infra.query.GlobalDictTypeSceneQueryDefinition;
 import com.oigit.admin.export.enums.ExportRecordStatus;
-import com.oigit.admin.export.infra.entity.ExportRecordEntity;
-import com.oigit.admin.export.query.ExportRecordSceneQueryDefinition;
-import com.oigit.admin.export.query.ExportRecordSceneQueryMapper;
-import com.oigit.admin.export.service.ExportBatchDownloadService;
-import com.oigit.admin.export.service.ExportDownloadService;
-import com.oigit.admin.export.service.ExportExecutionService;
-import com.oigit.admin.export.service.ExportRecordService;
-import com.oigit.admin.export.service.ExportTaskDispatcher;
-import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
-import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
-import com.oigit.admin.dict.service.DictService;
+import com.oigit.admin.export.domain.model.ExportRecord;
+import com.oigit.admin.export.infra.async.AsyncExportTaskDispatcher;
+import com.oigit.admin.export.infra.persistence.repository.MybatisExportRecordRepository;
+import com.oigit.admin.export.infra.persistence.service.impl.ExportRecordPersistenceServiceImpl;
+import com.oigit.admin.export.infra.query.ExportRecordSceneQueryDefinition;
 import com.oigit.admin.test.TestSecurityPermitAllConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +77,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -104,7 +118,7 @@ class ExportCenterSmokeTests {
     private InMemoryExportGateway exportGateway;
 
     @Autowired
-    private ExportRecordService exportRecordService;
+    private ExportRecordLifecycleAppService exportRecordLifecycleAppService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -204,9 +218,9 @@ class ExportCenterSmokeTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.exportBizCode").value("mdm.global.dict.type.list"))
-                .andExpect(jsonPath("$.data.statusName").value("PROCESSING"))
+                .andExpect(jsonPath("$.data.status").value("1"))
                 .andExpect(jsonPath("$.data.fileName").value(allOf(startsWith("全局字典类型-筛选-"), endsWith(".csv"))))
-                .andExpect(jsonPath("$.data.createBy").value("submit_exporter"))
+                .andExpect(jsonPath("$.data.createById").value(8801))
                 .andExpect(jsonPath("$.data.downloadCount").value(0))
                 .andExpect(jsonPath("$.data.querySnapshotSummary").value("字典类型编码 等于 user_status"));
 
@@ -281,7 +295,7 @@ class ExportCenterSmokeTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.statusName").value("PROCESSING"));
+                .andExpect(jsonPath("$.data.status").value("1"));
 
         Integer recordCount = jdbcTemplate.queryForObject(
                 "select count(*) from sys_export_record_global",
@@ -306,7 +320,7 @@ class ExportCenterSmokeTests {
     @Test
     void lifecycle_updates_should_survive_outer_transaction_rollback() {
         OperatorContext.set(8801L, "导出人", null);
-        ExportRecordEntity record = new ExportRecordEntity();
+        ExportRecord record = new ExportRecord();
         record.setExportBizCode("transaction.boundary.test");
         record.setExportBizName("事务边界测试");
         record.setFileName("transaction-boundary.csv");
@@ -320,8 +334,8 @@ class ExportCenterSmokeTests {
 
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.executeWithoutResult(status -> {
-            exportRecordService.createProcessingRecord(record);
-            exportRecordService.markFailed(record.getId(), "EXPECTED_FAILURE", "模拟失败");
+            exportRecordLifecycleAppService.createProcessingRecord(record);
+            exportRecordLifecycleAppService.markFailed(record.getId(), "EXPECTED_FAILURE", "模拟失败");
             status.setRollbackOnly();
         });
 
@@ -370,7 +384,7 @@ class ExportCenterSmokeTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.recordId").isNumber())
-                .andExpect(jsonPath("$.data.statusName").value("PROCESSING"))
+                .andExpect(jsonPath("$.data.status").value("1"))
                 .andExpect(jsonPath("$.data.fileName").value(allOf(startsWith("导出中心批量下载-"), endsWith(".zip"))));
 
         Integer batchRecordCount = jdbcTemplate.queryForObject(
@@ -588,7 +602,7 @@ class ExportCenterSmokeTests {
                 .andExpect(jsonPath("$.data.total").value(2))
                 .andExpect(jsonPath("$.data.list.length()").value(2))
                 .andExpect(jsonPath("$.data.list[0].recordId").value(201))
-                .andExpect(jsonPath("$.data.list[0].createBy").value("page_exporter"))
+                .andExpect(jsonPath("$.data.list[0].createById").value(8802))
                 .andExpect(jsonPath("$.data.list[1].recordId").value(202));
     }
 
@@ -612,7 +626,7 @@ class ExportCenterSmokeTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.recordId").value(205))
-                .andExpect(jsonPath("$.data.createBy").value("page_exporter"));
+                .andExpect(jsonPath("$.data.createById").value(8802));
     }
 
     @Test
@@ -656,8 +670,8 @@ class ExportCenterSmokeTests {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @MapperScan({
-            "com.oigit.admin.dict.infra.mapper",
-            "com.oigit.admin.export.infra.mapper"
+            "com.oigit.admin.dict.infra.persistence.mapper",
+            "com.oigit.admin.export.infra.persistence.mapper"
     })
     @Import({
             GlobalExceptionHandler.class,
@@ -669,17 +683,26 @@ class ExportCenterSmokeTests {
             MybatisPlusQueryExecutor.class,
             GlobalDictTypeSceneQueryDefinition.class,
             GlobalDictTypeSceneQueryMapper.class,
+            GlobalDictItemSceneQueryDefinition.class,
+            GlobalDictItemSceneQueryMapper.class,
+            DictDomainConfiguration.class,
+            MybatisGlobalDictTypeRepository.class,
+            MybatisGlobalDictItemRepository.class,
+            GlobalDictTypePersistenceServiceImpl.class,
+            GlobalDictItemPersistenceServiceImpl.class,
+            DictAppService.class,
             ExportRecordSceneQueryDefinition.class,
             ExportRecordSceneQueryMapper.class,
-            DictService.class,
+            ExportRecordPersistenceServiceImpl.class,
+            MybatisExportRecordRepository.class,
+            ExportRecordLifecycleAppService.class,
             ExportCenterAppService.class,
             ExportCenterController.class,
-            ExportExecutionService.class,
-            ExportDownloadService.class,
-            ExportBatchDownloadService.class,
-            ExportRecordService.class,
-            ExportTaskDispatcher.class,
+            ExportExecutionAppService.class,
+            ExportDownloadAppService.class,
+            ExportBatchDownloadAppService.class,
             GlobalDictTypeListExportHandler.class,
+            AsyncExportTaskDispatcher.class,
             SpringExportSceneRegistry.class,
             SpringExportRendererRegistry.class,
             CsvExportRenderer.class,
@@ -718,6 +741,45 @@ class ExportCenterSmokeTests {
                     8801L, "submit_exporter",
                     8802L, "page_exporter"
             );
+        }
+
+        @Bean
+        TranslationEngine translationEngine(OperatorUsernameResolver operatorUsernameResolver) {
+            return new TranslationEngine(List.of(
+                    new TranslationProvider() {
+                        @Override
+                        public String type() {
+                            return TranslationTypes.USER_NAME;
+                        }
+
+                        @Override
+                        public Map<TranslationKey, String> translate(Set<TranslationKey> keys) {
+                            Map<TranslationKey, Long> idsByKey = keys.stream()
+                                    .collect(java.util.stream.Collectors.toMap(
+                                            key -> key,
+                                            key -> Long.valueOf(key.value())
+                                    ));
+                            Map<Long, String> usernames = operatorUsernameResolver.resolveUsernames(idsByKey.values());
+                            return idsByKey.entrySet().stream()
+                                    .filter(entry -> usernames.containsKey(entry.getValue()))
+                                    .collect(java.util.stream.Collectors.toMap(
+                                            Map.Entry::getKey,
+                                            entry -> usernames.get(entry.getValue())
+                                    ));
+                        }
+                    },
+                    new TranslationProvider() {
+                        @Override
+                        public String type() {
+                            return TranslationTypes.DICT_ITEM_NAME;
+                        }
+
+                        @Override
+                        public Map<TranslationKey, String> translate(Set<TranslationKey> keys) {
+                            return Map.of();
+                        }
+                    }
+            ));
         }
     }
 

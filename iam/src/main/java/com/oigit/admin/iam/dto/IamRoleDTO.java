@@ -1,12 +1,12 @@
 package com.oigit.admin.iam.dto;
 
 import com.oigit.admin.core.web.PageReqDTO;
+import com.oigit.admin.core.web.AuditRspDTO;
 import com.oigit.admin.iam.enums.DataScopeType;
 import com.oigit.admin.iam.enums.IamStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,22 +79,16 @@ public final class IamRoleDTO {
     }
 
     @Schema(description = "角色响应")
-    public static class RoleRspDTO {
+    public static class RoleRspDTO extends AuditRspDTO {
         public Long roleId;
         public String roleCode;
         public String roleName;
         public Integer sortOrder;
-        public String status;
-        public String dataScopeType;
+        public IamStatus status;
+        public DataScopeType dataScopeType;
         public Boolean systemBuiltIn;
         public String remark;
         public List<Long> menuIds = new ArrayList<>();
         public List<Long> dataScopeDeptIds = new ArrayList<>();
-        public LocalDateTime createTime;
-        public LocalDateTime updateTime;
-        @Schema(description = "创建人用户名", example = "admin")
-        public String createBy;
-        @Schema(description = "更新人用户名", example = "admin")
-        public String updateBy;
     }
 }

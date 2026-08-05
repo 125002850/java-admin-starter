@@ -1,13 +1,14 @@
 package com.oigit.admin.core.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * 业务枚举基础接口。
- * 所有需要以对象形式序列化（code + desc）的业务枚举都应实现此接口，
- * 配合 {@link com.fasterxml.jackson.annotation.JsonFormat.Shape#OBJECT} 和
- * EnumModelConverter 实现 JSON 对象输出和 OpenAPI schema 映射。
+ * JSON 和 OpenAPI 只暴露稳定编码；描述由字典表统一提供给前端与导出。
  */
 public interface BaseEnum {
 
+    @JsonValue
     String getCode();
 
     String getDesc();

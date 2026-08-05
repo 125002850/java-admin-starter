@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.domain.gateway.FileStorageGateway;
+import com.oigit.admin.file.domain.model.StoredFile;
 import com.oigit.admin.file.enums.FileErrorCode;
-import com.oigit.admin.file.infra.provider.FileStorageProvider;
-import com.oigit.admin.file.service.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 
 @Component
 @ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "minio")
-public class MinioFileStorageProvider implements FileStorageProvider {
+public class MinioFileStorageProvider implements FileStorageGateway {
 
     private final MinioOperations minioOperations;
     private final String bucketName;

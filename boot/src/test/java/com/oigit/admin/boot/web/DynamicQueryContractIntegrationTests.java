@@ -51,7 +51,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void unknownNodeTypeShouldReturnWrappedParamError() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -70,7 +70,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void tooDeepConditionTreeShouldReturnBizError() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -133,7 +133,7 @@ class DynamicQueryContractIntegrationTests {
                         """.formatted(index))
                 .collect(Collectors.joining(","));
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -196,7 +196,7 @@ class DynamicQueryContractIntegrationTests {
 
     @Test
     void eqWithNullShouldReturnWrappedValidationError() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -221,7 +221,7 @@ class DynamicQueryContractIntegrationTests {
         insertGlobalDictType(801L, "user_status", "用户状态", 0L, LocalDateTime.of(2026, 6, 1, 8, 0, 0));
         insertGlobalDictType(802L, "user_status_deleted", "已删除用户状态", 1L, LocalDateTime.of(2026, 6, 2, 8, 0, 0));
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -247,6 +247,26 @@ class DynamicQueryContractIntegrationTests {
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.list.length()").value(1))
                 .andExpect(jsonPath("$.data.list[0].dictTypeCode").value("user_status"));
+    }
+
+    @Test
+    void auditFieldsShouldResolveUsernamesFromIamStaff() throws Exception {
+        jdbcTemplate.update("""
+                insert into sys_dict_type_global (
+                  id, dict_type_code, dict_type_name, create_time, update_time, create_by, update_by, deleted
+                ) values (?, ?, ?, current_timestamp, current_timestamp, ?, ?, ?)
+                """, 901L, "audit_type", "审计字典", 1L, 1L, 0L);
+
+        mockMvc.perform(post("/api/system/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pageNo\":1,\"pageSize\":10}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.list[0].createById").value(1))
+                .andExpect(jsonPath("$.data.list[0].createByName").value("超级管理员"))
+                .andExpect(jsonPath("$.data.list[0].updateById").value(1))
+                .andExpect(jsonPath("$.data.list[0].updateByName").value("超级管理员"));
     }
 
     private void cleanTables() {

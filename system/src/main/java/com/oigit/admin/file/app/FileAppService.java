@@ -1,36 +1,54 @@
 package com.oigit.admin.file.app;
 
+import com.oigit.admin.core.exception.BizException;
+import com.oigit.admin.file.domain.gateway.FileStorageGateway;
+import com.oigit.admin.file.domain.model.DirectUploadCredential;
+import com.oigit.admin.file.domain.model.StoredFile;
+import com.oigit.admin.file.domain.service.FileObjectKeyPolicy;
+import com.oigit.admin.file.dto.req.DeleteFileReqDTO;
+import com.oigit.admin.file.dto.req.FetchDirectUploadCredentialReqDTO;
+import com.oigit.admin.file.dto.req.FetchTempUrlBatchReqDTO;
+import com.oigit.admin.file.dto.req.FetchTempUrlReqDTO;
+import com.oigit.admin.file.dto.req.UploadFileReqDTO;
+import com.oigit.admin.file.dto.rsp.FetchDirectUploadCredentialRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlBatchRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlItemRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlRspDTO;
+import com.oigit.admin.file.dto.rsp.StoredFileRspDTO;
+import com.oigit.admin.file.enums.FileErrorCode;
+import org.springframework.stereotype.Service;
+
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-import com.oigit.admin.file.controller.dto.DeleteFileReqDTO;
-import com.oigit.admin.file.controller.dto.FetchDirectUploadCredentialReqDTO;
-import com.oigit.admin.file.controller.dto.FetchDirectUploadCredentialRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlBatchReqDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlBatchRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlItemRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlReqDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlRspDTO;
-import com.oigit.admin.file.controller.dto.StoredFileRspDTO;
-import com.oigit.admin.file.controller.dto.UploadFileReqDTO;
-import com.oigit.admin.file.service.DirectUploadCredential;
-import com.oigit.admin.file.service.FileService;
-import com.oigit.admin.file.service.StoredFile;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 @Service
 public class FileAppService {
 
-    private final FileService fileService;
+    private final FileStorageGateway fileStorageGateway;
+    private final FileObjectKeyPolicy fileObjectKeyPolicy;
 
-    public FileAppService(FileService fileService) {
-        this.fileService = fileService;
+    public FileAppService(FileStorageGateway fileStorageGateway, FileObjectKeyPolicy fileObjectKeyPolicy) {
+        this.fileStorageGateway = fileStorageGateway;
+        this.fileObjectKeyPolicy = fileObjectKeyPolicy;
     }
 
-    public StoredFileRspDTO upload(MultipartFile file, UploadFileReqDTO reqDTO) {
-        StoredFile storedFile = fileService.upload(file, reqDTO.getBizPath(), reqDTO.getObjectKey());
+    public StoredFileRspDTO upload(
+            InputStream inputStream,
+            long size,
+            String originalFilename,
+            String contentType,
+            UploadFileReqDTO reqDTO
+    ) {
+        StoredFile storedFile = store(
+                inputStream,
+                size,
+                reqDTO.getBizPath(),
+                reqDTO.getObjectKey(),
+                originalFilename,
+                contentType
+        );
         return new StoredFileRspDTO(
                 storedFile.getObjectKey(),
                 storedFile.getOriginUrl(),
@@ -40,34 +58,82 @@ public class FileAppService {
         );
     }
 
+    public StoredFile store(
+            InputStream inputStream,
+            long size,
+            String bizPath,
+            String objectKey,
+            String originalFilename,
+            String contentType
+    ) {
+        if (inputStream == null || size <= 0) {
+            throw new BizException(FileErrorCode.EMPTY_FILE);
+        }
+        String resolvedObjectKey = fileObjectKeyPolicy.resolveObjectKey(bizPath, objectKey, originalFilename);
+        try {
+            return fileStorageGateway.upload(inputStream, resolvedObjectKey, contentType, size, originalFilename);
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(FileErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
     public void delete(DeleteFileReqDTO reqDTO) {
-        fileService.delete(reqDTO.getObjectKey());
+        delete(reqDTO.getObjectKey());
+    }
+
+    public void delete(String objectKey) {
+        fileStorageGateway.delete(fileObjectKeyPolicy.normalizeObjectKey(objectKey));
     }
 
     public FetchTempUrlRspDTO fetchTempUrl(FetchTempUrlReqDTO reqDTO) {
-        return new FetchTempUrlRspDTO(reqDTO.getObjectKey(), fileService.fetchTempUrl(reqDTO.getObjectKey()));
+        return new FetchTempUrlRspDTO(reqDTO.getObjectKey(), fetchTempUrl(reqDTO.getObjectKey()));
+    }
+
+    public String fetchTempUrl(String objectKey) {
+        try {
+            return fileStorageGateway.buildTempUrl(fileObjectKeyPolicy.normalizeObjectKey(objectKey));
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(FileErrorCode.TEMP_URL_GENERATE_FAILED);
+        }
     }
 
     public FetchTempUrlBatchRspDTO batchFetchTempUrls(FetchTempUrlBatchReqDTO reqDTO) {
         LinkedHashSet<String> objectKeys = new LinkedHashSet<>(reqDTO.getObjectKeys());
         List<FetchTempUrlItemRspDTO> items = new ArrayList<>(objectKeys.size());
         for (String objectKey : objectKeys) {
-            items.add(new FetchTempUrlItemRspDTO(objectKey, fileService.fetchTempUrl(objectKey)));
+            items.add(new FetchTempUrlItemRspDTO(objectKey, fetchTempUrl(objectKey)));
         }
         return new FetchTempUrlBatchRspDTO(items);
     }
 
     public FetchDirectUploadCredentialRspDTO fetchDirectUploadCredential(FetchDirectUploadCredentialReqDTO reqDTO) {
-        DirectUploadCredential directUploadCredential = fileService.fetchDirectUploadCredential(
+        String objectKey = fileObjectKeyPolicy.resolveObjectKey(
                 reqDTO.getBizPath(),
-                reqDTO.getObjectKey()
+                reqDTO.getObjectKey(),
+                null
         );
+        DirectUploadCredential credential = fileStorageGateway.fetchDirectUploadCredential(objectKey)
+                .orElseThrow(() -> new BizException(FileErrorCode.DIRECT_UPLOAD_NOT_SUPPORTED));
         return new FetchDirectUploadCredentialRspDTO(
-                directUploadCredential.getProvider(),
-                directUploadCredential.getCredential(),
-                directUploadCredential.getObjectKey(),
-                directUploadCredential.getOriginUrl(),
-                directUploadCredential.getUploadHost()
+                credential.getProvider(),
+                credential.getCredential(),
+                credential.getObjectKey(),
+                credential.getOriginUrl(),
+                credential.getUploadHost()
         );
+    }
+
+    public InputStream openDownloadStream(String objectKey) {
+        try {
+            return fileStorageGateway.openStream(fileObjectKeyPolicy.normalizeObjectKey(objectKey));
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(FileErrorCode.FILE_DOWNLOAD_FAILED);
+        }
     }
 }

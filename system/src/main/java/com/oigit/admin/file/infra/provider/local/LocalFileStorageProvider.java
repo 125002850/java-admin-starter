@@ -1,10 +1,10 @@
 package com.oigit.admin.file.infra.provider.local;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.domain.gateway.FileStorageGateway;
+import com.oigit.admin.file.domain.model.StoredFile;
 import com.oigit.admin.file.enums.FileErrorCode;
-import com.oigit.admin.file.infra.provider.FileStorageProvider;
-import com.oigit.admin.file.service.StoredFile;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 
 @Component
 @ConditionalOnProperty(prefix = "platform.file.storage", name = "type", havingValue = "local", matchIfMissing = true)
-public class LocalFileStorageProvider implements FileStorageProvider {
+public class LocalFileStorageProvider implements FileStorageGateway {
 
     private static final Pattern OBJECT_KEY_SEGMENT_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
 

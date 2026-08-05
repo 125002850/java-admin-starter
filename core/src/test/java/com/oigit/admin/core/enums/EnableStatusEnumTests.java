@@ -11,13 +11,10 @@ class EnableStatusEnumTests {
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     @Test
-    void shouldSerializeAsObject() throws Exception {
+    void shouldSerializeAsStableCodeString() throws Exception {
         String json = objectMapper.writeValueAsString(EnableStatusEnum.ENABLE);
 
-        assertThat(json).contains("\"code\"");
-        assertThat(json).contains("\"desc\"");
-        assertThat(json).contains("\"enable\"");
-        assertThat(json).contains("\"启用\"");
+        assertThat(json).isEqualTo("\"enable\"");
     }
 
     @Test

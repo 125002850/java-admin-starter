@@ -1,10 +1,10 @@
 package com.oigit.admin.iam.dto;
 
+import com.oigit.admin.core.web.AuditRspDTO;
 import com.oigit.admin.iam.enums.IamStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +64,7 @@ public final class IamDeptDTO {
     }
 
     @Schema(description = "部门节点响应")
-    public static class DeptRspDTO {
+    public static class DeptRspDTO extends AuditRspDTO {
         @Schema(description = "部门ID")
         public Long deptId;
         @Schema(description = "父部门ID")
@@ -78,18 +78,10 @@ public final class IamDeptDTO {
         @Schema(description = "排序")
         public Integer sortOrder;
         @Schema(description = "状态")
-        public String status;
+        public IamStatus status;
         @Schema(description = "备注")
         public String remark;
         @Schema(description = "子部门")
         public List<DeptRspDTO> children = new ArrayList<>();
-        @Schema(description = "创建时间")
-        public LocalDateTime createTime;
-        @Schema(description = "更新时间")
-        public LocalDateTime updateTime;
-        @Schema(description = "创建人用户名", example = "admin")
-        public String createBy;
-        @Schema(description = "更新人用户名", example = "admin")
-        public String updateBy;
     }
 }

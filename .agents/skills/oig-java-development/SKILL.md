@@ -31,7 +31,9 @@ description: Use when modifying OIG Java/Spring Boot backend repositories, inclu
 ## Default Checks
 
 - Controller 不得绕过 AppService。
-- Web DTO、Entity、内部调用对象不得混用。
+- 业务模块实现包统一使用 `controller/dto/app/domain/infra/enums`；DTO 与 Controller 同级，供 Controller 和 AppService 共用，其中请求对象放 `dto.req`、响应对象放 `dto.rsp`、动态查询请求放 `dto.req.query`；MyBatis-Plus `IService/ServiceImpl` 只能位于 `infra/persistence/service`。
+- App/Domain 不得依赖 Entity、Mapper、MyBatis-Plus Service 或 Infra 实现；Domain Repository 接口由 Infra 实现。
+- Web DTO、Domain Model、Entity 不得混用。
 - 依赖版本不得使用 `LATEST`、`RELEASE` 或动态范围。
 - `java-admin-starter` 基线 Maven `groupId` 与 Java 根包统一使用 `com.oigit.admin`；初始化后的业务项目使用其目标包名，不保留基线命名空间。
 - 模块目录名与 Maven `artifactId` 必须一致，使用 `boot`、`core`、`iam`、`system` 或实际业务域名，不重复添加 `admin-` 或项目名前缀。

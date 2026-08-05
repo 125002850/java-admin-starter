@@ -39,9 +39,9 @@ class OpenApiDocumentationTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.openapi").exists())
             .andExpect(jsonPath("$.info.title").value("java-admin-starter API 文档"))
-            .andExpect(content().string(containsString("/api/mdm/dict/global/types/list")))
-            .andExpect(content().string(containsString("/api/mdm/dict/global/types/list-all")))
-            .andExpect(content().string(containsString("/api/mdm/dict/global/items/by-type")))
+            .andExpect(content().string(containsString("/api/system/dict/global/types/list")))
+            .andExpect(content().string(containsString("/api/system/dict/global/types/list-all")))
+            .andExpect(content().string(containsString("/api/system/dict/global/items/by-type")))
             .andExpect(content().string(containsString("/api/mdm/export/submit")))
             .andExpect(content().string(containsString("/api/mdm/export/my/page")))
             .andExpect(content().string(containsString("/api/mdm/export/download/batch")))
@@ -68,10 +68,10 @@ class OpenApiDocumentationTests {
     void endpointsShouldExposeStableOperationIds() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.paths['/api/mdm/dict/global/types/list'].post.operationId")
-                    .value("mdmDictGlobalTypesList"))
-            .andExpect(jsonPath("$.paths['/api/mdm/dict/global/items/by-type'].post.operationId")
-                    .value("mdmDictGlobalItemsByType"))
+            .andExpect(jsonPath("$.paths['/api/system/dict/global/types/list'].post.operationId")
+                    .value("systemDictGlobalTypesList"))
+            .andExpect(jsonPath("$.paths['/api/system/dict/global/items/by-type'].post.operationId")
+                    .value("systemDictGlobalItemsByType"))
             .andExpect(jsonPath("$.paths['/api/mdm/export/submit'].post.operationId")
                     .value("submitExport"))
             .andExpect(jsonPath("$.paths['/api/mdm/export/my/page'].post.operationId")
@@ -136,21 +136,39 @@ class OpenApiDocumentationTests {
     }
 
     @Test
-    void enumSchemasShouldUseCodesForRequestsAndEnumVoForResponses() throws Exception {
+    void enumSchemasShouldExposeStableCodesAndDictionaryMetadata() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.components.schemas.GlobalDictItemCreateReqDTO.properties.status.enum",
                     contains("enable", "disable")))
             .andExpect(jsonPath("$.components.schemas.GlobalDictItemUpdateReqDTO.properties.status.enum",
                     contains("enable", "disable")))
-            .andExpect(jsonPath("$.components.schemas.EnumVO").exists())
-            .andExpect(jsonPath("$.components.schemas.EnumVO.type").value("object"))
-            .andExpect(jsonPath("$.components.schemas.EnumVO.properties.code.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.EnumVO.properties.desc.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.EnumVO").doesNotExist())
             .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.status.type").value("string"))
             .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.status.enum").isArray())
             .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.status.type").value("string"))
-            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.status.enum").isArray());
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.status.enum").isArray())
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.status.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.status.enum",
+                    contains("1", "2", "3", "4", "5")))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.status['x-dict-type']")
+                    .value("EXPORT_RECORD_STATUS"))
+            .andExpect(jsonPath("$.components.schemas.StaffRspDTO.properties.status['x-dict-type']")
+                    .value("IAM_STATUS"))
+            .andExpect(jsonPath("$.components.schemas.RoleRspDTO.properties.dataScopeType['x-dict-type']")
+                    .value("IAM_DATA_SCOPE_TYPE"))
+            .andExpect(jsonPath("$.components.schemas.MenuRspDTO.properties.menuType['x-dict-type']")
+                    .value("IAM_MENU_TYPE"))
+            .andExpect(jsonPath("$.components.schemas.LoginLogRspDTO.properties.eventType['x-dict-type']")
+                    .value("IAM_LOGIN_EVENT_TYPE"))
+            .andExpect(jsonPath("$.components.schemas.LoginLogRspDTO.properties.result['x-dict-type']")
+                    .value("IAM_LOGIN_RESULT"))
+            .andExpect(jsonPath("$.components.schemas.LoginLogRspDTO.properties.failureReason['x-dict-type']")
+                    .value("IAM_LOGIN_FAILURE_REASON"))
+            .andExpect(jsonPath("$.components.schemas.OperationLogRspDTO.properties.module['x-dict-type']")
+                    .value("IAM_OPERATION_LOG_MODULE"))
+            .andExpect(jsonPath("$.components.schemas.OperationLogRspDTO.properties.action['x-dict-type']")
+                    .value("IAM_OPERATION_LOG_ACTION"));
     }
 
     @Test
@@ -181,6 +199,25 @@ class OpenApiDocumentationTests {
             .andExpect(jsonPath("$.components.schemas.OperationLogPageReqDTO.properties.operationTimeRange").exists())
             .andExpect(jsonPath("$.components.schemas.DateTimeRangeReqDTO.properties.startTime").exists())
             .andExpect(jsonPath("$.components.schemas.DateTimeRangeReqDTO.properties.endTime").exists());
+    }
+
+    @Test
+    void auditResponseSchemasShouldExposeIdsAndTranslatedNames() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.updateById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.GlobalDictTypeRspDTO.properties.updateByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.DictItemRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.ExportRecordRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.StaffRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.StaffRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.DeptRspDTO.properties.createById.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.RoleRspDTO.properties.createByName.type").value("string"))
+            .andExpect(jsonPath("$.components.schemas.MenuRspDTO.properties.updateByName.type").value("string"));
     }
 
     @Test
@@ -221,7 +258,6 @@ class OpenApiDocumentationTests {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("/api/mdm/dict/types/list"))))
-                .andExpect(content().string(not(containsString("/api/system/"))))
                 .andExpect(content().string(not(containsString("/api/framework/qiniu/"))))
                 .andExpect(content().string(not(containsString("/api/postloan/"))));
     }

@@ -1,11 +1,11 @@
 package com.oigit.admin.iam.dto;
 
+import com.oigit.admin.core.web.AuditRspDTO;
 import com.oigit.admin.iam.enums.IamStatus;
 import com.oigit.admin.iam.enums.MenuType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,28 +75,22 @@ public final class IamMenuDTO {
     }
 
     @Schema(description = "菜单响应")
-    public static class MenuRspDTO {
+    public static class MenuRspDTO extends AuditRspDTO {
         public Long menuId;
         public Long parentId;
         public String menuCode;
         public String menuKey;
         public String menuName;
-        public String menuType;
+        public MenuType menuType;
         public String routePath;
         public String componentPath;
         public String icon;
         public Integer sortOrder;
         public Boolean hidden;
         public Boolean cached;
-        public String status;
+        public IamStatus status;
         public String permissionCode;
         public String remark;
         public List<MenuRspDTO> children = new ArrayList<>();
-        public LocalDateTime createTime;
-        public LocalDateTime updateTime;
-        @Schema(description = "创建人用户名", example = "admin")
-        public String createBy;
-        @Schema(description = "更新人用户名", example = "admin")
-        public String updateBy;
     }
 }

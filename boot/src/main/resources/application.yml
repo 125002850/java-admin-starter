@@ -24,6 +24,19 @@ platform:
       trusted-proxy-cidrs: ${IAM_CLIENT_IP_TRUSTED_PROXY_CIDRS:}
   sso-staff:
     enabled: ${SSO_STAFF_ENABLED:false}
+  http-logging:
+    enabled: true
+    request-body-enabled: true
+    response-body-enabled: true
+    max-request-body-bytes: 8192
+    max-response-body-bytes: 16384
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /doc.html
+      - /swagger-ui/**
+      - /webjars/**
+      - /local-files/**
   operator:
     gateway-filter-enabled: ${GATEWAY_OPERATOR_FILTER_ENABLED:false}
   file:
@@ -76,3 +89,8 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    # Spring MVC DEBUG 会输出反序列化后的请求/响应对象，绕过统一脱敏日志。
+    org.springframework.web: INFO

@@ -2,12 +2,11 @@ package com.oigit.admin.core.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 是否枚举
  */
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@DictionaryEnum("YES_NO")
 public enum YesNoEnum implements BaseEnum {
 
     YES(1, "是"),

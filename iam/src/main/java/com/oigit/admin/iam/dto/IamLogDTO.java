@@ -1,7 +1,14 @@
 package com.oigit.admin.iam.dto;
 
+import com.oigit.admin.core.translation.Translate;
+import com.oigit.admin.core.translation.TranslationTypes;
 import com.oigit.admin.core.web.PageReqDTO;
 import com.oigit.admin.iam.dto.IamCommonDTO.DateTimeRangeReqDTO;
+import com.oigit.admin.iam.enums.LoginEventType;
+import com.oigit.admin.iam.enums.LoginFailureReason;
+import com.oigit.admin.iam.enums.LoginResult;
+import com.oigit.admin.iam.enums.OperationLogAction;
+import com.oigit.admin.iam.enums.OperationLogModule;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -18,7 +25,7 @@ public final class IamLogDTO {
         @Schema(description = "员工姓名")
         public String staffName;
         @Schema(description = "结果：SUCCESS/FAIL")
-        public String result;
+        public LoginResult result;
         @Schema(description = "IP地址")
         public String ip;
         @Schema(description = "操作时间范围")
@@ -34,9 +41,9 @@ public final class IamLogDTO {
         @Schema(description = "操作人员工姓名")
         public String operatorStaffName;
         @Schema(description = "模块")
-        public String module;
+        public OperationLogModule module;
         @Schema(description = "动作")
-        public String action;
+        public OperationLogAction action;
         @Schema(description = "是否成功")
         public Boolean success;
         @Schema(description = "请求路径")
@@ -55,13 +62,14 @@ public final class IamLogDTO {
     @Schema(description = "登录日志响应")
     public static class LoginLogRspDTO {
         public Long logId;
+        @Translate(type = TranslationTypes.USER_NAME, targetField = "staffName")
         public Long staffId;
         public String username;
         @Schema(description = "员工姓名")
         public String staffName;
-        public String eventType;
-        public String result;
-        public String failureReason;
+        public LoginEventType eventType;
+        public LoginResult result;
+        public LoginFailureReason failureReason;
         public String ip;
         public String userAgent;
         public String tokenId;
@@ -74,8 +82,8 @@ public final class IamLogDTO {
         public Long operatorId;
         public String operatorUsername;
         public String operatorStaffName;
-        public String module;
-        public String action;
+        public OperationLogModule module;
+        public OperationLogAction action;
         public String requestPath;
         public String httpMethod;
         public String requestSummary;

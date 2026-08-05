@@ -8,12 +8,16 @@ import com.oigit.admin.core.query.executor.MybatisPlusQueryExecutor;
 import com.oigit.admin.core.query.support.DynamicQueryGuard;
 import com.oigit.admin.core.query.support.QueryComplexityScorer;
 import com.oigit.admin.dict.app.DictAppService;
+import com.oigit.admin.dict.app.query.GlobalDictItemSceneQueryMapper;
+import com.oigit.admin.dict.app.query.GlobalDictTypeSceneQueryMapper;
 import com.oigit.admin.dict.controller.GlobalDictController;
-import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryDefinition;
-import com.oigit.admin.dict.query.globaldict.GlobalDictTypeSceneQueryMapper;
-import com.oigit.admin.dict.query.globaldict.GlobalDictItemSceneQueryMapper;
-import com.oigit.admin.dict.query.globaldict.GlobalDictItemSceneQueryDefinition;
-import com.oigit.admin.dict.service.DictService;
+import com.oigit.admin.dict.infra.config.DictDomainConfiguration;
+import com.oigit.admin.dict.infra.persistence.repository.MybatisGlobalDictItemRepository;
+import com.oigit.admin.dict.infra.persistence.repository.MybatisGlobalDictTypeRepository;
+import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictItemPersistenceServiceImpl;
+import com.oigit.admin.dict.infra.persistence.service.impl.GlobalDictTypePersistenceServiceImpl;
+import com.oigit.admin.dict.infra.query.GlobalDictItemSceneQueryDefinition;
+import com.oigit.admin.dict.infra.query.GlobalDictTypeSceneQueryDefinition;
 import com.oigit.admin.test.TestSecurityPermitAllConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,7 +110,7 @@ class DictModuleSmokeTests {
 
     @Test
     void createGlobalType_should_persist_platform_dict_type() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/type/create")
+        mockMvc.perform(post("/api/system/dict/global/type/create")
                         .contentType(APPLICATION_JSON)
                         .content("{\"dictTypeCode\":\"gender\",\"dictTypeName\":\"性别\"}"))
                 .andExpect(status().isOk())
@@ -129,7 +133,7 @@ class DictModuleSmokeTests {
                         + "values (51, 'gender', '性别', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/type/create")
+        mockMvc.perform(post("/api/system/dict/global/type/create")
                         .contentType(APPLICATION_JSON)
                         .content("{\"dictTypeCode\":\"gender\",\"dictTypeName\":\"性别重复\"}"))
                 .andExpect(status().isOk())
@@ -148,7 +152,7 @@ class DictModuleSmokeTests {
                         + "values (72, 'user_status', '用户状态', timestamp '2026-06-02 08:00:00', timestamp '2026-06-02 08:00:00', 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
@@ -170,20 +174,20 @@ class DictModuleSmokeTests {
     }
 
     @Test
-    void listGlobalTypes_should_return_audit_usernames() throws Exception {
+    void listGlobalTypes_should_return_audit_ids_for_translation_advice() throws Exception {
         jdbcTemplate.update(
                 "insert into sys_dict_type_global "
                         + "(id, dict_type_code, dict_type_name, create_time, update_time, create_by, update_by, deleted) "
                         + "values (76, 'audit_type', '审计字典', current_timestamp, current_timestamp, 1, 1, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(APPLICATION_JSON)
                         .content("{\"pageNo\":1,\"pageSize\":10}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.list[0].createBy").value("admin"))
-                .andExpect(jsonPath("$.data.list[0].updateBy").value("admin"));
+                .andExpect(jsonPath("$.data.list[0].createById").value(1))
+                .andExpect(jsonPath("$.data.list[0].updateById").value(1));
     }
 
     @Test
@@ -201,7 +205,7 @@ class DictModuleSmokeTests {
                         + "values (75, 'order_status', '订单状态', timestamp '2026-06-03 08:00:00', timestamp '2026-06-03 08:00:00', unix_timestamp())"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
@@ -242,7 +246,7 @@ class DictModuleSmokeTests {
 
     @Test
     void listGlobalTypes_should_reject_too_deep_condition_tree() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
@@ -292,7 +296,7 @@ class DictModuleSmokeTests {
 
     @Test
     void listGlobalTypes_should_return_bad_request_when_node_type_unknown() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/types/list")
+        mockMvc.perform(post("/api/system/dict/global/types/list")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
@@ -326,7 +330,7 @@ class DictModuleSmokeTests {
                         + "values (83, 'gender', 'FEMALE', '女', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/type/update")
+        mockMvc.perform(post("/api/system/dict/global/type/update")
                         .contentType(APPLICATION_JSON)
                         .content("{\"id\":81,\"dictTypeCode\":\"sex\",\"dictTypeName\":\"性别枚举\"}"))
                 .andExpect(status().isOk())
@@ -360,7 +364,7 @@ class DictModuleSmokeTests {
                         + "values (85, 'gender', 'MALE', '男', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/type/delete")
+        mockMvc.perform(post("/api/system/dict/global/type/delete")
                         .contentType(APPLICATION_JSON)
                         .content("{\"id\":84}"))
                 .andExpect(status().isOk())
@@ -375,7 +379,7 @@ class DictModuleSmokeTests {
                         + "values (86, 'gender', '性别', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/type/delete")
+        mockMvc.perform(post("/api/system/dict/global/type/delete")
                         .contentType(APPLICATION_JSON)
                         .content("{\"id\":86}"))
                 .andExpect(status().isOk())
@@ -392,7 +396,7 @@ class DictModuleSmokeTests {
 
     @Test
     void createGlobalItem_should_fail_when_dict_type_missing() throws Exception {
-        mockMvc.perform(post("/api/mdm/dict/global/item/create")
+        mockMvc.perform(post("/api/system/dict/global/item/create")
                         .contentType(APPLICATION_JSON)
                         .content("{\"dictTypeCode\":\"gender\",\"dictItemCode\":\"MALE\",\"dictItemName\":\"男\"}"))
                 .andExpect(status().isOk())
@@ -407,7 +411,7 @@ class DictModuleSmokeTests {
                         + "values (21, 'gender', '性别', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/item/create")
+        mockMvc.perform(post("/api/system/dict/global/item/create")
                         .contentType(APPLICATION_JSON)
                         .content("{\"dictTypeCode\":\"gender\",\"dictItemCode\":\"MALE\",\"dictItemName\":\"男\"}"))
                 .andExpect(status().isOk())
@@ -435,7 +439,7 @@ class DictModuleSmokeTests {
                         + "values (62, 'gender', 'MALE', '男', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/item/create")
+        mockMvc.perform(post("/api/system/dict/global/item/create")
                         .contentType(APPLICATION_JSON)
                         .content("{\"dictTypeCode\":\"gender\",\"dictItemCode\":\"MALE\",\"dictItemName\":\"男性\"}"))
                 .andExpect(status().isOk())
@@ -458,7 +462,7 @@ class DictModuleSmokeTests {
                         + "values (89, 'gender', 'MALE', '男', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/item/update")
+        mockMvc.perform(post("/api/system/dict/global/item/update")
                         .contentType(APPLICATION_JSON)
                         .content("{\"id\":89,\"dictTypeCode\":\"user_status\",\"dictItemCode\":\"ENABLED\",\"dictItemName\":\"启用\"}"))
                 .andExpect(status().isOk())
@@ -487,7 +491,7 @@ class DictModuleSmokeTests {
                         + "values (91, 'gender', 'MALE', '男', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/item/delete")
+        mockMvc.perform(post("/api/system/dict/global/item/delete")
                         .contentType(APPLICATION_JSON)
                         .content("{\"ids\":[91]}"))
                 .andExpect(status().isOk())
@@ -518,7 +522,7 @@ class DictModuleSmokeTests {
                 93L
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/item/delete")
+        mockMvc.perform(post("/api/system/dict/global/item/delete")
                         .contentType(APPLICATION_JSON)
                         .content("{\"ids\":[93]}"))
                 .andExpect(status().isOk())
@@ -555,7 +559,7 @@ class DictModuleSmokeTests {
                         + "values (13, 'gender', 'FEMALE', '女', current_timestamp, current_timestamp, 0)"
         );
 
-        mockMvc.perform(post("/api/mdm/dict/global/items/by-type")
+        mockMvc.perform(post("/api/system/dict/global/items/by-type")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
@@ -578,18 +582,49 @@ class DictModuleSmokeTests {
                 .andExpect(jsonPath("$.data.list[1].dictItemCode").value("FEMALE"));
     }
 
+    @Test
+    void listGlobalOptions_should_batch_types_and_keep_disabled_history_labels() throws Exception {
+        jdbcTemplate.update(
+                "insert into sys_dict_type_global (id, dict_type_code, dict_type_name, deleted) values "
+                        + "(901, 'ORDER_STATUS', '订单状态', 0), (902, 'YES_NO', '是否', 0)"
+        );
+        jdbcTemplate.update(
+                "insert into sys_dict_item_global "
+                        + "(id, dict_type_code, dict_item_code, dict_item_name, status, sort_order, deleted) values "
+                        + "(911, 'ORDER_STATUS', 'NEW', '新建', 'enable', 1, 0),"
+                        + "(912, 'ORDER_STATUS', 'OLD', '历史状态', 'disable', 2, 0),"
+                        + "(913, 'ORDER_STATUS', 'REMOVED', '已删除', 'enable', 3, 99),"
+                        + "(914, 'YES_NO', '1', '是', 'enable', 1, 0)"
+        );
+
+        mockMvc.perform(post("/api/system/dict/global/items/options")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"dictTypeCodes\":[\"ORDER_STATUS\",\"YES_NO\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].dictTypeCode").value("ORDER_STATUS"))
+                .andExpect(jsonPath("$.data[0].items.length()").value(2))
+                .andExpect(jsonPath("$.data[0].items[1].code").value("OLD"))
+                .andExpect(jsonPath("$.data[0].items[1].status").value("disable"))
+                .andExpect(jsonPath("$.data[1].dictTypeCode").value("YES_NO"));
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
 @Import({
             GlobalDictController.class,
             DictAppService.class,
-            DictService.class,
+            DictDomainConfiguration.class,
+            MybatisGlobalDictTypeRepository.class,
+            MybatisGlobalDictItemRepository.class,
+            GlobalDictTypePersistenceServiceImpl.class,
+            GlobalDictItemPersistenceServiceImpl.class,
             QueryComplexityScorer.class,
             DynamicQueryGuard.class,
             MybatisPlusQueryExecutor.class,
             GlobalDictTypeSceneQueryDefinition.class,
             GlobalDictTypeSceneQueryMapper.class,
-            GlobalDictItemSceneQueryDefinition.class,
             GlobalDictItemSceneQueryDefinition.class,
             GlobalDictItemSceneQueryMapper.class,
             CommonMetaObjectHandler.class,

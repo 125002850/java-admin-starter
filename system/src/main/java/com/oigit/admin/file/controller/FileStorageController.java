@@ -10,24 +10,29 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.oigit.admin.core.exception.BizException;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.file.app.FileAppService;
-import com.oigit.admin.file.controller.dto.DeleteFileReqDTO;
-import com.oigit.admin.file.controller.dto.FetchDirectUploadCredentialReqDTO;
-import com.oigit.admin.file.controller.dto.FetchDirectUploadCredentialRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlBatchReqDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlBatchRspDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlReqDTO;
-import com.oigit.admin.file.controller.dto.FetchTempUrlRspDTO;
-import com.oigit.admin.file.controller.dto.StoredFileRspDTO;
-import com.oigit.admin.file.controller.dto.UploadFileReqDTO;
+import com.oigit.admin.file.dto.req.DeleteFileReqDTO;
+import com.oigit.admin.file.dto.req.FetchDirectUploadCredentialReqDTO;
+import com.oigit.admin.file.dto.req.FetchTempUrlBatchReqDTO;
+import com.oigit.admin.file.dto.req.FetchTempUrlReqDTO;
+import com.oigit.admin.file.dto.req.UploadFileReqDTO;
+import com.oigit.admin.file.dto.rsp.FetchDirectUploadCredentialRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlBatchRspDTO;
+import com.oigit.admin.file.dto.rsp.FetchTempUrlRspDTO;
+import com.oigit.admin.file.dto.rsp.StoredFileRspDTO;
+import com.oigit.admin.file.enums.FileErrorCode;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 @Validated
 @RestController
@@ -55,7 +60,17 @@ public class FileStorageController {
         UploadFileReqDTO reqDTO = new UploadFileReqDTO();
         reqDTO.setBizPath(bizPath);
         reqDTO.setObjectKey(objectKey);
-        return R.ok(fileAppService.upload(file, reqDTO));
+        try (InputStream inputStream = file.getInputStream()) {
+            return R.ok(fileAppService.upload(
+                    inputStream,
+                    file.getSize(),
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    reqDTO
+            ));
+        } catch (IOException ex) {
+            throw new BizException(FileErrorCode.FILE_UPLOAD_FAILED);
+        }
     }
 
     @Operation(summary = "删除文件对象", description = "根据对象键删除文件", operationId = "deleteFileObject")

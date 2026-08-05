@@ -1,7 +1,7 @@
 package com.oigit.admin.file.infra.provider.qiniu;
 
 import com.oigit.admin.core.exception.BizException;
-import com.oigit.admin.file.config.FileStorageProperties;
+import com.oigit.admin.file.infra.config.FileStorageProperties;
 import com.oigit.admin.file.enums.FileErrorCode;
 import com.qiniu.common.QiniuException;
 import com.qiniu.storage.BucketManager;

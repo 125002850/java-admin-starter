@@ -2,12 +2,11 @@ package com.oigit.admin.core.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 启用状态枚举
  */
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@DictionaryEnum("ENABLE_STATUS")
 public enum EnableStatusEnum implements BaseEnum {
 
     ENABLE("enable", "启用"),
