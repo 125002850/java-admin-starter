@@ -25,6 +25,7 @@ import com.oigit.admin.iam.service.PermissionSnapshot;
 import com.oigit.admin.iam.service.PermissionSnapshotMapper;
 import com.oigit.admin.iam.service.RefreshTokenService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -56,8 +57,22 @@ public class StaffAppService {
                 .map(principal -> principal.getSnapshot())
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException("not authenticated"));
         Page<IamStaffEntity> page = staffService.page(reqDTO, snapshot);
+        return assemblePageResult(page);
+    }
+
+    PageResult<StaffRspDTO> assemblePageResult(Page<IamStaffEntity> page) {
+        Map<Long, IamDeptEntity> deptsById = staffService.findDepts(
+                page.getRecords().stream().map(IamStaffEntity::getDeptId).toList()
+        );
+        Map<Long, List<IamRoleEntity>> rolesByStaffId = staffService.listRolesByStaffIds(
+                page.getRecords().stream().map(IamStaffEntity::getId).toList()
+        );
         List<StaffRspDTO> records = page.getRecords().stream()
-                .map(this::toRsp)
+                .map(entity -> toRsp(
+                        entity,
+                        deptsById.get(entity.getDeptId()),
+                        rolesByStaffId.getOrDefault(entity.getId(), List.of())
+                ))
                 .toList();
         return new PageResult<>(records, page.getTotal());
     }
@@ -67,7 +82,7 @@ public class StaffAppService {
         PermissionSnapshot snapshot = currentSnapshot();
         staffService.assertInDataScope(staffId, snapshot);
         IamStaffEntity entity = staffService.requireById(staffId);
-        return toRsp(entity);
+        return toRsp(entity, staffService.findDept(entity.getDeptId()), staffService.listRoles(entity.getId()));
     }
 
     @Transactional
@@ -128,9 +143,8 @@ public class StaffAppService {
         staffService.assignRoles(reqDTO.getStaffId(), reqDTO.getRoleIds());
     }
 
-    private StaffRspDTO toRsp(IamStaffEntity entity) {
+    private StaffRspDTO toRsp(IamStaffEntity entity, IamDeptEntity dept, List<IamRoleEntity> roles) {
         StaffRspDTO dto = new StaffRspDTO();
-        IamDeptEntity dept = staffService.findDept(entity.getDeptId());
         DeptSummaryRspDTO deptSummary = PermissionSnapshotMapper.toDeptSummary(dept);
         dto.setStaffId(entity.getId());
         dto.setUsername(entity.getUsername());
@@ -144,7 +158,7 @@ public class StaffAppService {
         dto.setStatus(entity.getStatus());
         dto.setMustChangePassword(Boolean.TRUE.equals(entity.getMustChangePassword()));
         dto.setRemark(entity.getRemark());
-        dto.setRoles(roleSummaries(entity.getId()));
+        dto.setRoles(roleSummaries(roles));
         dto.setCreateTime(entity.getCreateTime());
         dto.setUpdateTime(entity.getUpdateTime());
         dto.setCreateById(entity.getCreateBy());
@@ -158,8 +172,7 @@ public class StaffAppService {
                 .orElseThrow(() -> new org.springframework.security.authentication.AuthenticationCredentialsNotFoundException("not authenticated"));
     }
 
-    private List<RoleSummaryRspDTO> roleSummaries(Long staffId) {
-        List<IamRoleEntity> roles = staffService.listRoles(staffId);
+    private List<RoleSummaryRspDTO> roleSummaries(List<IamRoleEntity> roles) {
         return roles.stream().map(PermissionSnapshotMapper::toRoleSummary).toList();
     }
 }
