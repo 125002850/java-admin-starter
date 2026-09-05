@@ -25,7 +25,6 @@
 ## 验证
 
 1. 搜索运行时代码、POM、启动配置、测试、当前能力文档和 OIG 规范，确认不再残留 `com.oigit.appcik`、`sso-staff`、`SSO_STAFF`、`OIGIT_APPCIK`、`com.oigit.admin.staff`；设计/计划文档和历史 PRD 可作为明确允许项保留背景描述。
-2. 生成 effective POM 和 dependency tree，确认不含 `com.oigit.appcik:oigit-appcik` 与仅供其使用的 Apache HttpClient 4.x。
 3. 使用空的临时 Maven 本地仓库和不包含公司镜像/私服的临时 settings 执行跨模块干净构建，证明构建不依赖用户 `~/.m2` 缓存或公司私服配置。
 4. 执行全量测试，确认 `/api/staff/**` 不再暴露，且 `/api/iam/staff/**` 与其余启动能力不受影响。
 5. 在独立 detached worktree 中重复上述隔离构建，满足删除性改造的完成标准。

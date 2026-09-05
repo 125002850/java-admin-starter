@@ -71,7 +71,7 @@ Controller -> AppService -> Domain Model / Domain Service / Repository port
 
 全局字典、导出中心、文件存储和 SSO 员工目录均按上述结构落地。仓库级 ArchUnit 以通用包规则锁定这些能力的 Controller、DTO、App、Domain、Infra、MyBatis-Plus persistence 和外部 SDK 依赖方向；新增能力只要遵守标准包名即可自动纳入通用检查，新增特殊边界时再扩展架构测试。
 
-外部能力使用 Domain gateway/Repository 作为端口，由 Infra adapter 实现。例如文件 AppService 依赖 `FileStorageGateway`，对象存储 provider 位于 `file/infra/provider`；员工 AppService 依赖 `StaffDirectoryGateway`，公司 CI SDK 只允许出现在 `staff/infra/client`。技术适配类不得成为 AppService 的直接依赖。
+外部能力使用 Domain gateway/Repository 作为端口，由 Infra adapter 实现。例如文件 AppService 依赖 `FileStorageGateway`，对象存储 provider 位于 `file/infra/provider`。技术适配类不得成为 AppService 的直接依赖。
 
 ## 2. 审计字段契约
 

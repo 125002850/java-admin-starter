@@ -38,8 +38,7 @@ public class OpenApiConfig {
         "com.oigit.admin.file.dto",
         "com.oigit.admin.dict.dto.req",
         "com.oigit.admin.dict.dto.rsp",
-        "com.oigit.admin.export.dto",
-        "com.oigit.admin.staff.dto"
+        "com.oigit.admin.export.dto"
     );
 
     private static final List<DynamicQuerySceneSchema> DYNAMIC_QUERY_SCENE_SCHEMAS = List.of(

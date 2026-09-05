@@ -7,7 +7,7 @@
 | `boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `core` | 全局通用基础设施、与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
 | `iam` | 本地身份、鉴权、权限、员工、部门、角色、菜单和审计日志 | 不依赖 `system` 实现包；认证入口使用 Bearer JWT |
-| `system` | 全局字典、导出中心、文件存储和员工兼容查询 | 依赖 `core`；外部 SDK 只能出现在对应 provider 或 client 适配层 |
+| `system` | 全局字典、导出中心、文件存储 | 依赖 `core`；外部 SDK 只能出现在对应 provider 或 client 适配层 |
 | `{biz}` | 其他具体业务域 | 只放本业务域实现；通过 AppService、SPI 或事件复用平台能力 |
 
 ## 命名空间
@@ -103,7 +103,6 @@ com.oigit.admin.{module}
 
 - 全局字典能力位于 `system` 的 `dict` 包，接口统一暴露 `/api/system/dict/global/**`。
 - 导出中心能力位于 `system` 的 `export` 包，接口统一暴露 `/api/mdm/export/**`。
-- 员工信息查询能力位于 `system/staff`，接口统一暴露 `/api/staff/**`。
 - 文件存储能力位于 `system/file`，接口统一暴露 `/api/file/storage/**`。
 
 ## 文件存储模块

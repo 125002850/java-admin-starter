@@ -53,7 +53,7 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("/api/iam/role/menus/assign")))
             .andExpect(content().string(containsString("/api/iam/menu/tree")))
             .andExpect(content().string(containsString("/api/iam/log/operation/page")))
-            .andExpect(content().string(not(containsString("/api/staff/list-all"))))
+            .andExpect(content().string(not(containsString("/api/staff/"))))
             .andExpect(content().string(not(containsString("postloan"))))
             .andExpect(content().string(not(containsString("tb_track_"))));
     }

@@ -8,7 +8,7 @@
 - `boot` / `core` / `iam` / `system` 底座已完成。
 - `dev` profile 支持通过 `JAVA_ADMIN_STARTER_DATASOURCE_*` 环境变量连接独立 MySQL；未配置时回退到仓库根目录 `compose.yaml` 的本地 MySQL。
 - `iam` 已落地本地登录、JWT、refresh token 轮换、员工、部门、角色、菜单/按钮权限、数据权限、登录日志和操作日志。
-- `system` 承载后台系统管理与平台能力：全局字典、导出中心、SSO 员工查询兼容接口、文件存储。
+- `system` 承载后台系统管理与平台能力：全局字典、导出中心、文件存储。
 - 文件存储支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换。
 - 动态查询 DSL 已在 `core` 落地，当前接入全局字典类型、字典项和导出记录分页场景。
 - 顶层模块边界约定为：`boot` 负责启动，`core` 负责底层通用能力与原生抽象，`iam` 承载本地身份权限，`system` 承载系统管理与平台能力，`{biz}` 承载具体业务。
@@ -29,7 +29,7 @@
 │  ┌─────────────────────────────┐  ┌───────────────────────────────────────┐  │
 │  │             iam             │  │                system                 │  │
 │  │       本地身份与权限          │  │       系统管理与平台能力               │  │
-│  │  auth / staff / dept / role  │  │  dict / export / file / staff compat │  │
+│  │  auth / staff / dept / role  │  │  dict / export / file                │  │
 │  │  menu / permission / logs    │  │  local / qiniu / minio providers     │  │
 │  └──────────────┬──────────────┘  └───────────────────┬───────────────────┘  │
 │                 │                                      │                      │
@@ -142,8 +142,7 @@ java-admin-starter/
     └── src/main/java/com/oigit/admin/
         ├── dict/                                    # 全局字典
         ├── export/                                  # 导出领域模型、编排与记录持久化适配
-        ├── file/                                    # 文件领域规则、存储端口与 provider 适配
-        └── staff/                                   # 员工目录端口与 CI SDK 适配（默认关闭）
+        └── file/                                    # 文件领域规则、存储端口与 provider 适配
 ```
 
 ## 模块职责
@@ -153,7 +152,7 @@ java-admin-starter/
 | `boot` | Spring Boot 启动、配置装配、Bean 扫描 | 不写业务逻辑 |
 | `core` | 全局通用基础设施，以及与具体业务解耦的底层原生抽象 | 不放具体业务流程编排、不落具体业务表、不承载具体业务场景语义 |
 | `iam` | 本地身份与权限能力，负责认证、员工、部门、角色、菜单、权限、数据权限和审计日志 | 不依赖 SSO；不放通用主数据或第三方 provider |
-| `system` | 后台系统管理与平台能力，负责全局字典、导出中心、员工兼容查询、文件存储等能力 | 外部厂商 SDK 只能出现在对应 provider 适配层 |
+| `system` | 后台系统管理与平台能力，负责全局字典、导出中心、文件存储等能力 | 外部厂商 SDK 只能出现在对应 provider 适配层 |
 | `{biz}` | 其余具体业务模块 | 只放本业务域实现；如需导出、文件、字典等能力，应复用 `core/system` 提供的基础抽象与平台服务 |
 
 ## 技术栈
