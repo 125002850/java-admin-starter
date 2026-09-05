@@ -66,9 +66,12 @@ public class IamStaffService implements OperatorUsernameResolver {
                     .like(IamStaffEntity::getPhone, reqDTO.getKeyword()));
         }
         if (reqDTO.getDeptIds() != null && !reqDTO.getDeptIds().isEmpty()) {
-            query.in(IamStaffEntity::getDeptId, resolveDeptAndChildren(reqDTO.getDeptIds()));
+            query.in(IamStaffEntity::getDeptId, resolveDeptIds(reqDTO.getDeptIds(), reqDTO.getIncludeDescendants()));
         } else if (reqDTO.getDeptId() != null) {
-            query.in(IamStaffEntity::getDeptId, resolveDeptAndChildren(List.of(reqDTO.getDeptId())));
+            query.in(
+                    IamStaffEntity::getDeptId,
+                    resolveDeptIds(List.of(reqDTO.getDeptId()), reqDTO.getIncludeDescendants())
+            );
         }
         if (reqDTO.getStatuses() != null && !reqDTO.getStatuses().isEmpty()) {
             query.in(IamStaffEntity::getStatus, reqDTO.getStatuses());
@@ -263,8 +266,55 @@ public class IamStaffService implements OperatorUsernameResolver {
         return roleMapper.selectBatchIds(roleIds);
     }
 
+    public Map<Long, List<IamRoleEntity>> listRolesByStaffIds(Collection<Long> staffIds) {
+        Set<Long> normalizedStaffIds = normalizeIds(staffIds);
+        if (normalizedStaffIds.isEmpty()) {
+            return Map.of();
+        }
+        List<IamStaffRoleEntity> relations = staffRoleMapper.selectList(
+                Wrappers.<IamStaffRoleEntity>lambdaQuery()
+                        .in(IamStaffRoleEntity::getStaffId, normalizedStaffIds)
+                        .orderByAsc(IamStaffRoleEntity::getId)
+        );
+        Set<Long> roleIds = relations.stream()
+                .map(IamStaffRoleEntity::getRoleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (roleIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, IamRoleEntity> rolesById = roleMapper.selectBatchIds(roleIds).stream()
+                .collect(Collectors.toMap(
+                        IamRoleEntity::getId,
+                        role -> role,
+                        (left, ignored) -> left,
+                        LinkedHashMap::new
+                ));
+        return relations.stream()
+                .filter(relation -> rolesById.containsKey(relation.getRoleId()))
+                .collect(Collectors.groupingBy(
+                        IamStaffRoleEntity::getStaffId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(relation -> rolesById.get(relation.getRoleId()), Collectors.toList())
+                ));
+    }
+
     public IamDeptEntity findDept(Long deptId) {
         return deptId == null ? null : deptMapper.selectById(deptId);
+    }
+
+    public Map<Long, IamDeptEntity> findDepts(Collection<Long> deptIds) {
+        Set<Long> normalizedDeptIds = normalizeIds(deptIds);
+        if (normalizedDeptIds.isEmpty()) {
+            return Map.of();
+        }
+        return deptMapper.selectBatchIds(normalizedDeptIds).stream()
+                .collect(Collectors.toMap(
+                        IamDeptEntity::getId,
+                        dept -> dept,
+                        (left, ignored) -> left,
+                        LinkedHashMap::new
+                ));
     }
 
     private IamDeptEntity requireAssignableDept(Long deptId) {
@@ -338,7 +388,15 @@ public class IamStaffService implements OperatorUsernameResolver {
         return count != null && count > 0L;
     }
 
-    private Set<Long> resolveDeptAndChildren(List<Long> rootDeptIds) {
+    private Set<Long> resolveDeptIds(List<Long> rootDeptIds, Boolean includeDescendants) {
+        Set<Long> normalizedRootIds = normalizeIds(rootDeptIds);
+        if (!Boolean.FALSE.equals(includeDescendants)) {
+            return resolveDeptAndChildren(normalizedRootIds);
+        }
+        return normalizedRootIds;
+    }
+
+    private Set<Long> resolveDeptAndChildren(Collection<Long> rootDeptIds) {
         List<IamDeptEntity> depts = deptMapper.selectList(Wrappers.<IamDeptEntity>lambdaQuery());
         Map<Long, List<Long>> childrenByParent = depts.stream()
                 .filter(dept -> dept.getParentId() != null)
@@ -357,6 +415,16 @@ public class IamStaffService implements OperatorUsernameResolver {
             queue.addAll(childrenByParent.getOrDefault(deptId, List.of()));
         }
         return resolvedIds;
+    }
+
+    private Set<Long> normalizeIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Set.of();
+        }
+        return ids.stream()
+                .filter(Objects::nonNull)
+                .filter(id -> id > 0L)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void assertSuperAdminRoleNotRequested(List<Long> roleIds, Long superAdminRoleId) {

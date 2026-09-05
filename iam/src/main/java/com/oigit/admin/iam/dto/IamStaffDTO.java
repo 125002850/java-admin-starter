@@ -24,8 +24,11 @@ public final class IamStaffDTO {
         @Schema(description = "部门ID，筛选时包含该部门及全部子部门", example = "1")
         private Long deptId;
 
-        @Schema(description = "部门ID集合，筛选时包含各部门及全部子部门；非空时优先于 deptId", example = "[1, 2]")
+        @Schema(description = "部门ID集合，是否包含子部门由 includeDescendants 控制；非空时优先于 deptId", example = "[1, 2]")
         private List<@NotNull Long> deptIds;
+
+        @Schema(description = "是否包含子部门；默认 true，false 时仅筛选指定部门", example = "true", defaultValue = "true")
+        private Boolean includeDescendants = true;
 
         @Schema(description = "员工状态", example = "ENABLED")
         private IamStatus status;
@@ -67,6 +70,14 @@ public final class IamStaffDTO {
 
         public void setDeptIds(List<Long> deptIds) {
             this.deptIds = deptIds;
+        }
+
+        public Boolean getIncludeDescendants() {
+            return includeDescendants;
+        }
+
+        public void setIncludeDescendants(Boolean includeDescendants) {
+            this.includeDescendants = includeDescendants;
         }
 
         public IamStatus getStatus() {

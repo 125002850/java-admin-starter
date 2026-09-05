@@ -179,6 +179,12 @@ class OpenApiDocumentationTests {
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.deptIds.description",
                     containsString("子部门")))
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.deptIds.items.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.includeDescendants.type")
+                    .value("boolean"))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.includeDescendants.default")
+                    .value(true))
+            .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.includeDescendants.description",
+                    containsString("仅筛选指定部门")))
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.statuses.type").value("array"))
             .andExpect(jsonPath("$.components.schemas.StaffPageReqDTO.properties.statuses.items.enum",
                     contains("ENABLED", "DISABLED")))

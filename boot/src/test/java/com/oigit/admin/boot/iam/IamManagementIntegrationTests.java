@@ -432,6 +432,35 @@ class IamManagementIntegrationTests {
     }
 
     @Test
+    void staffPageDepartmentFilterShouldSupportDirectEmployeesOnly() throws Exception {
+        String token = adminAccessToken();
+        String suffix = suffix();
+        createDept(token, 1L, "DIRECT_P_" + suffix, "直属父部门" + suffix, "ENABLED");
+        Long parentDeptId = deptId("DIRECT_P_" + suffix);
+        createDept(token, parentDeptId, "DIRECT_C_" + suffix, "直属子部门" + suffix, "ENABLED");
+        Long childDeptId = deptId("DIRECT_C_" + suffix);
+
+        String parentUsername = "direct_parent_" + suffix;
+        String childUsername = "direct_child_" + suffix;
+        createStaff(token, parentUsername, "DP_" + suffix, parentDeptId);
+        createStaff(token, childUsername, "DC_" + suffix, childDeptId);
+
+        JsonNode response = postJson("/api/iam/staff/page", """
+                {
+                  "pageNo": 1,
+                  "pageSize": 10,
+                  "deptIds": [%d],
+                  "includeDescendants": false
+                }
+                """.formatted(parentDeptId), token, 200);
+
+        assertThat(response.path("code").asInt()).isEqualTo(200);
+        assertThat(response.path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(response.path("data").path("list").get(0).path("username").asText())
+                .isEqualTo(parentUsername);
+    }
+
+    @Test
     void staffCreateShouldRejectSuperAdminRole() throws Exception {
         String token = adminAccessToken();
         String suffix = suffix();
