@@ -1,102 +1,67 @@
 # 验证与完成标准
 
-## 验证目标
+## 按影响面选择验证
 
-- 验证应按改动范围选择“最小充分验证”。
-- 不要机械执行重复三连跑，也不要把所有改动都提升到全仓全量测试。
-- 目标是用尽量少的命令覆盖当前改动的真实风险面。
-
-## 决策表
+使用能覆盖当前风险的最小充分验证。文件扩展名不决定验证等级，已通过的充分检查无需机械重复。
 
 | 场景 | 适用范围 | 最低验证要求 |
 |---|---|---|
-| 文档改动 | `README`、`docs/**`、`.agents/**`、注释、纯文本配置 | 文本级自检，不强制跑 Maven |
-| 单模块改动 | 只改一个模块，且不影响启动装配、Flyway、OpenAPI、跨模块契约 | 跑对应模块编译 + 对应模块测试或指定测试类 |
-| 跨模块改动 | 改了共享契约、公共模块，或影响多个模块联动 | 先 `mvn clean install -DskipTests`，再跑受影响模块测试；如影响启动层，再跑 `boot` 集成测试 |
-| 提交前 | 准备提交中大改动，或自己不能确定影响面 | 跑 `mvn test`；涉及迁移再补 Flyway / 真实 MySQL 验证 |
+| 文档改动 | `README`、`docs/**`、`.agents/**`、注释，以及不改变运行行为的格式整理 | 核对文本、路径、命令和规则一致性；不强制跑 Maven |
+| 单模块实现 | 不影响启动装配、Flyway、OpenAPI 或跨模块契约 | 当前模块编译和受影响测试；使用 `-am` 纳入所需兄弟模块 |
+| 运行配置 | `application*.yml`、`logback-spring.xml` 等改变认证、日志、数据源、Flyway、线程池或条件装配的配置 | 验证配置绑定、启动装配和受影响行为；涉及启动层时运行对应 `boot` 集成测试 |
+| 跨模块契约 | 共享接口、DTO、权限、配置装配、模块依赖或持久化边界 | 在当前 reactor 构建受影响模块并运行单元/契约/集成测试 |
+| 中大改动或影响面不清 | 跨模块重构、删除能力、准备提交较大变更 | 运行 `mvn clean test`；删除或收缩改造额外在干净 checkout 复验 |
 
-## 对应命令
+修改认证或 HTTP 日志配置属于运行配置，不能以“YAML 是纯文本”为由只做文本检查。数据库迁移另需真实 MySQL 8 验证。
 
-### 文档改动
+## 确保测试使用当前源码
 
-- 做文本级自检，确认内容、路径、命令、模块名与当前仓库一致。
-- 不强制跑 Maven。
-
-### 单模块改动
-
-示例：
+优先从仓库根目录使用 reactor，一次纳入目标模块及依赖，例如：
 
 ```bash
-mvn compile -pl core
-mvn test -pl core -Dtest=指定测试类
+mvn -pl boot -am "-Dtest=ModuleBoundaryTests,IamLayeringTests,RequestMappingRuleTests,HttpRequestLoggingFilterTests,OpenApiDocumentationTests" test
 ```
 
-### 跨模块改动
-
-修改非启动模块后，例如 `core`、`iam`、`system`，在单独测试 `boot` 前必须先执行：
+`-am` 使本次测试使用同次构建的兄弟模块，不要求先机械执行全仓 `clean install`。选择只运行 `boot`、未带 `-am`，或在 `boot` 单独启动时，必须确认兄弟模块的本地 jar 对应当前源码；需要更新时使用：
 
 ```bash
-mvn clean install -DskipTests
-mvn test -pl boot -Dtest=要跑的测试类
+mvn -pl boot -am install -DskipTests
 ```
 
-原因：`boot` 的测试依赖其他兄弟模块安装到本地 Maven 仓库中的 jar。不先 install 会导致测试使用旧 jar，出现幽灵编译错误，或测试通过但实际运行不一致。
+根据实际改动选择测试类，不把示例列表当成所有任务的固定步骤。单模块也可使用 `mvn -pl core -am test`，全量覆盖使用 `mvn clean test`。
 
-### 提交前
+本仓库允许没有匹配指定测试的模块继续构建。使用 `-Dtest` 后必须核对目标模块的 Surefire 报告、测试类和实际执行数量；每个指定目标都应有执行记录，`BUILD SUCCESS` 或零测试不能证明目标已验证。`core` 与 `boot` 各有 `HttpRequestLoggingFilterTests`，需要两层覆盖时分别确认报告。
 
-示例：
+## 规则与可运行验证
+
+| 规则 | 验证入口 |
+|---|---|
+| 模块/分层边界、DTO 分包、Entity/Mapper/MyBatis 依赖方向 | `boot: ModuleBoundaryTests`；`iam: IamLayeringTests` |
+| 禁止 HTTP 路径，规则正反例确实生效 | `boot: RequestMappingRuleTests,ModuleBoundaryTests` |
+| 日志认证身份、可信代理 IP、脱敏、限长和排除 | `core/boot: HttpRequestLoggingFilterTests`；`iam: ClientRequestInfoTests` |
+| IAM 认证、权限、批量名称装配及现有 JSON/schema/operationId 兼容 | `boot: IamAuthIntegrationTests,IamManagementIntegrationTests,OpenApiDocumentationTests` |
+| IAM 领域与持久化转换保留乐观锁、连续更新和旧版本冲突 | `boot: IamPersistenceIntegrationTests` |
+| 当前 Flyway 版本集合、迁移成功、表和种子数据契约 | `boot: FlywaySmokeTests`，另在独立 MySQL 8 数据库执行 |
+| 历史迁移不可变、版本唯一递增、禁止再次 squash | `scripts/check-migrations.sh`；`bash scripts/tests/test_check_migrations.sh` |
+| 持续执行构建与迁移约束 | `.github/workflows/verify.yml`，检查 PR 迁移差异并运行 Maven 与脚本回归 |
+
+规则测试不能替代对应的行为或数据库验证；按本次改动选择相关入口。
+
+## 数据库迁移验证
+
+- 涉及迁移资源、基线或结构契约时，确认当前 SQL 能从空库初始化，并执行 `FlywaySmokeTests`。
+- 至少在一套独立 MySQL 8 数据库验证，默认 H2 测试不能替代真实方言和初始化检查。
+- 使用测试配置已有的 `JAVA_ADMIN_STARTER_DATASOURCE_URL`、`JAVA_ADMIN_STARTER_DATASOURCE_USERNAME`、`JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD` 连接该独立库，然后运行：
 
 ```bash
-mvn test
+mvn -pl boot -am "-Dtest=FlywaySmokeTests" test
 ```
 
-## 升级条件
+数据库失败先核对日志和状态，处理方式见 [数据库迁移规范](database-migrations.md)。不要对共享数据库执行初始化测试。
 
-出现以下任一情况时，不再按“单模块改动”处理，至少升级到“跨模块改动”：
+## 失败与结果记录
 
-- 改了 `core` 中被多个模块依赖的公共契约、SPI、上下文、基础配置。
-- 改了 `OpenApiConfig`、`SpringDocOperationIdConfig`、`EnumModelConverter` 等启动装配或 OpenAPI 生成逻辑。
-- 改了 Controller DTO、动态查询 schema、公共错误码、公共枚举，且可能影响其他模块或前端契约。
-- 改了 Flyway migration、数据库表结构、索引、约束。
-- 改了 `pom.xml`、模块依赖关系、插件配置、父子模块构建行为。
-- 自己无法明确判断影响面时，直接升级到“提交前”档。
-
-## 常见命令模板
-
-```bash
-# 只验证单模块编译
-mvn compile -pl core
-
-# 只验证单模块测试
-mvn test -pl system -Dtest=指定测试类
-
-# 非启动模块改动后验证启动层集成测试
-mvn clean install -DskipTests
-mvn test -pl boot -Dtest=指定测试类
-
-# 需要提交跨模块较大改动时
-mvn test
-```
-
-## 数据库变更验证
-
-- 改动涉及数据库迁移时，必须验证 Flyway 脚本可执行。
-- 至少保证一套真实 MySQL 8 环境通过。
-- 不要只依赖 H2 测试。
-
-## 收缩或删除性改造
-
-跨模块收缩或删除性改造，必须额外在 clean checkout 或 detached worktree 中复验，避免被脏工作区或增量编译结果误导。
-
-## 失败处理
-
-- 命令失败时先读完整错误日志。
-- 先判断失败类型：编译错误、测试断言失败、环境依赖失败、数据库迁移失败、网络/凭据失败。
-- 只有定位根因后再修复。
-- 如果是外部环境或凭据阻塞，汇报中必须明确阻塞条件和已完成的本地验证。
-
-## 汇报要求
-
-- 说明实际运行过的命令。
-- 说明失败命令的根因和当前状态。
-- 不要把未运行的验证描述为通过。
+- 失败时先读日志，区分编译、断言、数据库迁移和外部环境问题，再修复。
+- 记录实际命令、目标模块、测试数量、失败/跳过数量和数据库类型；指定测试未运行时不能报告通过。
+- 干净 checkout 复验应包含本次最终改动，并使用同一组相关检查，避免脏工作区或增量产物掩盖问题。
+- 外部服务、数据库或凭据不可用时，说明具体阻塞和已经完成的本地检查，不把未运行部分描述为通过。

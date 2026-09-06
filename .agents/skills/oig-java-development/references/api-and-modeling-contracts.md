@@ -8,7 +8,9 @@
 - URL 格式：`/api/{模块名}/{资源名}/{动作}`。
 - 请求对象命名为 `XxxReqDTO` 并放在 `dto.req`，响应对象命名为 `XxxRspDTO` 并放在 `dto.rsp`；动态查询请求放在 `dto.req.query`。
 - Web DTO 禁止复用数据库 Entity。
-- 写操作（mutation）接口统一使用 `List<Long> ids` 参数接受批量/单条操作，不单独建 `/xxx-batch` 端点。
+- 新增删除、状态切换等对已有目标执行相同动作、且适合批量处理的接口，使用 `List<Long> ids` 同时接受单条与批量目标，不另建语义相同的 `/xxx-batch` 端点。
+- 创建、登录、刷新令牌、密码修改/重置等具有独立输入和校验的用例使用各自的请求 DTO，不为满足批量形式添加 `ids`。是否提供批量创建取决于真实业务需求。
+- 已发布的单条接口保留原有路径、单个 ID 字段及请求/响应语义；内部分层或规范整理不将其强制改为 `ids`。新增批量能力须有实际业务需求。
 - Controller 类上使用 `@Tag`，方法上使用 `@Operation`。
 - `@Operation` 必须显式指定全局唯一、驼峰命名的 `operationId`，供前端 OpenAPI codegen 生成 API 函数名。
 - 已对外发布或已被前端消费的接口，`operationId` 视为 API 契约的一部分，必须保持稳定；不得因为 Controller 方法重命名、路径兜底策略、springdoc/Knife4j 配置变化或代码整理而改名。
@@ -16,7 +18,7 @@
 - 确需变更已发布 `operationId` 时，必须按破坏性 API 变更处理：在计划或 PR 中说明原因、影响范围和前端迁移方案，并同步更新前端 import、测试与 OpenAPI snapshot。
 - 新增或修改公开接口时，必须在 OpenAPI 契约测试中覆盖关键路径的 `operationId`，防止生成代码导出名漂移。
 - `ReqDTO` / `RspDTO` 必须补齐 `@Schema` 注解，并为关键字段提供含义说明和示例值。
-- 分页使用 `PageReqDTO` 和 `PageResult<T>`。
+- 分页响应使用 `PageResult<T>`。新增分页请求使用 `BasePagedDynamicQueryReqDTO`；现有 IAM 的 `PageReqDTO` 平铺请求作为兼容例外保留，具体范围见 [动态查询 DSL](dynamic-query-dsl.md)。
 - 是否提供 `list-all` 取决于业务场景；仅当确实存在无分页全量选择诉求时才提供 `list-all`，且其请求 DTO 不得继承 `PageReqDTO`。
 - 全局异常统一转换为标准 `R<T>` 响应。
 - 日期格式使用 `yyyy-MM-dd HH:mm:ss` 和 `yyyy-MM-dd`。
@@ -128,7 +130,7 @@ private EnableStatusEnum status;
 - 主键统一使用数据库自增 ID，DDL 写 `bigint primary key auto_increment`，配合 MyBatis-Plus 全局 `id-type: auto`。
 - 所有业务表必须包含 `create_time`、`update_time`、`create_by`、`update_by`、`deleted`。
 - `create_time` / `update_time` 禁止在业务 service 中手工赋值；建表时提供 `default current_timestamp`，并由 `MetaObjectHandler` 兜底填充。
-- `create_by` / `update_by` 通过 `MetaObjectHandler` 自动填充，优先从 `OperatorContext` 读取 `X-User-Id`，缺失时回退 `0L`。
+- `create_by` / `update_by` 通过 `MetaObjectHandler` 从 `OperatorContext` 自动填充，缺失时回退 `0L`；操作人来源遵循 [架构边界与调用链](architecture-boundaries.md) 的认证/网关约定，不由业务代码直接读取请求头。
 - 逻辑删除字段统一为 `deleted`；未删除值使用 `0`，删除值使用数据库时间戳表达式，避免软删后唯一索引冲突。
 - 本仓库不要求业务表包含 `tenant_id`，不校验 `X-Tenant-Id`。
 

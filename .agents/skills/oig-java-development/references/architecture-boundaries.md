@@ -32,14 +32,16 @@ Controller -> AppService -> Domain
                            ^
                   Infra implements Repository
                            |
-                  IService/ServiceImpl -> Mapper
+                         Mapper
+                  （按需复用 IService/ServiceImpl）
 ```
 
 - `controller` 禁止绕过 `AppService` 直接调用 `domain`、`infra` 或 `mapper`。
 - `AppService` 是事务边界所在层。
+- App 可以直接使用 Spring 的事务和安全接口，例如 `PasswordEncoder`；有实际业务语义或外部能力隔离需求时才抽取 Domain gateway，不为转发相同方法再包一层接口和实现。
 - `AppService` 禁止依赖 Entity、Mapper、MyBatis-Plus Service 或具体 Repository 实现。
-- `domain` 只包含领域模型、业务规则、领域服务和 Repository 接口，不依赖 Spring、MyBatis、Controller 或 Infra。
-- MyBatis-Plus `IService/ServiceImpl` 属于持久化基础设施，只能位于 `infra/persistence/service`。
+- `domain` 只包含领域模型、查询、业务规则、领域服务和 Repository/gateway 接口，不依赖 Spring、MyBatis、Web DTO、Controller 或 Infra。
+- 使用 MyBatis-Plus `IService/ServiceImpl` 时，只能放在 `infra/persistence/service[/impl]`；不为满足目录形式创建无业务需要的 Service。
 - 业务链路对外部厂商能力的调用必须在 Domain 定义 gateway，由 `system` 内对应 provider / client 适配层实现；AppService 不得直接依赖厂商 SDK 或具体 adapter。
 
 ## 分包规范
@@ -56,7 +58,9 @@ com.oigit.admin.{module}
 ├── app
 ├── domain
 │   ├── model
+│   ├── query
 │   ├── repository
+│   ├── gateway
 │   └── service
 ├── infra
 │   ├── persistence
@@ -80,11 +84,15 @@ com.oigit.admin.{module}
 - 跨模块公开的接口、DTO、事件和枚举放 `-api`；仅实现内部使用的枚举留在 impl 的 `enums`，Entity、Mapper 和实现类不得进入 API 契约。
 - 不需要返回值的事后通知，通过 Spring `ApplicationEvent` 解耦。
 - 没有真实领域规则时不创建空 Domain Service，AppService 可以直接依赖 Domain Repository 接口。
+- IAM 的 Entity、Mapper 和 Repository 适配位于 `infra/persistence`；安全过滤器和 JWT 适配位于 `infra/security`，配置与密码编码器 Bean 装配位于 `infra/config`，客户端请求信息解析位于 `infra/request`。权限快照使用领域模型，不依赖 Web DTO。
+- 只有配置值需要跨层传递时，使用简单值对象，由配置层装配；延迟、重试等执行行为放在实际编排该行为的服务中。
+- 日志、只读查询结果等无状态变化的模型优先使用 record，只保留用例需要的字段和转换方向；不复制没有调用方的 Entity 审计字段。可更新业务模型仍需完整传递乐观锁版本。
 
 ## 本地 IAM 与操作人上下文
 
 - 当前 `main` 分支由本地 IAM 完成登录、JWT 校验和权限判断；除公开接口外，业务接口要求 Bearer JWT。
-- 操作人默认从认证上下文读取；可选网关过滤器开启后才消费 `X-User-Id`、`X-User-Name`。
+- 操作人默认从本地 IAM 认证上下文读取；可选网关过滤器开启后才消费 `X-User-Id`、`X-User-Name`，其可信入口由部署侧保障。
+- 现有 `GatewayOperatorFilter` 仅校验头格式，不完成身份认证，不得据此写入认证请求属性或覆盖 JWT 身份。
 - `Authorization` 由 JWT filter 处理；不要在 Controller 解析 Token 或透传权限集合。
 - 开发/测试环境无认证上下文时，审计字段回退为 `0L`。
 - 业务代码获取当前操作人时调用 `OperatorContext.getOperatorId()`、`getOperatorName()`、`getOperatorPhone()`、`getOperatorRealName()`，禁止 Controller 解析 header 后层层透传。
@@ -94,6 +102,8 @@ com.oigit.admin.{module}
 ## HTTP 请求日志
 
 - HTTP 完成日志统一由 `core/logging` 的过滤器输出，业务模块不得自行打印完整请求体或响应体。
+- 日志 userId 只读取认证适配写入的 `OperatorContext.REQUEST_ATTRIBUTE_OPERATOR_ID`，缺失时不记录身份；不得直接读取 `X-User-Id`，也不得将格式合法的网关头视为认证结果。
+- 客户端 IP 通过 `core.operator.ClientIpResolver.resolveClientIp(HttpServletRequest)` 读取；IAM 的 `infra/request/ClientRequestInfoResolver` 实现可信代理解析，使 HTTP 日志与 IAM 日志使用同一规则。没有实现时只使用 TCP 对端地址。
 - 过滤器顺序必须保证 `TraceIdFilter` 先于 `HttpRequestLoggingFilter`，并覆盖本地 IAM 或可选网关过滤器的拒绝响应。
 - 请求/响应正文必须限长，并按字段名递归脱敏；multipart、二进制、文件访问、健康检查和 OpenAPI 资源不得打印正文或完成日志。
 - Spring Web 的日志级别不得开启到会输出反序列化请求/响应对象的 DEBUG，避免绕过统一脱敏。

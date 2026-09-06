@@ -10,7 +10,7 @@
 - `iam` 已落地本地登录、JWT、refresh token 轮换、员工、部门、角色、菜单/按钮权限、数据权限、登录日志和操作日志。
 - `system` 承载后台系统管理与平台能力：全局字典、导出中心、文件存储。
 - 文件存储支持 `local` / `qiniu` / `minio` 三种 provider，通过配置切换。
-- 动态查询 DSL 已在 `core` 落地，当前接入全局字典类型、字典项和导出记录分页场景。
+- 动态查询 DSL 已在 `core` 落地，当前接入全局字典类型、字典项和导出记录分页场景；IAM 员工、角色、登录日志和操作日志分页保留已发布平铺契约，新增分页和组合查询使用 DSL。
 - 顶层模块边界约定为：`boot` 负责启动，`core` 负责底层通用能力与原生抽象，`iam` 承载本地身份权限，`system` 承载系统管理与平台能力，`{biz}` 承载具体业务。
 - 模块目录名与 Maven `artifactId` 保持一致，统一使用仓库内语义名，不重复添加 `admin-` 或项目名前缀；管理后台命名空间由仓库名、`groupId` 和 Java 包名表达。
 - 仓库基线 Maven `groupId` 与 Java 根包统一使用 `com.oigit.admin`；通过初始化脚本生成业务项目时，由 `--package` 替换为目标项目命名空间。
@@ -74,7 +74,8 @@ Controller → AppService → Domain
                            ↑
                   Infra implements port
                            ↓
-                  IService/ServiceImpl → Mapper
+                         Mapper
+                  （按需复用 IService/ServiceImpl）
 ```
 
 ## 项目结构
@@ -91,8 +92,12 @@ java-admin-starter/
 │   └── skills/
 │       └── oig-java-development/                    # AI Java 开发规范 skill 与按需加载 references
 │
+├── .github/workflows/
+│   └── verify.yml                                   # Maven、迁移差异与脚本回归检查
+│
 ├── scripts/
 │   ├── check-migrations.sh                          # Flyway migration 约束检查脚本
+│   ├── tests/test_check_migrations.sh                # 临时 Git 仓库迁移保护回归
 │   └── start-dev.sh                                 # 检查 Docker/MySQL 并启动 dev 服务
 │
 ├── docs/
@@ -122,7 +127,7 @@ java-admin-starter/
 │       ├── jackson/                                 # Jackson 全局配置
 │       ├── trace/                                   # TraceId 过滤器与 MDC
 │       ├── logging/                                 # HTTP 完成日志、脱敏与限长缓存
-│       ├── operator/                                # 操作人上下文与可选网关过滤器
+│       ├── operator/                                # 操作人上下文、IP 解析端口与可选网关过滤器
 │       ├── translation/                             # 审计、字典和主数据批量翻译引擎
 │       ├── mybatis/                                 # MyBatis-Plus 配置、审计字段自动填充
 │       ├── export/                                  # 导出框架 SPI 与通用模型
@@ -131,11 +136,17 @@ java-admin-starter/
 ├── iam/                                             # 本地 IAM 模块：认证、员工、部门、角色、菜单、权限和日志
 │   └── src/main/java/com/oigit/admin/iam/
 │       ├── controller/                              # IAM HTTP 接口
-│       ├── dto/                                     # IAM ReqDTO / RspDTO
+│       ├── dto/
+│       │   ├── req/                                 # 独立请求 DTO，保留已发布 JSON/schema
+│       │   └── rsp/                                 # 独立响应 DTO
 │       ├── app/                                     # 事务边界与流程编排
-│       ├── service/                                 # 权限快照、密码、Token、数据权限等核心规则
-│       ├── security/                                # Spring Security、JWT filter、权限切面
-│       ├── infra/                                   # Entity 与 Mapper
+│       ├── domain/                                  # model/query/repository/gateway/service
+│       ├── infra/
+│       │   ├── persistence/                         # Entity、Mapper 与 Repository 适配
+│       │   ├── security/                            # Spring Security、JWT/密码与权限切面适配
+│       │   ├── config/                              # IAM 配置与装配
+│       │   └── request/                             # 可信代理客户端 IP 解析
+│       ├── annotation/                              # 权限与操作日志标注
 │       └── enums/                                   # IAM 错误码和业务枚举
 │
 └── system/                                          # 系统管理与平台能力模块
@@ -199,6 +210,7 @@ README 只保留项目说明、架构概览、启动方式和关键入口，避�
 再按类型批量查询，禁止逐行或逐单元格查询。
 
 HTTP 请求完成日志由 `core/logging` 统一输出并携带 `traceId`，正文执行类型过滤、字段脱敏和大小限制。
+userId 只读取认证请求属性；纯格式校验的网关头不构成认证身份。
 详见 [HTTP 请求日志规范](docs/architecture/2026-08-04-http-request-logging.md)。
 
 ## 启动方式
@@ -251,9 +263,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 - `http://127.0.0.1:8080/v3/api-docs/file-storage`
 - `http://127.0.0.1:8080/v3/api-docs/mdm-export`
 
-### 登录日志客户端 IP
+### 日志客户端 IP
 
-默认不信任任何客户端转发头，登录日志、刷新令牌和操作日志直接记录 TCP 对端地址。应用部署在 Nginx、Ingress 或负载均衡之后时，必须把实际代理来源网段配置为可信代理：
+HTTP 完成日志通过 `core.operator.ClientIpResolver` 复用 IAM 的可信代理解析实现，与登录日志、刷新令牌和操作日志使用同一 IP 规则。没有解析实现或默认未配置可信代理时，使用 TCP 对端地址。应用部署在 Nginx、Ingress 或负载均衡之后时，必须把实际代理来源网段配置为可信代理：
 
 ```bash
 export IAM_CLIENT_IP_TRUSTED_PROXY_CIDRS='127.0.0.1/32,10.20.30.0/24'
@@ -315,9 +327,11 @@ docker compose down -v
 ## 数据库迁移
 
 - 版本化迁移文件统一放在 `boot/src/main/resources/db/migration/`。
-- 当前历史迁移已演进到 `V20260804170000__complete_enum_dictionary_contract.sql`。
+- 当前初始化基线为 `V20260805103327__squash_initial_schema.sql`；它记录已经发生的历史合并，不提供再次 squash 的通用例外。
+- 该基线的 7 处 CREATE TABLE 语法修正通过固定路径和完整内容校验单次放行，具体范围见 [基线修复记录](docs/superpowers/specs/2026-09-05-migration-baseline-syntax-repair.md)。
 - 历史 `V*__*.sql` 一旦提交，禁止修改、删除、重命名文件名或内容；结构变更通过新增下一版本 migration 演进。经批准的模块目录整体重命名只允许随目录原样搬迁。
-- 仓库 `pre-commit` 通过 `scripts/check-migrations.sh` 拦截历史版本化 migration 的修改。
+- 新增版本必须高于仓库当前最大版本，禁止重复、倒退或插入历史版本。
+- `pre-commit` 通过 `scripts/check-migrations.sh` 检查暂存迁移，CI 同时检查 PR 相对基线的迁移变更；脚本回归位于 `scripts/tests/test_check_migrations.sh`。
 - 完整迁移规范见 `.agents/skills/oig-java-development/references/database-migrations.md`。
 
 ## Lefthook 启用
@@ -333,3 +347,15 @@ lefthook run pre-commit
 ## 完成标准
 
 完成标准与跨模块测试流程见 `.agents/skills/oig-java-development/references/verification.md`。每次修改后必须运行并汇报实际验证命令；涉及数据库迁移时必须验证 Flyway 脚本，且至少保证一套真实 MySQL 8 环境通过。
+
+跨模块定向测试可从仓库根目录使用 `mvn -pl boot -am "-Dtest=测试类名" test`，由当前 reactor 构建依赖；指定测试后核对 Surefire 的实际测试类和数量。认证、日志等运行配置按影响面验证，不归入纯文档检查。
+
+全量验证入口：
+
+```bash
+mvn clean test
+bash scripts/check-migrations.sh --all
+bash scripts/tests/test_check_migrations.sh
+```
+
+CI 配置位于 [.github/workflows/verify.yml](.github/workflows/verify.yml)，规则与测试对应关系见 [验证与完成标准](.agents/skills/oig-java-development/references/verification.md)。

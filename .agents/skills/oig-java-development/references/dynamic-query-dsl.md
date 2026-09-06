@@ -1,10 +1,21 @@
 # 动态查询 DSL 开发范式
 
-## 强制约束
+## 适用范围与兼容契约
 
-所有分页查询接口必须使用动态查询 DSL。请求 DTO 统一继承 `BasePagedDynamicQueryReqDTO`，前端通过 `condition` 条件树传递筛选参数，禁止在 `ReqDTO` 上散落平铺查询字段。
+新增分页接口和新增可组合条件查询必须使用动态查询 DSL。分页请求继承 `BasePagedDynamicQueryReqDTO`，前端通过 `condition` 条件树传递筛选参数，不新增一套平铺字段表达同一组合查询能力。
 
-对外部 API 的代理转发场景同样适用：条件树在后端 AppService 中解析转换为外部 API 参数，不改变前端动态查询交互范式。
+以下已发布 IAM 分页接口是兼容例外，保留现有 `PageReqDTO`、平铺筛选字段、默认值和筛选语义：
+
+| 接口 | 请求 DTO |
+|---|---|
+| `/api/iam/staff/page` | `StaffPageReqDTO` |
+| `/api/iam/role/page` | `RolePageReqDTO` |
+| `/api/iam/log/login/page` | `LoginLogPageReqDTO` |
+| `/api/iam/log/operation/page` | `OperationLogPageReqDTO` |
+
+纯内部分层、DTO 拆包和持久化重构不得将这些字段迁移为 `condition`，或改变其 JSON、OpenAPI schema 名称和 `operationId`。若业务确需协议迁移，按 API 契约变更明确前端迁移范围；上述兼容范围不扩展到新接口或新增组合查询能力。
+
+对外部 API 的新增分页/组合查询代理转发同样适用：AppService 将条件树转换为领域查询，由 gateway 适配成外部 API 参数，保持前端 DSL 契约。
 
 ## 执行链路
 
@@ -17,7 +28,7 @@
 -> 执行 SQL
 ```
 
-禁止在 Service 层直接拼 SQL 条件；所有动态条件必须走 AST -> QueryExecutor 链路。
+App/Domain 不得直接拼持久化查询条件。DSL 动态条件必须走 AST -> QueryExecutor 链路；兼容平铺请求由 App 转为领域查询，查询包装器和 SQL 条件仅在 `infra/persistence` 适配。
 
 对 join / 派生投影等 `LambdaQueryWrapper` 无法表达的查询，可以使用专用 SQL 渲染器，但仍必须满足：
 
