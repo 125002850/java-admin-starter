@@ -254,6 +254,15 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 | 用户名 | `root` |
 | 密码 | `root` |
 
+### VS Code / Cursor 调试
+
+使用 JDK 17，并安装 [Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack)。从仓库根目录打开工作区，等待 Maven 项目导入完成。
+
+1. 首次配置时，将 `.env.example` 复制为 `.env.local`，填写至少 32 个随机字符的 `IAM_JWT_SECRET`；数据库默认指向上述本地 MySQL。已有 `.env.local` 时保留其中的本机配置。
+2. 确认 MySQL 已启动，在“运行和调试”中选择 **启动后端（dev）**，按 `F5` 调试，或按 `Ctrl+F5` 运行。
+
+`.vscode/launch.json` 指定 `boot` 模块与 `dev` profile，由 Java 扩展构建工作区并解析运行时依赖；本机变量通过 `envFile` 加载。共享启动配置可提交，`.env.local` 保持 Git 忽略。配置选项见 [VS Code Java 调试文档](https://code.visualstudio.com/docs/java/java-debugging#_configuration-options)。
+
 启动后可访问接口文档：
 
 - `http://127.0.0.1:8080/doc.html`

@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "启动后端（dev）",
+      "request": "launch",
+      "mainClass": "com.oigit.admin.boot.AdminBootApplication",
+      "projectName": "boot",
+      "cwd": "${workspaceFolder}",
+      "args": ["--spring.profiles.active=dev"],
+      "classPaths": ["$Runtime"],
+      "envFile": "${workspaceFolder}/.env.local",
+      "console": "integratedTerminal",
+      "shortenCommandLine": "auto"
+    }
+  ]
+}
