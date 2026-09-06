@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -13,6 +15,11 @@ import java.util.Set;
 import javax.sql.DataSource;
 
 import com.oigit.admin.dict.infra.config.ClasspathEnumDictionaryPolicy;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
+import org.flywaydb.core.api.MigrationState;
+import org.flywaydb.core.api.MigrationVersion;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -51,22 +58,30 @@ class FlywaySmokeTests {
     private DataSource dataSource;
 
     @Autowired
+    private Flyway flyway;
+
+    @Autowired
     private ClasspathEnumDictionaryPolicy enumDictionaryPolicy;
 
     @Test
-    void flywayMigrationMatchesPlatformSchemaContract() {
+    void flywayMigrationMatchesPlatformSchemaContract() throws IOException {
         assertThat(tableExists("flyway_schema_history")).isTrue();
-        assertThat(hasSuccessfulMigration("1")).isTrue();
-        assertThat(hasSuccessfulMigration("2")).isTrue();
-        assertThat(hasSuccessfulMigration("3")).isTrue();
-        assertThat(hasSuccessfulMigration("4")).isTrue();
-        assertThat(hasSuccessfulMigration("5")).isTrue();
-        assertThat(hasSuccessfulMigration("6")).isTrue();
-        assertThat(hasSuccessfulMigration("7")).isTrue();
-        assertThat(hasSuccessfulMigration("8")).isTrue();
-        assertThat(hasSuccessfulMigration("9")).isTrue();
-        assertThat(hasSuccessfulMigration("10")).isTrue();
-        assertThat(hasSuccessfulMigration("20260804170000")).isTrue();
+        var resources = new PathMatchingResourcePatternResolver()
+                .getResources("classpath*:db/migration/V*__*.sql");
+        var expectedVersions = Arrays.stream(resources).map(resource -> {
+            String filename = resource.getFilename();
+            assertThat(filename).matches("V[0-9]{14}__.+\\.sql");
+            return MigrationVersion.fromVersion(filename.substring(1, filename.indexOf("__")));
+        }).toList();
+        assertThat(expectedVersions).isNotEmpty().doesNotHaveDuplicates();
+        var applied = Arrays.stream(flyway.info().applied())
+                .filter(migration -> migration.getVersion() != null).toList();
+        assertThat(applied).extracting(MigrationInfo::getVersion)
+                .containsExactlyInAnyOrderElementsOf(expectedVersions);
+        assertThat(applied).allSatisfy(migration ->
+                assertThat(migration.getState()).isEqualTo(MigrationState.SUCCESS));
+        assertThat(flyway.info().pending()).isEmpty();
+        assertThatCode(flyway::validate).doesNotThrowAnyException();
 
         assertThat(tableExists("sys_tenant_global")).isFalse();
         assertThat(tableExists("sys_user")).isFalse();
@@ -316,25 +331,6 @@ class FlywaySmokeTests {
             return tables.next();
         } catch (SQLException exception) {
             throw new IllegalStateException("failed to inspect table metadata", exception);
-        }
-    }
-
-    private boolean hasSuccessfulMigration(String version) {
-        String sql = """
-            select count(*)
-            from flyway_schema_history
-            where version = ?
-              and success = ?
-            """;
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, version);
-            statement.setBoolean(2, true);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() && resultSet.getInt(1) > 0;
-            }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("failed to inspect flyway history", exception);
         }
     }
 
