@@ -1,18 +1,5 @@
 package com.oigit.admin.iam.infra.translation;
 
-import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
-import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.baomidou.mybatisplus.core.MybatisConfiguration;
-import com.oigit.admin.core.translation.TranslationKey;
-import com.oigit.admin.iam.infra.entity.IamStaffEntity;
-import com.oigit.admin.iam.infra.mapper.IamStaffMapper;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeAll;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -20,15 +7,27 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.oigit.admin.core.translation.TranslationKey;
+import com.oigit.admin.iam.infra.persistence.entity.IamStaffEntity;
+import com.oigit.admin.iam.infra.persistence.mapper.IamStaffMapper;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 class IamUserNameTranslationProviderTests {
 
     @BeforeAll
     static void initTableInfo() {
         MybatisConfiguration configuration = new MybatisConfiguration();
-        MybatisMapperBuilderAssistant assistant = new MybatisMapperBuilderAssistant(
-                configuration,
-                "iam-user-name-translation"
-        );
+        MybatisMapperBuilderAssistant assistant =
+                new MybatisMapperBuilderAssistant(configuration, "iam-user-name-translation");
         assistant.setCurrentNamespace(IamStaffMapper.class.getName());
         TableInfoHelper.initTableInfo(assistant, IamStaffEntity.class);
     }
@@ -45,9 +44,8 @@ class IamUserNameTranslationProviderTests {
         TranslationKey fallbackKey = new TranslationKey("", "2");
         TranslationKey invalidKey = new TranslationKey("", "invalid");
 
-        Map<TranslationKey, String> translated = provider.translate(
-                Set.of(adminKey, fallbackKey, invalidKey)
-        );
+        Map<TranslationKey, String> translated =
+                provider.translate(Set.of(adminKey, fallbackKey, invalidKey));
 
         assertThat(translated)
                 .containsEntry(adminKey, "超级管理员")

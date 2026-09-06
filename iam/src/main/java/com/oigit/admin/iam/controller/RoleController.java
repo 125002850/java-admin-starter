@@ -4,17 +4,20 @@ import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.iam.app.RoleAppService;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleCreateReqDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleDataScopeAssignReqDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleIdReqDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleMenusAssignReqDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RolePageReqDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleRspDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleStatusUpdateReqDTO;
-import com.oigit.admin.iam.dto.IamRoleDTO.RoleUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.RoleCreateReqDTO;
+import com.oigit.admin.iam.dto.req.RoleDataScopeAssignReqDTO;
+import com.oigit.admin.iam.dto.req.RoleIdReqDTO;
+import com.oigit.admin.iam.dto.req.RoleMenusAssignReqDTO;
+import com.oigit.admin.iam.dto.req.RolePageReqDTO;
+import com.oigit.admin.iam.dto.req.RoleStatusUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.RoleUpdateReqDTO;
+import com.oigit.admin.iam.dto.rsp.RoleRspDTO;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

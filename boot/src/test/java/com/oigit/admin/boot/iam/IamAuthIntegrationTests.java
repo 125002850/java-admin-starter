@@ -12,11 +12,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Duration;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "platform.iam.refresh-token-ttl-days=3",
+        "platform.iam.failure-delay-millis=0"
+})
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 class IamAuthIntegrationTests {
@@ -61,6 +67,13 @@ class IamAuthIntegrationTests {
         String accessToken = loginData.path("accessToken").asText();
         String refreshToken = loginData.path("refreshToken").asText();
 
+        Duration refreshTokenTtl = jdbcTemplate.queryForObject("""
+                select issued_time, expire_time from sys_refresh_token order by id desc limit 1
+                """, (rs, rowNum) -> Duration.between(
+                rs.getTimestamp("issued_time").toLocalDateTime(),
+                rs.getTimestamp("expire_time").toLocalDateTime()));
+        assertThat(refreshTokenTtl).isEqualTo(Duration.ofDays(3));
+
         JsonNode me = postJson("/api/iam/auth/me", "{}", accessToken, 200);
         assertThat(me.path("data").path("menus").get(0).path("menuKey").asText())
                 .isEqualTo(me.path("data").path("menus").get(0).path("menuCode").asText());
@@ -103,6 +116,34 @@ class IamAuthIntegrationTests {
     void protectedApiShouldReturn401WithoutToken() throws Exception {
         JsonNode response = postJson("/api/iam/auth/me", "{}", null, 401);
         assertThat(response.path("code").asInt()).isEqualTo(401);
+    }
+
+    @Test
+    void failedLoginShouldKeepItsLogAndAuditDefaultsAfterRollback() throws Exception {
+        String username = "missing_" + UUID.randomUUID().toString().substring(0, 8);
+        JsonNode response = postJson("/api/iam/auth/login", """
+                {"username":"%s","password":"wrong-password"}
+                """.formatted(username), null, 200);
+        assertThat(response.path("code").asInt()).isEqualTo(2001001);
+
+        jdbcTemplate.queryForObject("""
+                select * from sys_login_log where username = ?
+                """, (rs, rowNum) -> {
+            assertThat(rs.getLong("id")).isPositive();
+            assertThat(rs.getObject("staff_id")).isNull();
+            assertThat(rs.getString("event_type")).isEqualTo("LOGIN");
+            assertThat(rs.getString("result")).isEqualTo("FAIL");
+            assertThat(rs.getString("failure_reason")).isEqualTo("BAD_CREDENTIALS");
+            assertThat(rs.getString("token_id")).isNull();
+            assertThat(rs.getTimestamp("operation_time")).isNotNull();
+            assertThat(rs.getTimestamp("create_time")).isNotNull();
+            assertThat(rs.getTimestamp("update_time")).isNotNull();
+            assertThat(rs.getObject("create_by")).isEqualTo(0L);
+            assertThat(rs.getObject("update_by")).isEqualTo(0L);
+            assertThat(rs.getObject("deleted")).isEqualTo(0L);
+            assertThat(rs.getObject("version")).isEqualTo(0);
+            return rs.getLong("id");
+        }, username);
     }
 
     @Test

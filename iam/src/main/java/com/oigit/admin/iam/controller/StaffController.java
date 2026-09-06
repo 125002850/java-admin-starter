@@ -4,17 +4,20 @@ import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.iam.app.StaffAppService;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffCreateReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffIdReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffPageReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffPasswordResetReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffRolesAssignReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffRspDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffStatusUpdateReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.StaffCreateReqDTO;
+import com.oigit.admin.iam.dto.req.StaffIdReqDTO;
+import com.oigit.admin.iam.dto.req.StaffPageReqDTO;
+import com.oigit.admin.iam.dto.req.StaffPasswordResetReqDTO;
+import com.oigit.admin.iam.dto.req.StaffRolesAssignReqDTO;
+import com.oigit.admin.iam.dto.req.StaffStatusUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.StaffUpdateReqDTO;
+import com.oigit.admin.iam.dto.rsp.StaffRspDTO;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

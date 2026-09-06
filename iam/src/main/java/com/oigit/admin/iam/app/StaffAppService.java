@@ -1,50 +1,52 @@
 package com.oigit.admin.iam.app;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.iam.annotation.OperationLog;
-import com.oigit.admin.iam.dto.IamAuthDTO.DeptSummaryRspDTO;
-import com.oigit.admin.iam.dto.IamAuthDTO.RoleSummaryRspDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffCreateReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffPageReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffPasswordResetReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffRolesAssignReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffRspDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffStatusUpdateReqDTO;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffUpdateReqDTO;
+import com.oigit.admin.iam.domain.gateway.CurrentUserGateway;
+import com.oigit.admin.iam.domain.model.IamDept;
+import com.oigit.admin.iam.domain.model.IamRole;
+import com.oigit.admin.iam.domain.model.IamStaff;
+import com.oigit.admin.iam.domain.model.PageSlice;
+import com.oigit.admin.iam.domain.model.PermissionSnapshot;
+import com.oigit.admin.iam.domain.service.IamStaffService;
+import com.oigit.admin.iam.domain.service.PasswordPolicyService;
+import com.oigit.admin.iam.dto.req.StaffCreateReqDTO;
+import com.oigit.admin.iam.dto.req.StaffPageReqDTO;
+import com.oigit.admin.iam.dto.req.StaffPasswordResetReqDTO;
+import com.oigit.admin.iam.dto.req.StaffRolesAssignReqDTO;
+import com.oigit.admin.iam.dto.req.StaffStatusUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.StaffUpdateReqDTO;
+import com.oigit.admin.iam.dto.rsp.DeptSummaryRspDTO;
+import com.oigit.admin.iam.dto.rsp.RoleSummaryRspDTO;
+import com.oigit.admin.iam.dto.rsp.StaffRspDTO;
 import com.oigit.admin.iam.enums.IamStatus;
 import com.oigit.admin.iam.enums.OperationLogAction;
 import com.oigit.admin.iam.enums.OperationLogModule;
-import com.oigit.admin.iam.infra.entity.IamDeptEntity;
-import com.oigit.admin.iam.infra.entity.IamRoleEntity;
-import com.oigit.admin.iam.infra.entity.IamStaffEntity;
-import com.oigit.admin.iam.security.CurrentIam;
-import com.oigit.admin.iam.service.IamStaffService;
-import com.oigit.admin.iam.service.PasswordPolicyService;
-import com.oigit.admin.iam.service.PermissionSnapshot;
-import com.oigit.admin.iam.service.PermissionSnapshotMapper;
-import com.oigit.admin.iam.service.RefreshTokenService;
-import java.util.List;
-import java.util.Map;
+
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+
 @Service
 public class StaffAppService {
 
+    private final CurrentUserGateway currentUserGateway;
     private final IamStaffService staffService;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
-    private final RefreshTokenService refreshTokenService;
+    private final RefreshTokenAppService refreshTokenService;
 
     public StaffAppService(
             IamStaffService staffService,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
-            RefreshTokenService refreshTokenService
-    ) {
+            RefreshTokenAppService refreshTokenService,
+            CurrentUserGateway currentUserGateway) {
+        this.currentUserGateway = currentUserGateway;
         this.staffService = staffService;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
@@ -53,27 +55,34 @@ public class StaffAppService {
 
     @Transactional(readOnly = true)
     public PageResult<StaffRspDTO> page(StaffPageReqDTO reqDTO) {
-        PermissionSnapshot snapshot = CurrentIam.principal()
-                .map(principal -> principal.getSnapshot())
-                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException("not authenticated"));
-        Page<IamStaffEntity> page = staffService.page(reqDTO, snapshot);
+        PermissionSnapshot snapshot =
+                currentUserGateway
+                        .current()
+                        .orElseThrow(
+                                () ->
+                                        new AuthenticationCredentialsNotFoundException(
+                                                "not authenticated"));
+        PageSlice<IamStaff> page = staffService.page(IamQueryMapper.toQuery(reqDTO), snapshot);
         return assemblePageResult(page);
     }
 
-    PageResult<StaffRspDTO> assemblePageResult(Page<IamStaffEntity> page) {
-        Map<Long, IamDeptEntity> deptsById = staffService.findDepts(
-                page.getRecords().stream().map(IamStaffEntity::getDeptId).toList()
-        );
-        Map<Long, List<IamRoleEntity>> rolesByStaffId = staffService.listRolesByStaffIds(
-                page.getRecords().stream().map(IamStaffEntity::getId).toList()
-        );
-        List<StaffRspDTO> records = page.getRecords().stream()
-                .map(entity -> toRsp(
-                        entity,
-                        deptsById.get(entity.getDeptId()),
-                        rolesByStaffId.getOrDefault(entity.getId(), List.of())
-                ))
-                .toList();
+    PageResult<StaffRspDTO> assemblePageResult(PageSlice<IamStaff> page) {
+        Map<Long, IamDept> deptsById =
+                staffService.findDepts(
+                        page.getRecords().stream().map(IamStaff::getDeptId).toList());
+        Map<Long, List<IamRole>> rolesByStaffId =
+                staffService.listRolesByStaffIds(
+                        page.getRecords().stream().map(IamStaff::getId).toList());
+        List<StaffRspDTO> records =
+                page.getRecords().stream()
+                        .map(
+                                entity ->
+                                        toRsp(
+                                                entity,
+                                                deptsById.get(entity.getDeptId()),
+                                                rolesByStaffId.getOrDefault(
+                                                        entity.getId(), List.of())))
+                        .toList();
         return new PageResult<>(records, page.getTotal());
     }
 
@@ -81,15 +90,21 @@ public class StaffAppService {
     public StaffRspDTO detail(Long staffId) {
         PermissionSnapshot snapshot = currentSnapshot();
         staffService.assertInDataScope(staffId, snapshot);
-        IamStaffEntity entity = staffService.requireById(staffId);
-        return toRsp(entity, staffService.findDept(entity.getDeptId()), staffService.listRoles(entity.getId()));
+        IamStaff entity = staffService.requireById(staffId);
+        return toRsp(
+                entity,
+                staffService.findDept(entity.getDeptId()),
+                staffService.listRoles(entity.getId()));
     }
 
     @Transactional
     @OperationLog(module = OperationLogModule.IAM_STAFF, action = OperationLogAction.CREATE)
     public void create(StaffCreateReqDTO reqDTO) {
         passwordPolicyService.validate(reqDTO.getPassword());
-        staffService.create(reqDTO, passwordEncoder.encode(reqDTO.getPassword()));
+        staffService.create(
+                IamRequestMapper.toStaff(reqDTO),
+                reqDTO.getRoleIds(),
+                passwordEncoder.encode(reqDTO.getPassword()));
     }
 
     @Transactional
@@ -97,9 +112,9 @@ public class StaffAppService {
     public void update(StaffUpdateReqDTO reqDTO) {
         PermissionSnapshot snapshot = currentSnapshot();
         staffService.assertInDataScope(reqDTO.getStaffId(), snapshot);
-        IamStaffEntity existing = staffService.requireById(reqDTO.getStaffId());
+        IamStaff existing = staffService.requireById(reqDTO.getStaffId());
         IamStatus oldStatus = existing.getStatus();
-        staffService.update(reqDTO);
+        staffService.update(IamRequestMapper.toStaff(reqDTO));
         if (reqDTO.getStatus() == IamStatus.DISABLED && oldStatus != IamStatus.DISABLED) {
             refreshTokenService.revokeAllByStaffId(reqDTO.getStaffId(), "STAFF_DISABLED");
         }
@@ -131,7 +146,8 @@ public class StaffAppService {
         PermissionSnapshot snapshot = currentSnapshot();
         staffService.assertInDataScope(reqDTO.getStaffId(), snapshot);
         passwordPolicyService.validate(reqDTO.getNewPassword());
-        staffService.updatePassword(reqDTO.getStaffId(), passwordEncoder.encode(reqDTO.getNewPassword()), true);
+        staffService.updatePassword(
+                reqDTO.getStaffId(), passwordEncoder.encode(reqDTO.getNewPassword()), true);
         refreshTokenService.revokeAllByStaffId(reqDTO.getStaffId(), "PASSWORD_RESET");
     }
 
@@ -143,7 +159,7 @@ public class StaffAppService {
         staffService.assignRoles(reqDTO.getStaffId(), reqDTO.getRoleIds());
     }
 
-    private StaffRspDTO toRsp(IamStaffEntity entity, IamDeptEntity dept, List<IamRoleEntity> roles) {
+    private StaffRspDTO toRsp(IamStaff entity, IamDept dept, List<IamRole> roles) {
         StaffRspDTO dto = new StaffRspDTO();
         DeptSummaryRspDTO deptSummary = PermissionSnapshotMapper.toDeptSummary(dept);
         dto.setStaffId(entity.getId());
@@ -167,12 +183,16 @@ public class StaffAppService {
     }
 
     private PermissionSnapshot currentSnapshot() {
-        return CurrentIam.principal()
-                .map(p -> p.getSnapshot())
-                .orElseThrow(() -> new org.springframework.security.authentication.AuthenticationCredentialsNotFoundException("not authenticated"));
+        return currentUserGateway
+                .current()
+                .orElseThrow(
+                        () ->
+                                new org.springframework.security.authentication
+                                        .AuthenticationCredentialsNotFoundException(
+                                        "not authenticated"));
     }
 
-    private List<RoleSummaryRspDTO> roleSummaries(List<IamRoleEntity> roles) {
+    private List<RoleSummaryRspDTO> roleSummaries(List<IamRole> roles) {
         return roles.stream().map(PermissionSnapshotMapper::toRoleSummary).toList();
     }
 }

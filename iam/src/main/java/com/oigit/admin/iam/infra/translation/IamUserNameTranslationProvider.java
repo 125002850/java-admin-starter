@@ -4,8 +4,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.oigit.admin.core.translation.TranslationKey;
 import com.oigit.admin.core.translation.TranslationProvider;
 import com.oigit.admin.core.translation.TranslationTypes;
-import com.oigit.admin.iam.infra.entity.IamStaffEntity;
-import com.oigit.admin.iam.infra.mapper.IamStaffMapper;
+import com.oigit.admin.iam.infra.persistence.entity.IamStaffEntity;
+import com.oigit.admin.iam.infra.persistence.mapper.IamStaffMapper;
+
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -47,22 +48,30 @@ public class IamUserNameTranslationProvider implements TranslationProvider {
         }
 
         Map<Long, String> namesById = new LinkedHashMap<>();
-        iamStaffMapper.selectList(Wrappers.<IamStaffEntity>lambdaQuery()
-                        .select(IamStaffEntity::getId, IamStaffEntity::getStaffName, IamStaffEntity::getUsername)
-                        .in(IamStaffEntity::getId, userIds))
+        iamStaffMapper
+                .selectList(
+                        Wrappers.<IamStaffEntity>lambdaQuery()
+                                .select(
+                                        IamStaffEntity::getId,
+                                        IamStaffEntity::getStaffName,
+                                        IamStaffEntity::getUsername)
+                                .in(IamStaffEntity::getId, userIds))
                 .forEach(staff -> namesById.put(staff.getId(), displayName(staff)));
 
         Map<TranslationKey, String> result = new LinkedHashMap<>();
-        idsByKey.forEach((key, id) -> {
-            String name = namesById.get(id);
-            if (StringUtils.hasText(name)) {
-                result.put(key, name);
-            }
-        });
+        idsByKey.forEach(
+                (key, id) -> {
+                    String name = namesById.get(id);
+                    if (StringUtils.hasText(name)) {
+                        result.put(key, name);
+                    }
+                });
         return result;
     }
 
     private static String displayName(IamStaffEntity staff) {
-        return StringUtils.hasText(staff.getStaffName()) ? staff.getStaffName() : staff.getUsername();
+        return StringUtils.hasText(staff.getStaffName())
+                ? staff.getStaffName()
+                : staff.getUsername();
     }
 }

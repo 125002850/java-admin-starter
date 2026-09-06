@@ -1,22 +1,24 @@
 package com.oigit.admin.iam.app;
 
 import com.oigit.admin.iam.annotation.OperationLog;
-import com.oigit.admin.iam.dto.IamDeptDTO.DeptCreateReqDTO;
-import com.oigit.admin.iam.dto.IamDeptDTO.DeptRspDTO;
-import com.oigit.admin.iam.dto.IamDeptDTO.DeptStatusUpdateReqDTO;
-import com.oigit.admin.iam.dto.IamDeptDTO.DeptTreeReqDTO;
-import com.oigit.admin.iam.dto.IamDeptDTO.DeptUpdateReqDTO;
+import com.oigit.admin.iam.domain.model.IamDept;
+import com.oigit.admin.iam.domain.service.IamDeptService;
+import com.oigit.admin.iam.dto.req.DeptCreateReqDTO;
+import com.oigit.admin.iam.dto.req.DeptStatusUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.DeptTreeReqDTO;
+import com.oigit.admin.iam.dto.req.DeptUpdateReqDTO;
+import com.oigit.admin.iam.dto.rsp.DeptRspDTO;
 import com.oigit.admin.iam.enums.OperationLogAction;
 import com.oigit.admin.iam.enums.OperationLogModule;
-import com.oigit.admin.iam.infra.entity.IamDeptEntity;
-import com.oigit.admin.iam.service.IamDeptService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DeptAppService {
@@ -29,26 +31,26 @@ public class DeptAppService {
 
     @Transactional(readOnly = true)
     public List<DeptRspDTO> tree(DeptTreeReqDTO reqDTO) {
-        List<IamDeptEntity> depts = deptService.listAll(reqDTO == null ? null : reqDTO.keyword);
+        List<IamDept> depts = deptService.listAll(reqDTO == null ? null : reqDTO.keyword);
         return buildTree(depts);
     }
 
     @Transactional(readOnly = true)
     public DeptRspDTO detail(Long deptId) {
-        IamDeptEntity entity = deptService.requireById(deptId);
+        IamDept entity = deptService.requireById(deptId);
         return toRsp(entity);
     }
 
     @Transactional
     @OperationLog(module = OperationLogModule.IAM_DEPT, action = OperationLogAction.CREATE)
     public void create(DeptCreateReqDTO reqDTO) {
-        deptService.create(reqDTO);
+        deptService.create(IamRequestMapper.toDept(reqDTO));
     }
 
     @Transactional
     @OperationLog(module = OperationLogModule.IAM_DEPT, action = OperationLogAction.UPDATE)
     public void update(DeptUpdateReqDTO reqDTO) {
-        deptService.update(reqDTO);
+        deptService.update(IamRequestMapper.toDept(reqDTO));
     }
 
     @Transactional
@@ -63,14 +65,19 @@ public class DeptAppService {
         deptService.updateStatus(reqDTO.deptId, reqDTO.status);
     }
 
-    private List<DeptRspDTO> buildTree(List<IamDeptEntity> depts) {
+    private List<DeptRspDTO> buildTree(List<IamDept> depts) {
         Map<Long, DeptRspDTO> byId = new LinkedHashMap<>();
         depts.stream()
-                .sorted(Comparator.comparing((IamDeptEntity item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
-                        .thenComparing(IamDeptEntity::getId))
+                .sorted(
+                        Comparator.comparing(
+                                        (IamDept item) ->
+                                                item.getSortOrder() == null
+                                                        ? 0
+                                                        : item.getSortOrder())
+                                .thenComparing(IamDept::getId))
                 .forEach(dept -> byId.put(dept.getId(), toRsp(dept)));
         List<DeptRspDTO> roots = new ArrayList<>();
-        for (IamDeptEntity dept : depts) {
+        for (IamDept dept : depts) {
             DeptRspDTO node = byId.get(dept.getId());
             if (dept.getParentId() != null && byId.containsKey(dept.getParentId())) {
                 byId.get(dept.getParentId()).children.add(node);
@@ -81,7 +88,7 @@ public class DeptAppService {
         return roots;
     }
 
-    private DeptRspDTO toRsp(IamDeptEntity entity) {
+    private DeptRspDTO toRsp(IamDept entity) {
         DeptRspDTO dto = new DeptRspDTO();
         dto.deptId = entity.getId();
         dto.parentId = entity.getParentId();

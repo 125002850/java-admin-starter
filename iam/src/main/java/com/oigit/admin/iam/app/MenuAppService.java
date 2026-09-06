@@ -1,22 +1,24 @@
 package com.oigit.admin.iam.app;
 
 import com.oigit.admin.iam.annotation.OperationLog;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuCreateReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuRspDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuStatusUpdateReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuTreeReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuUpdateReqDTO;
+import com.oigit.admin.iam.domain.model.IamMenu;
+import com.oigit.admin.iam.domain.service.IamMenuService;
+import com.oigit.admin.iam.dto.req.MenuCreateReqDTO;
+import com.oigit.admin.iam.dto.req.MenuStatusUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.MenuTreeReqDTO;
+import com.oigit.admin.iam.dto.req.MenuUpdateReqDTO;
+import com.oigit.admin.iam.dto.rsp.MenuRspDTO;
 import com.oigit.admin.iam.enums.OperationLogAction;
 import com.oigit.admin.iam.enums.OperationLogModule;
-import com.oigit.admin.iam.infra.entity.IamMenuEntity;
-import com.oigit.admin.iam.service.IamMenuService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MenuAppService {
@@ -29,26 +31,26 @@ public class MenuAppService {
 
     @Transactional(readOnly = true)
     public List<MenuRspDTO> tree(MenuTreeReqDTO reqDTO) {
-        List<IamMenuEntity> menus = menuService.listAll(reqDTO == null ? null : reqDTO.keyword);
+        List<IamMenu> menus = menuService.listAll(reqDTO == null ? null : reqDTO.keyword);
         return buildTree(menus);
     }
 
     @Transactional(readOnly = true)
     public MenuRspDTO detail(Long menuId) {
-        IamMenuEntity menu = menuService.requireById(menuId);
+        IamMenu menu = menuService.requireById(menuId);
         return toRsp(menu);
     }
 
     @Transactional
     @OperationLog(module = OperationLogModule.IAM_MENU, action = OperationLogAction.CREATE)
     public void create(MenuCreateReqDTO reqDTO) {
-        menuService.create(reqDTO);
+        menuService.create(IamRequestMapper.toMenu(reqDTO));
     }
 
     @Transactional
     @OperationLog(module = OperationLogModule.IAM_MENU, action = OperationLogAction.UPDATE)
     public void update(MenuUpdateReqDTO reqDTO) {
-        menuService.update(reqDTO);
+        menuService.update(IamRequestMapper.toMenu(reqDTO));
     }
 
     @Transactional
@@ -63,14 +65,19 @@ public class MenuAppService {
         menuService.updateStatus(reqDTO.menuId, reqDTO.status);
     }
 
-    private List<MenuRspDTO> buildTree(List<IamMenuEntity> menus) {
+    private List<MenuRspDTO> buildTree(List<IamMenu> menus) {
         Map<Long, MenuRspDTO> byId = new LinkedHashMap<>();
         menus.stream()
-                .sorted(Comparator.comparing((IamMenuEntity item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
-                        .thenComparing(IamMenuEntity::getId))
+                .sorted(
+                        Comparator.comparing(
+                                        (IamMenu item) ->
+                                                item.getSortOrder() == null
+                                                        ? 0
+                                                        : item.getSortOrder())
+                                .thenComparing(IamMenu::getId))
                 .forEach(menu -> byId.put(menu.getId(), toRsp(menu)));
         List<MenuRspDTO> roots = new ArrayList<>();
-        for (IamMenuEntity menu : menus) {
+        for (IamMenu menu : menus) {
             MenuRspDTO node = byId.get(menu.getId());
             if (menu.getParentId() != null && byId.containsKey(menu.getParentId())) {
                 byId.get(menu.getParentId()).children.add(node);
@@ -81,7 +88,7 @@ public class MenuAppService {
         return roots;
     }
 
-    private MenuRspDTO toRsp(IamMenuEntity entity) {
+    private MenuRspDTO toRsp(IamMenu entity) {
         MenuRspDTO dto = new MenuRspDTO();
         dto.menuId = entity.getId();
         dto.parentId = entity.getParentId();

@@ -7,33 +7,36 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oigit.admin.core.web.PageResult;
-import com.oigit.admin.iam.dto.IamStaffDTO.StaffRspDTO;
-import com.oigit.admin.iam.infra.entity.IamDeptEntity;
-import com.oigit.admin.iam.infra.entity.IamRoleEntity;
-import com.oigit.admin.iam.infra.entity.IamStaffEntity;
-import com.oigit.admin.iam.service.IamStaffService;
+import com.oigit.admin.iam.domain.model.IamDept;
+import com.oigit.admin.iam.domain.model.IamRole;
+import com.oigit.admin.iam.domain.model.IamStaff;
+import com.oigit.admin.iam.domain.model.PageSlice;
+import com.oigit.admin.iam.domain.service.IamStaffService;
+import com.oigit.admin.iam.dto.rsp.StaffRspDTO;
+
+import org.junit.jupiter.api.Test;
+
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 class StaffAppServiceTests {
 
     @Test
     void pageResultShouldLoadDepartmentsAndRolesInBatches() {
         IamStaffService staffService = mock(IamStaffService.class);
-        StaffAppService appService = new StaffAppService(staffService, null, null, null);
-        IamStaffEntity first = staff(11L, 101L, "张三");
-        IamStaffEntity second = staff(12L, 102L, "李四");
-        Page<IamStaffEntity> page = new Page<>(1, 10, 2);
-        page.setRecords(List.of(first, second));
+        StaffAppService appService = new StaffAppService(staffService, null, null, null, null);
+        IamStaff first = staff(11L, 101L, "张三");
+        IamStaff second = staff(12L, 102L, "李四");
+        PageSlice<IamStaff> page = new PageSlice<>(List.of(first, second), 2);
 
-        IamDeptEntity firstDept = dept(101L, "研发部");
-        IamDeptEntity secondDept = dept(102L, "产品部");
-        IamRoleEntity role = role(201L, "管理员");
-        when(staffService.findDepts(anyCollection())).thenReturn(Map.of(101L, firstDept, 102L, secondDept));
-        when(staffService.listRolesByStaffIds(anyCollection())).thenReturn(Map.of(11L, List.of(role)));
+        IamDept firstDept = dept(101L, "研发部");
+        IamDept secondDept = dept(102L, "产品部");
+        IamRole role = role(201L, "管理员");
+        when(staffService.findDepts(anyCollection()))
+                .thenReturn(Map.of(101L, firstDept, 102L, secondDept));
+        when(staffService.listRolesByStaffIds(anyCollection()))
+                .thenReturn(Map.of(11L, List.of(role)));
 
         PageResult<StaffRspDTO> result = appService.assemblePageResult(page);
 
@@ -51,23 +54,23 @@ class StaffAppServiceTests {
         verify(staffService, never()).listRoles(11L);
     }
 
-    private IamStaffEntity staff(Long id, Long deptId, String staffName) {
-        IamStaffEntity entity = new IamStaffEntity();
+    private IamStaff staff(Long id, Long deptId, String staffName) {
+        IamStaff entity = new IamStaff();
         entity.setId(id);
         entity.setDeptId(deptId);
         entity.setStaffName(staffName);
         return entity;
     }
 
-    private IamDeptEntity dept(Long id, String deptName) {
-        IamDeptEntity entity = new IamDeptEntity();
+    private IamDept dept(Long id, String deptName) {
+        IamDept entity = new IamDept();
         entity.setId(id);
         entity.setDeptName(deptName);
         return entity;
     }
 
-    private IamRoleEntity role(Long id, String roleName) {
-        IamRoleEntity entity = new IamRoleEntity();
+    private IamRole role(Long id, String roleName) {
+        IamRole entity = new IamRole();
         entity.setId(id);
         entity.setRoleName(roleName);
         return entity;

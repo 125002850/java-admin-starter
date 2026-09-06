@@ -279,8 +279,10 @@ class IamManagementIntegrationTests {
         String loginIp = "10.88.0.1";
         jdbcTemplate.update("""
                 insert into sys_login_log
-                  (staff_id, username, event_type, result, ip, operation_time, create_by, update_by, deleted)
-                values (?, ?, 'LOGIN', 'SUCCESS', ?, '2026-07-08 10:00:00', 0, 0, 0)
+                  (staff_id, username, event_type, result, ip, user_agent, token_id,
+                   operation_time, create_by, update_by, deleted)
+                values (?, ?, 'LOGIN', 'SUCCESS', ?, 'JUnit-login', 'login-token-id',
+                        '2026-07-08 10:00:00', 0, 0, 0)
                 """, staffId, username, loginIp);
 
         JsonNode loginLogPage = postJson("/api/iam/log/login/page", """
@@ -300,20 +302,32 @@ class IamManagementIntegrationTests {
         assertThat(loginLogPage.path("code").asInt()).isEqualTo(200);
         assertThat(loginLogPage.path("data").path("total").asLong()).isEqualTo(1);
         JsonNode loginLog = loginLogPage.path("data").path("list").get(0);
+        assertThat(loginLog.path("logId").asLong()).isPositive();
+        assertThat(loginLog.path("staffId").asLong()).isEqualTo(staffId);
+        assertThat(loginLog.path("username").asText()).isEqualTo(username);
         assertThat(loginLog.path("staffName").asText()).isEqualTo(staffName);
+        assertThat(loginLog.path("eventType").asText()).isEqualTo("LOGIN");
+        assertThat(loginLog.path("result").asText()).isEqualTo("SUCCESS");
+        assertThat(loginLog.path("failureReason").isNull()).isTrue();
+        assertThat(loginLog.path("ip").asText()).isEqualTo(loginIp);
+        assertThat(loginLog.path("userAgent").asText()).isEqualTo("JUnit-login");
+        assertThat(loginLog.path("tokenId").asText()).isEqualTo("login-token-id");
+        assertThat(loginLog.path("operationTime").asText()).isEqualTo("2026-07-08 10:00:00");
 
         JsonNode loginLogDetail = postJson("/api/iam/log/login/detail", """
                 {"logId": %d}
                 """.formatted(loginLog.path("logId").asLong()), token, 200);
         assertThat(loginLogDetail.path("code").asInt()).isEqualTo(200);
-        assertThat(loginLogDetail.path("data").path("staffName").asText()).isEqualTo(staffName);
+        assertThat(loginLogDetail.path("data")).isEqualTo(loginLog);
 
         String requestPath = "/api/iam/staff/filter-" + suffix;
         jdbcTemplate.update("""
                 insert into sys_operation_log
                   (operator_id, operator_username, operator_staff_name, module, action, request_path, http_method,
-                   success, ip, user_agent, cost_millis, operation_time, create_by, update_by, deleted)
-                values (?, ?, ?, 'IAM_STAFF', 'CREATE', ?, 'POST', 1, '10.88.0.2', 'JUnit', 12,
+                   request_summary, response_summary, success, error_message,
+                   ip, user_agent, cost_millis, operation_time, create_by, update_by, deleted)
+                values (?, ?, ?, 'IAM_STAFF', 'CREATE', ?, 'POST', '{"staffCode":"duplicate"}',
+                        '{"code":409}', 0, 'staff code already exists', '10.88.0.2', 'JUnit', 12,
                         '2026-07-08 11:00:00', 0, 0, 0)
                 """, staffId, username, staffName, requestPath);
 
@@ -323,7 +337,7 @@ class IamManagementIntegrationTests {
                   "pageSize": 10,
                   "operatorUsername": "%s",
                   "operatorStaffName": "%s",
-                  "success": true,
+                  "success": false,
                   "requestPath": "%s",
                   "operationTimeRange": {
                     "startTime": "2026-07-08 00:00:00",
@@ -333,6 +347,30 @@ class IamManagementIntegrationTests {
                 """.formatted(username, staffName, requestPath), token, 200);
         assertThat(operationLogPage.path("code").asInt()).isEqualTo(200);
         assertThat(operationLogPage.path("data").path("total").asLong()).isEqualTo(1);
+        JsonNode operationLog = operationLogPage.path("data").path("list").get(0);
+        assertThat(operationLog.path("logId").asLong()).isPositive();
+        assertThat(operationLog.path("operatorId").asLong()).isEqualTo(staffId);
+        assertThat(operationLog.path("operatorUsername").asText()).isEqualTo(username);
+        assertThat(operationLog.path("operatorStaffName").asText()).isEqualTo(staffName);
+        assertThat(operationLog.path("module").asText()).isEqualTo("IAM_STAFF");
+        assertThat(operationLog.path("action").asText()).isEqualTo("CREATE");
+        assertThat(operationLog.path("requestPath").asText()).isEqualTo(requestPath);
+        assertThat(operationLog.path("httpMethod").asText()).isEqualTo("POST");
+        assertThat(operationLog.path("requestSummary").asText()).isEqualTo("{\"staffCode\":\"duplicate\"}");
+        assertThat(operationLog.path("responseSummary").asText()).isEqualTo("{\"code\":409}");
+        assertThat(operationLog.path("success").isBoolean()).isTrue();
+        assertThat(operationLog.path("success").asBoolean()).isFalse();
+        assertThat(operationLog.path("errorMessage").asText()).isEqualTo("staff code already exists");
+        assertThat(operationLog.path("ip").asText()).isEqualTo("10.88.0.2");
+        assertThat(operationLog.path("userAgent").asText()).isEqualTo("JUnit");
+        assertThat(operationLog.path("costMillis").asLong()).isEqualTo(12);
+        assertThat(operationLog.path("operationTime").asText()).isEqualTo("2026-07-08 11:00:00");
+
+        JsonNode operationLogDetail = postJson("/api/iam/log/operation/detail", """
+                {"logId": %d}
+                """.formatted(operationLog.path("logId").asLong()), token, 200);
+        assertThat(operationLogDetail.path("code").asInt()).isEqualTo(200);
+        assertThat(operationLogDetail.path("data")).isEqualTo(operationLog);
     }
 
     @Test

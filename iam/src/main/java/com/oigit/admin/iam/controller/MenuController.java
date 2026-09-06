@@ -3,21 +3,25 @@ package com.oigit.admin.iam.controller;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.iam.app.MenuAppService;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuCreateReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuIdReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuRspDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuStatusUpdateReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuTreeReqDTO;
-import com.oigit.admin.iam.dto.IamMenuDTO.MenuUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.MenuCreateReqDTO;
+import com.oigit.admin.iam.dto.req.MenuIdReqDTO;
+import com.oigit.admin.iam.dto.req.MenuStatusUpdateReqDTO;
+import com.oigit.admin.iam.dto.req.MenuTreeReqDTO;
+import com.oigit.admin.iam.dto.req.MenuUpdateReqDTO;
+import com.oigit.admin.iam.dto.rsp.MenuRspDTO;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
-import java.util.List;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Validated
 @RestController

@@ -4,14 +4,17 @@ import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.iam.app.LogAppService;
-import com.oigit.admin.iam.dto.IamLogDTO.LogIdReqDTO;
-import com.oigit.admin.iam.dto.IamLogDTO.LoginLogPageReqDTO;
-import com.oigit.admin.iam.dto.IamLogDTO.LoginLogRspDTO;
-import com.oigit.admin.iam.dto.IamLogDTO.OperationLogPageReqDTO;
-import com.oigit.admin.iam.dto.IamLogDTO.OperationLogRspDTO;
+import com.oigit.admin.iam.dto.req.LogIdReqDTO;
+import com.oigit.admin.iam.dto.req.LoginLogPageReqDTO;
+import com.oigit.admin.iam.dto.req.OperationLogPageReqDTO;
+import com.oigit.admin.iam.dto.rsp.LoginLogRspDTO;
+import com.oigit.admin.iam.dto.rsp.OperationLogRspDTO;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,7 +36,8 @@ public class LogController {
     @RequiresPermission("iam:log:login:query")
     @Operation(summary = "登录日志分页", operationId = "iamLoginLogPage")
     @PostMapping("/login/page")
-    public R<PageResult<LoginLogRspDTO>> pageLoginLogs(@Valid @RequestBody LoginLogPageReqDTO reqDTO) {
+    public R<PageResult<LoginLogRspDTO>> pageLoginLogs(
+            @Valid @RequestBody LoginLogPageReqDTO reqDTO) {
         return R.ok(logAppService.pageLoginLogs(reqDTO));
     }
 
@@ -47,7 +51,8 @@ public class LogController {
     @RequiresPermission("iam:log:operation:query")
     @Operation(summary = "操作日志分页", operationId = "iamOperationLogPage")
     @PostMapping("/operation/page")
-    public R<PageResult<OperationLogRspDTO>> pageOperationLogs(@Valid @RequestBody OperationLogPageReqDTO reqDTO) {
+    public R<PageResult<OperationLogRspDTO>> pageOperationLogs(
+            @Valid @RequestBody OperationLogPageReqDTO reqDTO) {
         return R.ok(logAppService.pageOperationLogs(reqDTO));
     }
 
