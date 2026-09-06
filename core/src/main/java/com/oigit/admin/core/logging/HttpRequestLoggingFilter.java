@@ -1,6 +1,7 @@
 package com.oigit.admin.core.logging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.oigit.admin.core.operator.ClientIpResolver;
 import com.oigit.admin.core.operator.OperatorContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
@@ -29,17 +31,18 @@ import static com.oigit.admin.core.trace.TraceIdFilter.TRACE_ID_MDC_KEY;
 public class HttpRequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(HttpRequestLoggingFilter.class);
-    private static final String HEADER_USER_ID = "X-User-Id";
-    private static final String HEADER_FORWARDED_FOR = "X-Forwarded-For";
-    private static final String HEADER_REAL_IP = "X-Real-IP";
 
     private final HttpLoggingProperties properties;
     private final HttpLogSanitizer sanitizer;
+    private final ObjectProvider<ClientIpResolver> clientIpResolverProvider;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    public HttpRequestLoggingFilter(HttpLoggingProperties properties, ObjectMapper objectMapper) {
+    public HttpRequestLoggingFilter(HttpLoggingProperties properties,
+                                    ObjectMapper objectMapper,
+                                    ObjectProvider<ClientIpResolver> clientIpResolverProvider) {
         this.properties = properties;
         this.sanitizer = new HttpLogSanitizer(objectMapper, properties.getSensitiveFields());
+        this.clientIpResolverProvider = clientIpResolverProvider;
     }
 
     @Override
@@ -129,19 +132,11 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
     }
 
     private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader(HEADER_FORWARDED_FOR);
-        if (StringUtils.hasText(forwardedFor)) {
-            return valueOrDash(forwardedFor.split(",", 2)[0]);
-        }
-        String realIp = request.getHeader(HEADER_REAL_IP);
-        return StringUtils.hasText(realIp) ? valueOrDash(realIp) : valueOrDash(request.getRemoteAddr());
+        ClientIpResolver resolver = clientIpResolverProvider.getIfAvailable();
+        return valueOrDash(resolver == null ? request.getRemoteAddr() : resolver.resolveClientIp(request));
     }
 
     private String operatorId(HttpServletRequest request) {
-        String headerUserId = request.getHeader(HEADER_USER_ID);
-        if (StringUtils.hasText(headerUserId)) {
-            return valueOrDash(headerUserId);
-        }
         Object requestUserId = request.getAttribute(OperatorContext.REQUEST_ATTRIBUTE_OPERATOR_ID);
         return requestUserId == null ? "-" : valueOrDash(String.valueOf(requestUserId));
     }
