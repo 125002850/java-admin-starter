@@ -1,0 +1,63 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: java_admin_starter_ci
+          MYSQL_ROOT_PASSWORD: ci-test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-test-password --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check migration rules
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          bash scripts/tests/test_check_migrations.sh
+          bash scripts/check-migrations.sh --all
+          if [[ -n "$BASE_REF" && ! "$BASE_REF" =~ ^0+$ ]]; then
+            # PR checkout is the merge commit, so target-branch migrations remain in HEAD.
+            bash scripts/check-migrations.sh --base "$BASE_REF"
+          fi
+      - name: Test project initializer
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Verify all modules with H2
+        run: mvn -B -ntp clean verify
+      - name: Verify migrations with MySQL 8
+        env:
+          JAVA_ADMIN_STARTER_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/java_admin_starter_ci?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+          JAVA_ADMIN_STARTER_DATASOURCE_USERNAME: root
+          JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD: ci-test-password
+        run: mvn -B -ntp -pl boot -am -Dtest=FlywaySmokeTests test
