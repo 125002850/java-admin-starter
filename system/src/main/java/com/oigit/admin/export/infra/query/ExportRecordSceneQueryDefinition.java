@@ -2,15 +2,12 @@ package com.oigit.admin.export.infra.query;
 
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.oigit.admin.core.query.ast.QueryOperator;
-import com.oigit.admin.core.query.ast.SortSpec;
-import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
 import com.oigit.admin.export.enums.ExportRecordStatus;
 import com.oigit.admin.export.infra.persistence.entity.ExportRecordEntity;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -116,8 +113,4 @@ public class ExportRecordSceneQueryDefinition implements SceneQueryDefinition<Ex
         };
     }
 
-    @Override
-    public List<SortSpec> defaultSorts() {
-        return List.of(new SortSpec("createTime", SortItemDTO.SortDirection.DESC));
-    }
 }

@@ -16,6 +16,7 @@ import com.oigit.admin.core.query.ast.SortSpec;
 import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.exception.DynamicQueryErrorCode;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
+import com.oigit.admin.core.query.scene.SceneQuerySorts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -187,6 +188,14 @@ public class MybatisPlusQueryExecutor {
             applyEnumLeaf(wrapper, definition.enumFields().get(fieldKey), operator, leaf.getTypedValue());
             return;
         }
+        if (definition.booleanFields().containsKey(fieldKey)) {
+            applyBooleanLeaf(wrapper, definition.booleanFields().get(fieldKey), operator, leaf.getTypedValue());
+            return;
+        }
+        if (definition.numberFields().containsKey(fieldKey)) {
+            applyNumberLeaf(wrapper, definition.numberFields().get(fieldKey), operator, leaf.getTypedValue());
+            return;
+        }
         throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_NODE);
     }
 
@@ -198,10 +207,13 @@ public class MybatisPlusQueryExecutor {
     ) {
         switch (operator) {
             case EQ -> wrapper.eq(field, typedValue);
+            case NE -> wrapper.ne(field, typedValue);
             case CONTAINS -> wrapper.like(field, typedValue);
+            case NOT_CONTAINS -> wrapper.notLike(field, typedValue);
             case STARTS_WITH -> wrapper.likeRight(field, typedValue);
             case ENDS_WITH -> wrapper.likeLeft(field, typedValue);
             case IN -> wrapper.in(field, castList(typedValue));
+            case NOT_IN -> wrapper.notIn(field, castList(typedValue));
             case IS_NULL -> wrapper.isNull(field);
             case IS_NOT_NULL -> wrapper.isNotNull(field);
             default -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
@@ -215,6 +227,8 @@ public class MybatisPlusQueryExecutor {
         Object typedValue
     ) {
         switch (operator) {
+            case EQ -> wrapper.eq(field, typedValue);
+            case NE -> wrapper.ne(field, typedValue);
             case GT -> wrapper.gt(field, typedValue);
             case GTE -> wrapper.ge(field, typedValue);
             case LT -> wrapper.lt(field, typedValue);
@@ -237,7 +251,47 @@ public class MybatisPlusQueryExecutor {
     ) {
         switch (operator) {
             case EQ -> wrapper.eq(field, typedValue);
+            case NE -> wrapper.ne(field, typedValue);
             case IN -> wrapper.in(field, castList(typedValue));
+            case NOT_IN -> wrapper.notIn(field, castList(typedValue));
+            case IS_NULL -> wrapper.isNull(field);
+            case IS_NOT_NULL -> wrapper.isNotNull(field);
+            default -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
+        }
+    }
+
+    private <T> void applyBooleanLeaf(
+        LambdaQueryWrapper<T> wrapper,
+        SFunction<T, Boolean> field,
+        QueryOperator operator,
+        Object typedValue
+    ) {
+        switch (operator) {
+            case EQ -> wrapper.eq(field, typedValue);
+            case NE -> wrapper.ne(field, typedValue);
+            case IS_NULL -> wrapper.isNull(field);
+            case IS_NOT_NULL -> wrapper.isNotNull(field);
+            default -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
+        }
+    }
+
+    private <T> void applyNumberLeaf(
+        LambdaQueryWrapper<T> wrapper,
+        SFunction<T, ? extends Number> field,
+        QueryOperator operator,
+        Object typedValue
+    ) {
+        switch (operator) {
+            case EQ -> wrapper.eq(field, typedValue);
+            case NE -> wrapper.ne(field, typedValue);
+            case GT -> wrapper.gt(field, typedValue);
+            case GTE -> wrapper.ge(field, typedValue);
+            case LT -> wrapper.lt(field, typedValue);
+            case LTE -> wrapper.le(field, typedValue);
+            case BETWEEN -> {
+                List<?> values = castList(typedValue);
+                wrapper.between(field, values.get(0), values.get(1));
+            }
             case IS_NULL -> wrapper.isNull(field);
             case IS_NOT_NULL -> wrapper.isNotNull(field);
             default -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
@@ -252,10 +306,11 @@ public class MybatisPlusQueryExecutor {
         List<SortSpec> sorts = (explicitSorts == null || explicitSorts.isEmpty())
             ? definition.defaultSorts()
             : explicitSorts;
+        Map<String, SFunction<T, ?>> sortFields = definition.sortFields();
+        sorts = SceneQuerySorts.appendIdDescIfAbsent(sorts, sortFields.keySet());
         if (sorts == null || sorts.isEmpty()) {
             return;
         }
-        Map<String, SFunction<T, ?>> sortFields = definition.sortFields();
         for (SortSpec sort : sorts) {
             SFunction<T, ?> field = sortFields.get(sort.getFieldKey());
             if (field == null) {

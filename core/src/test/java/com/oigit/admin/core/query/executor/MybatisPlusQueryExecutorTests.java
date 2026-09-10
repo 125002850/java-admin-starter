@@ -57,7 +57,7 @@ class MybatisPlusQueryExecutorTests {
         queryAst.setRoot(and(
             leaf("NAME", QueryOperator.CONTAINS, "status"),
             leaf("STATUS", QueryOperator.EQ, 2),
-            leaf("CREATE_TIME", QueryOperator.BETWEEN, List.of(
+            leaf("createTime", QueryOperator.BETWEEN, List.of(
                 LocalDateTime.of(2026, 6, 1, 0, 0, 0),
                 LocalDateTime.of(2026, 6, 30, 23, 59, 59)
             ))
@@ -75,7 +75,7 @@ class MybatisPlusQueryExecutorTests {
             .contains("name")
             .contains("status")
             .contains("create_time")
-            .contains("ORDER BY id ASC");
+            .contains("ORDER BY create_time DESC,id DESC");
         assertThat(wrapperCaptor.getValue().getParamNameValuePairs().values())
             .contains("%status%", 2);
     }
@@ -87,14 +87,14 @@ class MybatisPlusQueryExecutorTests {
         when(mapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
         QueryAst queryAst = new QueryAst();
-        queryAst.setSorts(List.of(new SortSpec("CREATE_TIME", SortItemDTO.SortDirection.DESC)));
+        queryAst.setSorts(List.of(new SortSpec("createTime", SortItemDTO.SortDirection.DESC)));
         queryAst.setRoot(leaf("NAME", QueryOperator.STARTS_WITH, "sys"));
 
         executor.selectList(mapper, queryAst, sceneDefinition());
 
         ArgumentCaptor<LambdaQueryWrapper<SampleEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(mapper).selectList(wrapperCaptor.capture());
-        assertThat(wrapperCaptor.getValue().getSqlSegment()).contains("ORDER BY create_time DESC");
+        assertThat(wrapperCaptor.getValue().getSqlSegment()).contains("ORDER BY create_time DESC,id DESC");
     }
 
     @Test
@@ -185,7 +185,7 @@ class MybatisPlusQueryExecutorTests {
 
             @Override
             public Map<String, SFunction<SampleEntity, LocalDateTime>> dateTimeFields() {
-                return Map.of("CREATE_TIME", SampleEntity::getCreateTime);
+                return Map.of("createTime", SampleEntity::getCreateTime);
             }
 
             @Override
@@ -196,8 +196,8 @@ class MybatisPlusQueryExecutorTests {
             @Override
             public Map<String, SFunction<SampleEntity, ?>> sortFields() {
                 return Map.of(
-                    "ID", SampleEntity::getId,
-                    "CREATE_TIME", SampleEntity::getCreateTime
+                    "id", SampleEntity::getId,
+                    "createTime", SampleEntity::getCreateTime
                 );
             }
 
@@ -219,7 +219,7 @@ class MybatisPlusQueryExecutorTests {
                         QueryOperator.IS_NULL,
                         QueryOperator.IS_NOT_NULL
                     );
-                    case "CREATE_TIME" -> Set.of(
+                    case "createTime" -> Set.of(
                         QueryOperator.GT,
                         QueryOperator.GTE,
                         QueryOperator.LT,
@@ -232,10 +232,6 @@ class MybatisPlusQueryExecutorTests {
                 };
             }
 
-            @Override
-            public List<SortSpec> defaultSorts() {
-                return List.of(new SortSpec("ID", SortItemDTO.SortDirection.ASC));
-            }
         };
     }
 
