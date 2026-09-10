@@ -81,3 +81,7 @@ mvn compile
 - 说明实际运行过的命令。
 - 说明失败命令的根因和当前状态。
 - 不要把未运行的验证描述为通过。
+
+## 生产配置来源门禁
+
+prod/production 启动时，EnvironmentPostProcessor 在创建数据源之前验证 datasource url/username/password 有非空外部来源；禁止同时启用 dev/development。classpath 默认值与镜像内 /app/application.yml 不视为外部覆盖，环境占位符必须显式赋值。报错只输出配置键，不输出原始值；开发/测试不受此门禁影响。规则测试位于 core 的 ProductionConfigurationGuardTests，并验证 spring.factories 启动注册。

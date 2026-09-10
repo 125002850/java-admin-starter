@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.oigit.admin.core.config.ProductionConfigurationGuardEnvironmentPostProcessor
