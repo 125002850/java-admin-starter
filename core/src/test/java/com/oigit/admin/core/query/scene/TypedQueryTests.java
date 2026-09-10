@@ -79,6 +79,24 @@ class TypedQueryTests {
         }
     }
 
+    @Test
+    void negativeOperatorsKeepTheSameComplexityAndCollectionLimits() {
+        var scorer = new com.oigit.admin.core.query.support.QueryComplexityScorer();
+        var guard = new com.oigit.admin.core.query.support.DynamicQueryGuard(scorer);
+        var leaf = new ConditionLeafAst();
+        leaf.setFieldKey("amount");
+        leaf.setTypedValue(java.util.Collections.nCopies(40, 1));
+        leaf.setOperator(QueryOperator.IN);
+        int positiveScore = scorer.score(leaf);
+        leaf.setOperator(QueryOperator.NOT_IN);
+        assertThat(scorer.score(leaf)).isEqualTo(positiveScore);
+        leaf.setTypedValue(java.util.Collections.nCopies(
+                com.oigit.admin.core.query.validation.DynamicQueryLimits.MAX_IN_SIZE + 1, 1));
+        var ast = new QueryAst();
+        ast.setRoot(leaf);
+        assertThatThrownBy(() -> guard.validate(ast, Integer.MAX_VALUE)).isInstanceOf(BizException.class);
+    }
+
     static class Row {
         @TableId private Long id;
         private BigDecimal amount;
