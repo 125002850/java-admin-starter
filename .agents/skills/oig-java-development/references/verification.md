@@ -65,3 +65,7 @@ mvn -pl boot -am "-Dtest=FlywaySmokeTests" test
 - 记录实际命令、目标模块、测试数量、失败/跳过数量和数据库类型；指定测试未运行时不能报告通过。
 - 干净 checkout 复验应包含本次最终改动，并使用同一组相关检查，避免脏工作区或增量产物掩盖问题。
 - 外部服务、数据库或凭据不可用时，说明具体阻塞和已经完成的本地检查，不把未运行部分描述为通过。
+
+## 生产配置来源门禁
+
+prod/production 启动时，EnvironmentPostProcessor 在创建数据源之前验证 datasource url/username/password 有非空外部来源；禁止同时启用 dev/development。classpath 默认值与镜像内 /app/application.yml 不视为外部覆盖，环境占位符必须显式赋值。报错只输出配置键，不输出原始值；开发/测试不受此门禁影响。规则测试位于 core 的 ProductionConfigurationGuardTests，并验证 spring.factories 启动注册。
