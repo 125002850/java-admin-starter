@@ -32,13 +32,13 @@ public class QueryComplexityScorer {
 
     private int scoreLeaf(ConditionLeafAst leaf) {
         int score = 1;
-        if (leaf.getOperator() == QueryOperator.CONTAINS || leaf.getOperator() == QueryOperator.ENDS_WITH) {
+        if (leaf.getOperator() == QueryOperator.CONTAINS || leaf.getOperator() == QueryOperator.NOT_CONTAINS || leaf.getOperator() == QueryOperator.ENDS_WITH) {
             score += 2;
         }
         if (leaf.getOperator() == QueryOperator.BETWEEN) {
             score += 1;
         }
-        if (leaf.getOperator() == QueryOperator.IN && leaf.getTypedValue() instanceof List<?> values) {
+        if ((leaf.getOperator() == QueryOperator.IN || leaf.getOperator() == QueryOperator.NOT_IN) && leaf.getTypedValue() instanceof List<?> values) {
             score += 1 + (values.size() / 20);
         }
         return score;
