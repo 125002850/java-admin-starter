@@ -147,3 +147,6 @@ private EnableStatusEnum status;
 
 Domain Model 与 Entity 在 Infra Repository 中转换，App/Domain 不得接触持久化 Entity。禁止提前引入 `VO`、`BO`、`DO`、`Param`、`Form`、`Command` 等多套近义对象。
 `EnumVO` 不再用于业务枚举响应；新增接口不得恢复枚举对象序列化。
+
+- EnumModelConverter 同时处理 Class 与 Jackson JavaType；BaseEnum 仍输出 string/code 和 x-dict-type。getCode()/getLabel() 字符串枚举可输出 x-enum-labels；其 JSON 编码仍由枚举自身的 JsonValue 声明保证。
+- DTO 枚举校准扫描 com.oigit.admin 下 ReqDTO/RspDTO（包括新业务包和显式 Schema 名称），保留 nullable、description 等字段元数据。禁止恢复 EnumVO 对象响应。

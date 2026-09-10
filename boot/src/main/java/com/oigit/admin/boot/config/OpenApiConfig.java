@@ -32,14 +32,7 @@ import java.util.regex.Pattern;
 public class OpenApiConfig {
 
     private static final String CONDITION_PROPERTY = "condition";
-    private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of(
-        "com.oigit.admin.core",
-        "com.oigit.admin.iam.dto",
-        "com.oigit.admin.file.dto",
-        "com.oigit.admin.dict.dto.req",
-        "com.oigit.admin.dict.dto.rsp",
-        "com.oigit.admin.export.dto"
-    );
+    private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of("com.oigit.admin");
 
     private static final List<DynamicQuerySceneSchema> DYNAMIC_QUERY_SCENE_SCHEMAS = List.of(
         new DynamicQuerySceneSchema(
@@ -114,7 +107,7 @@ public class OpenApiConfig {
 
     private static Map<String, Class<?>> scanOpenApiDtoClasses(Set<String> schemaNames) {
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
-        scanner.addIncludeFilter(new RegexPatternTypeFilter(Pattern.compile(".*")));
+        scanner.addIncludeFilter(new RegexPatternTypeFilter(Pattern.compile(".*(?:ReqDTO|RspDTO)$")));
 
         Map<String, Class<?>> classes = new LinkedHashMap<>();
         Set<String> ambiguousSchemaNames = new LinkedHashSet<>();
@@ -168,9 +161,6 @@ public class OpenApiConfig {
 
     private static void rewriteBaseEnumProperties(Schema<?> schema, String schemaName, Class<?> schemaClass) {
         if (schema == null) {
-            return;
-        }
-        if (!schemaName.endsWith("ReqDTO") && !schemaName.endsWith("RspDTO")) {
             return;
         }
         getAllFields(schemaClass).forEach(field -> {
