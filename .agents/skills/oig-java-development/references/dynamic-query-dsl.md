@@ -192,3 +192,11 @@ new DynamicQuerySceneSchema(
 | 3000012 | 条件节点数量超限 |
 | 3000013 | 查询复杂度超限 |
 | 3000014 | 操作符不支持 |
+
+
+## 类型与稳定排序增量
+
+- 可组合条件新增 `BooleanConditionDTO`（EQ/NE/IS_NULL/IS_NOT_NULL）与 `NumberConditionDTO`（EQ/NE/GT/GTE/LT/LTE/BETWEEN/IS_NULL/IS_NOT_NULL）。数值使用 BigDecimal；BETWEEN 必须有完整且顺序合法的起止值，false 是合法布尔值。
+- 场景按需注册 booleanFields()/numberFields()，通过现有 DTO → AST → Guard → Executor 链路绑定参数。新增场景的多态映射和 OpenAPI 注册须同步包含使用的条件类型；现有 HTTP 请求不自动新增字段。
+- 普通场景支持 createTime/id 排序时默认采用 createTime DESC, id DESC；显式排序或业务默认排序缺少 id 时追加 id DESC，已有 id 方向保留。字典项 sortOrder ASC, id ASC 等业务顺序保持不变。
+- 前端不重复指定通用默认排序；确有业务含义时使用 defaultRequestSort。

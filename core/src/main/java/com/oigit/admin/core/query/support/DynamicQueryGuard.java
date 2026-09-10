@@ -44,7 +44,7 @@ public class DynamicQueryGuard {
             return;
         }
         if (node instanceof ConditionLeafAst leaf) {
-            if (leaf.getOperator() == QueryOperator.IN && leaf.getTypedValue() instanceof List<?> values
+            if ((leaf.getOperator() == QueryOperator.IN || leaf.getOperator() == QueryOperator.NOT_IN) && leaf.getTypedValue() instanceof List<?> values
                 && values.size() > DynamicQueryLimits.MAX_IN_SIZE) {
                 throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_IN_VALUE_TOO_LARGE);
             }

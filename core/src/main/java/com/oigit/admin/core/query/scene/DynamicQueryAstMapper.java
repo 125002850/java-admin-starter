@@ -10,9 +10,11 @@ import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.ast.SortSpec;
 import com.oigit.admin.core.query.dto.AbstractConditionNodeDTO;
 import com.oigit.admin.core.query.dto.BasePagedDynamicQueryReqDTO;
+import com.oigit.admin.core.query.dto.BooleanConditionDTO;
 import com.oigit.admin.core.query.dto.ConditionGroupDTO;
 import com.oigit.admin.core.query.dto.DateTimeConditionDTO;
 import com.oigit.admin.core.query.dto.EnumConditionDTO;
+import com.oigit.admin.core.query.dto.NumberConditionDTO;
 import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.dto.TextConditionDTO;
 import com.oigit.admin.core.query.exception.DynamicQueryErrorCode;
@@ -61,6 +63,12 @@ public final class DynamicQueryAstMapper {
         }
         if (node instanceof EnumConditionDTO<?, ?> enumCondition) {
             return toEnumLeaf(enumCondition);
+        }
+        if (node instanceof BooleanConditionDTO<?> booleanCondition) {
+            return toBooleanLeaf(booleanCondition);
+        }
+        if (node instanceof NumberConditionDTO<?> numberCondition) {
+            return toNumberLeaf(numberCondition);
         }
         throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_NODE);
     }
@@ -121,6 +129,45 @@ public final class DynamicQueryAstMapper {
             case IN -> enumCondition.getValues();
             case IS_NULL, IS_NOT_NULL -> null;
             default -> enumCondition.getValue();
+        });
+        return leafAst;
+    }
+
+    private static ConditionLeafAst toBooleanLeaf(BooleanConditionDTO<?> booleanCondition) {
+        ConditionLeafAst leafAst = new ConditionLeafAst();
+        leafAst.setFieldKey(booleanCondition.getField().name());
+        leafAst.setOperator(switch (booleanCondition.getOp()) {
+            case EQ -> QueryOperator.EQ;
+            case NE -> QueryOperator.NE;
+            case IS_NULL -> QueryOperator.IS_NULL;
+            case IS_NOT_NULL -> QueryOperator.IS_NOT_NULL;
+        });
+        leafAst.setTypedValue(
+                booleanCondition.getOp() == BooleanConditionDTO.BooleanOperator.EQ
+                        || booleanCondition.getOp() == BooleanConditionDTO.BooleanOperator.NE
+                        ? booleanCondition.getValue()
+                        : null);
+        return leafAst;
+    }
+
+    private static ConditionLeafAst toNumberLeaf(NumberConditionDTO<?> numberCondition) {
+        ConditionLeafAst leafAst = new ConditionLeafAst();
+        leafAst.setFieldKey(numberCondition.getField().name());
+        leafAst.setOperator(switch (numberCondition.getOp()) {
+            case EQ -> QueryOperator.EQ;
+            case NE -> QueryOperator.NE;
+            case GT -> QueryOperator.GT;
+            case GTE -> QueryOperator.GTE;
+            case LT -> QueryOperator.LT;
+            case LTE -> QueryOperator.LTE;
+            case BETWEEN -> QueryOperator.BETWEEN;
+            case IS_NULL -> QueryOperator.IS_NULL;
+            case IS_NOT_NULL -> QueryOperator.IS_NOT_NULL;
+        });
+        leafAst.setTypedValue(switch (numberCondition.getOp()) {
+            case BETWEEN -> List.of(numberCondition.getStart(), numberCondition.getEnd());
+            case IS_NULL, IS_NOT_NULL -> null;
+            default -> numberCondition.getValue();
         });
         return leafAst;
     }

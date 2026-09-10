@@ -71,10 +71,13 @@ public class DynamicQuerySummaryRenderer {
     private String operatorLabel(QueryOperator operator) {
         return switch (operator) {
             case EQ -> "等于";
+            case NE -> "不等于";
             case CONTAINS -> "包含";
+            case NOT_CONTAINS -> "不包含";
             case STARTS_WITH -> "开头为";
             case ENDS_WITH -> "结尾为";
             case IN -> "属于";
+            case NOT_IN -> "不属于";
             case IS_NULL -> "为空";
             case IS_NOT_NULL -> "不为空";
             case GT -> "大于";
