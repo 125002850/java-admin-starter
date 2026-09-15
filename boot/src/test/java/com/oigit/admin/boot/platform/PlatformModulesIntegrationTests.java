@@ -90,6 +90,11 @@ class PlatformModulesIntegrationTests {
         }
     }
 
+    @Test void moduleMenusBelongToTheSystemManagementDirectory() {
+        var menus = jdbc.queryForList("select child.menu_code from sys_menu child join sys_menu parent on child.parent_id=parent.id where parent.menu_code='system_management' and child.menu_code in ('operation-audit','schedule-center','work-calendar') and child.deleted=0", String.class);
+        assertThat(menus).containsExactlyInAnyOrder("operation-audit", "schedule-center", "work-calendar");
+    }
+
     @Test void newModulesRequireAuthentication() throws Exception {
         for (String path : List.of("/api/system/schedule/job/page", "/api/system/work-calendar/year/detail", "/api/system/operation-audit/page")) {
             mvc.perform(post(path).contentType(APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
