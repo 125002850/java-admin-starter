@@ -1,5 +1,7 @@
 {
   "java.server.launchMode": "Standard",
   "java.import.maven.enabled": true,
-  "java.configuration.updateBuildConfiguration": "automatic"
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.autobuild.enabled": false,
+  "java.debug.settings.onBuildFailureProceed": false
 }

@@ -27,7 +27,7 @@ class ValidationIntegrationTests {
                         .content("{}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.msg").value("content不能为空"));
+                .andExpect(jsonPath("$.msg").value("content：content不能为空"));
     }
 
     @Test
