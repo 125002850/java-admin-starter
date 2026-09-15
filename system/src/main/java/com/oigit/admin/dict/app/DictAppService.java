@@ -1,6 +1,7 @@
 package com.oigit.admin.dict.app;
 
 import com.oigit.admin.core.query.ast.QueryAst;
+import com.oigit.admin.dict.dto.req.GlobalDictItemListReqDTO;
 import com.oigit.admin.core.query.support.DynamicQueryGuard;
 import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.dict.app.query.GlobalDictItemSceneQueryMapper;
@@ -106,6 +107,12 @@ public class DictAppService {
         return types.stream()
                 .map(this::toGlobalTypeRsp)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<DictItemRspDTO> listAllGlobalItems(GlobalDictItemListReqDTO request) {
+        return globalDictItemRepository.listByTypeCodes(List.of(request.dictTypeCode())).stream()
+                .map(this::toDictItemRsp).toList();
     }
 
     @Transactional(readOnly = true)

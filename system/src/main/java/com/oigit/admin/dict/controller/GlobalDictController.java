@@ -4,6 +4,7 @@ import com.oigit.admin.core.web.PageResult;
 import com.oigit.admin.core.web.R;
 import com.oigit.admin.iam.annotation.RequiresPermission;
 import com.oigit.admin.dict.app.DictAppService;
+import com.oigit.admin.dict.dto.req.GlobalDictItemListReqDTO;
 import com.oigit.admin.dict.dto.req.GlobalDictItemCreateReqDTO;
 import com.oigit.admin.dict.dto.req.GlobalDictItemDeleteReqDTO;
 import com.oigit.admin.dict.dto.req.GlobalDictItemUpdateReqDTO;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@com.oigit.admin.core.audit.OperationAuditModule(code = "system.dict")
 @Validated
 @RestController
 @Tag(name = "全局字典", description = "平台级全局字典维护与查询相关接口")
@@ -48,6 +50,7 @@ public class GlobalDictController {
     }
 
     @Operation(summary = "新增全局字典类型", description = "新增平台级全局字典类型")
+    @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.CREATE)
     @PostMapping("/type/create")
     public R<Void> createGlobalType(@Valid @RequestBody GlobalDictTypeCreateReqDTO reqDTO) {
         dictAppService.createGlobalType(reqDTO);
@@ -55,6 +58,7 @@ public class GlobalDictController {
     }
 
     @Operation(summary = "修改全局字典类型", description = "修改平台级全局字典类型并同步字典项类型编码")
+    @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.UPDATE)
     @PostMapping("/type/update")
     public R<Void> updateGlobalType(@Valid @RequestBody GlobalDictTypeUpdateReqDTO reqDTO) {
         dictAppService.updateGlobalType(reqDTO);
@@ -62,6 +66,7 @@ public class GlobalDictController {
     }
 
     @Operation(summary = "删除全局字典类型", description = "删除平台级全局空字典类型")
+    @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.DELETE)
     @PostMapping("/type/delete")
     public R<Void> deleteGlobalType(@Valid @RequestBody GlobalDictTypeDeleteReqDTO reqDTO) {
         dictAppService.deleteGlobalType(reqDTO);
@@ -69,6 +74,7 @@ public class GlobalDictController {
     }
 
     @Operation(summary = "新增全局字典项", description = "新增平台级全局字典项")
+    @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.CREATE)
     @PostMapping("/item/create")
     public R<Void> createGlobalItem(@Valid @RequestBody GlobalDictItemCreateReqDTO reqDTO) {
         dictAppService.createGlobalItem(reqDTO);
@@ -76,6 +82,7 @@ public class GlobalDictController {
     }
 
     @Operation(summary = "修改全局字典项", description = "修改平台级全局字典项，可切换所属字典类型")
+    @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.UPDATE)
     @PostMapping("/item/update")
     public R<Void> updateGlobalItem(@Valid @RequestBody GlobalDictItemUpdateReqDTO reqDTO) {
         dictAppService.updateGlobalItem(reqDTO);
@@ -83,6 +90,7 @@ public class GlobalDictController {
     }
 
     @Operation(summary = "删除全局字典项", description = "批量删除平台级全局字典项，传入ID列表")
+    @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.DELETE)
     @PostMapping("/item/delete")
     public R<Void> deleteGlobalItem(@Valid @RequestBody GlobalDictItemDeleteReqDTO reqDTO) {
         dictAppService.deleteGlobalItem(reqDTO);
@@ -93,6 +101,13 @@ public class GlobalDictController {
     @PostMapping("/types/list-all")
     public R<List<GlobalDictTypeRspDTO>> listAllGlobalTypes(@Valid @RequestBody GlobalDictTypeListReqDTO reqDTO) {
         return R.ok(dictAppService.listAllGlobalTypes(reqDTO));
+    }
+
+    @Operation(operationId = "systemDictGlobalItemsListAll", summary = "按类型查询全部全局字典项",
+            description = "包含启用和停用项，按排序号、ID升序；类型不存在时返回空数组")
+    @PostMapping("/items/list-all")
+    public R<List<DictItemRspDTO>> listAllGlobalItems(@Valid @RequestBody GlobalDictItemListReqDTO request) {
+        return R.ok(dictAppService.listAllGlobalItems(request));
     }
 
     @Operation(summary = "按字典类型查询全局字典项", description = "根据全局字典类型编码分页查询平台级字典项列表")
