@@ -17,20 +17,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-final class HttpLogSanitizer {
+public final class HttpLogSanitizer {
 
     private static final String MASK = "***";
 
     private final ObjectMapper objectMapper;
     private final Set<String> sensitiveFields;
 
-    HttpLogSanitizer(ObjectMapper objectMapper, Set<String> sensitiveFields) {
+    public HttpLogSanitizer(ObjectMapper objectMapper, Set<String> sensitiveFields) {
         this.objectMapper = objectMapper;
         this.sensitiveFields = new LinkedHashSet<>();
         sensitiveFields.forEach(field -> this.sensitiveFields.add(normalizeFieldName(field)));
     }
 
-    String sanitizeQuery(String query) {
+    public String sanitizeQuery(String query) {
         if (!StringUtils.hasText(query)) {
             return "-";
         }
@@ -52,7 +52,7 @@ final class HttpLogSanitizer {
         return sanitized.toString();
     }
 
-    String sanitizeBody(byte[] body,
+    public String sanitizeBody(byte[] body,
                         String contentType,
                         String characterEncoding,
                         boolean enabled,
@@ -84,7 +84,7 @@ final class HttpLogSanitizer {
         return "<omitted: content-type=" + singleLine(mediaType.toString()) + ">";
     }
 
-    String singleLine(String value) {
+    public String singleLine(String value) {
         if (value == null) {
             return "-";
         }

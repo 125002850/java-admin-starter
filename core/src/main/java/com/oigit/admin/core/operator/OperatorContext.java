@@ -2,6 +2,8 @@ package com.oigit.admin.core.operator;
 
 public final class OperatorContext {
 
+    public static final String REQUEST_ATTRIBUTE_OPERATOR_ID = "platform.operatorId";
+
     private static final ThreadLocal<Long> OPERATOR_ID_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<String> OPERATOR_NAME_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<String> OPERATOR_PHONE_HOLDER = new ThreadLocal<>();

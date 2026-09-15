@@ -35,6 +35,11 @@ public class OpenApiConfig {
     private static final List<String> OPENAPI_DTO_SCAN_PACKAGES = List.of("com.oigit.admin");
 
     private static final List<DynamicQuerySceneSchema> DYNAMIC_QUERY_SCENE_SCHEMAS = List.of(
+        new DynamicQuerySceneSchema("OperationAuditLogDynamicPageReqDTO", "OperationAuditLogConditionNode",
+            orderedMappings("OperationAuditLogGroupCondition", "compose", "OperationAuditLogTextCondition", "text", "OperationAuditLogDateTimeCondition", "dateTime", "OperationAuditLogEnumCondition", "enum", "OperationAuditLogNumberCondition", "number")),
+        new DynamicQuerySceneSchema("ScheduleJobPageQueryReqDTO", "ScheduleJobConditionNode",
+            orderedMappings("ScheduleJobGroupCondition", "compose", "ScheduleJobTextCondition", "text", "ScheduleJobDateTimeCondition", "dateTime", "ScheduleJobEnumCondition", "enum")),
+
         new DynamicQuerySceneSchema(
             "GlobalDictTypeDynamicListReqDTO",
             "GlobalDictTypeConditionNode",

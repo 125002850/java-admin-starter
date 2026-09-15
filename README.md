@@ -203,6 +203,10 @@ python3 scripts/init_template_project.py \
 
 所有依赖版本统一锁定，禁止使用 `LATEST`、`RELEASE` 或动态范围。
 
+## 通用平台模块
+
+操作审计、调度中心和工作日历的接入、权限及运行边界见 [模块说明](docs/platform-modules.md)。
+
 ## 工程规范
 
 - 详细开发规范位于 `.agents/skills/oig-java-development/`。

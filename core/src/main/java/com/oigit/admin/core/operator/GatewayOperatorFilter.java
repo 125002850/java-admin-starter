@@ -88,6 +88,7 @@ public class GatewayOperatorFilter extends OncePerRequestFilter {
                 return;
             }
             OperatorContext.set(userId, userNameHeader, userPhoneHeader, realNameHeader);
+            request.setAttribute(OperatorContext.REQUEST_ATTRIBUTE_OPERATOR_ID, userId);
             submitCacheUserUpdate(userId, userNameHeader, userPhoneHeader, realNameHeader, userCodeHeader);
         }
 
