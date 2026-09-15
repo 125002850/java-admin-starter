@@ -213,7 +213,7 @@ class DynamicQueryContractIntegrationTests {
                                 """))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.msg").value("文本条件 value/values 不匹配操作符"));
+                .andExpect(jsonPath("$.msg").value("condition.payloadValid：文本条件 value/values 不匹配操作符"));
     }
 
     @Test
