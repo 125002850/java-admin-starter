@@ -76,6 +76,18 @@ class PlatformModulesIntegrationTests {
         assertThat(classified.path("effectiveDayKind").asText()).isEqualTo("public_holiday");
         assertThat(classified.path("basis").asText()).isEqualTo("published_snapshot");
         assertThat(classified.path("working").asBoolean()).isFalse();
+        var nextDraft = ok("/api/system/work-calendar/draft/save", Map.of("year", year,
+                "standardPeriods", List.of(Map.of("start", "10:00", "end", "17:00")), "dateOverrides", List.of()));
+        var versions = ok("/api/system/work-calendar/version/list", Map.of("year", year));
+        assertThat(versions.size()).isEqualTo(2);
+        assertThat(versions.get(0).path("status").asText()).isEqualTo("draft");
+        assertThat(versions.get(0).path("updatedAt").asText()).isNotBlank();
+        var history = ok("/api/system/work-calendar/version/detail", Map.of("year", year, "versionId", id));
+        assertThat(history.path("selectedVersion").path("versionId").asLong()).isEqualTo(id);
+        assertThat(history.path("standardPeriods").get(0).path("start").asText()).isEqualTo("09:00");
+        assertThat(history.path("draftVersion").path("versionId").asLong()).isEqualTo(nextDraft.path("draftVersion").path("versionId").asLong());
+        assertThat(call("/api/system/work-calendar/version/detail", Map.of("year", year - 1, "versionId", id)).path("code").asInt()).isEqualTo(404);
+
     }
 
     @Test void listAllDictionaryItemsDoesNotApplyPageLimit() throws Exception {

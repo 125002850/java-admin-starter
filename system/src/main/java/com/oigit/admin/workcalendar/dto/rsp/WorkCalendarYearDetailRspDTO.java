@@ -16,7 +16,8 @@ public record WorkCalendarYearDetailRspDTO(
         WorkCalendarVersionSummaryRspDTO draftVersion,
         List<WorkCalendarPeriodRspDTO> standardPeriods,
         List<WorkCalendarDateOverrideRspDTO> dateOverrides,
-        List<ResolvedCalendarDayRspDTO> resolvedDays
+        List<ResolvedCalendarDayRspDTO> resolvedDays,
+        @Schema(description = "当前查看的版本") WorkCalendarVersionSummaryRspDTO selectedVersion
 ) {
 
     public WorkCalendarYearDetailRspDTO {

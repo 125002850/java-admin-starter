@@ -77,6 +77,24 @@ public class WorkCalendarAppService {
         return toYearDetailRsp(workCalendarService.getYearDetails(year, view));
     }
 
+    @Transactional(readOnly = true)
+    public List<WorkCalendarVersionSummaryRspDTO> listVersions(int year) {
+        var versions = workCalendarService.listVersions(year);
+        Set<Long> ids = new HashSet<>();
+        versions.forEach(version -> {
+            if (version.getPublishedBy() != null) ids.add(version.getPublishedBy());
+            if (version.updatedBy() != null) ids.add(version.updatedBy());
+        });
+        var names = operatorUsernameResolver.resolveUsernames(ids);
+        return versions.stream().map(version -> toVersionSummary(version, names)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public WorkCalendarYearDetailRspDTO fetchVersionDetail(int year, Long versionId) {
+        var details = workCalendarService.getVersionDetails(year, versionId);
+        return toYearDetailRsp(details, workCalendarService.getVersion(year, versionId));
+    }
+
     @Transactional
     public WorkCalendarYearDetailRspDTO saveDraft(SaveWorkCalendarDraftReqDTO reqDTO) {
         CalendarYearDetails details = workCalendarService.saveDraft(
@@ -172,7 +190,13 @@ public class WorkCalendarAppService {
     }
 
     private WorkCalendarYearDetailRspDTO toYearDetailRsp(CalendarYearDetails details) {
+        return toYearDetailRsp(details, details.viewBasis() == com.oigit.admin.workcalendar.enums.ClassificationBasis.SAVED_DRAFT
+                ? details.draftVersion() : details.activeVersion());
+    }
+
+    private WorkCalendarYearDetailRspDTO toYearDetailRsp(CalendarYearDetails details, CalendarVersionSnapshot selected) {
         Set<Long> publisherIds = new HashSet<>();
+        collectPublisherId(selected, publisherIds);
         collectPublisherId(details.activeVersion(), publisherIds);
         collectPublisherId(details.draftVersion(), publisherIds);
         Map<Long, String> usernames = operatorUsernameResolver.resolveUsernames(publisherIds);
@@ -185,7 +209,8 @@ public class WorkCalendarAppService {
                 toVersionSummary(details.draftVersion(), usernames),
                 details.standardPeriods().stream().map(this::toRsp).toList(),
                 details.dateOverrides().stream().map(this::toRsp).toList(),
-                details.resolvedDays().stream().map(this::toRsp).toList()
+                details.resolvedDays().stream().map(this::toRsp).toList(),
+                toVersionSummary(selected, usernames)
         );
     }
 
@@ -196,7 +221,11 @@ public class WorkCalendarAppService {
         if (snapshot == null) {
             return null;
         }
-        var version = snapshot.version();
+        return toVersionSummary(snapshot.version(), usernames);
+    }
+
+    private WorkCalendarVersionSummaryRspDTO toVersionSummary(
+            com.oigit.admin.workcalendar.domain.model.CalendarVersion version, Map<Long, String> usernames) {
         return new WorkCalendarVersionSummaryRspDTO(
                 version.getId(),
                 version.getVersionNo(),
@@ -205,7 +234,10 @@ public class WorkCalendarAppService {
                 version.getContentHash(),
                 version.getPublishedBy(),
                 version.getPublishedBy() == null ? null : usernames.get(version.getPublishedBy()),
-                version.getPublishedAt()
+                version.getPublishedAt(),
+                version.updatedBy(),
+                version.updatedBy() == null ? null : usernames.get(version.updatedBy()),
+                version.updatedAt()
         );
     }
 
@@ -303,6 +335,7 @@ public class WorkCalendarAppService {
     }
 
     private void collectPublisherId(CalendarVersionSnapshot snapshot, Set<Long> publisherIds) {
+        if (snapshot != null && snapshot.version().updatedBy() != null) publisherIds.add(snapshot.version().updatedBy());
         if (snapshot != null && snapshot.version().getPublishedBy() != null) {
             publisherIds.add(snapshot.version().getPublishedBy());
         }

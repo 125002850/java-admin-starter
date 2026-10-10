@@ -115,7 +115,7 @@ final class WorkCalendarSnapshotStore {
         );
     }
 
-    private static com.oigit.admin.workcalendar.domain.model.CalendarVersion toVersion(WorkCalendarVersionEntity entity) {
-        return new com.oigit.admin.workcalendar.domain.model.CalendarVersion(entity.getId(), entity.getCalendarYear(), entity.getVersionNo(), entity.getStatus(), entity.getVersion(), entity.getContentHash(), entity.getPublishedBy(), entity.getPublishedAt());
+    static com.oigit.admin.workcalendar.domain.model.CalendarVersion toVersion(WorkCalendarVersionEntity entity) {
+        return new com.oigit.admin.workcalendar.domain.model.CalendarVersion(entity.getId(), entity.getCalendarYear(), entity.getVersionNo(), entity.getStatus(), entity.getVersion(), entity.getContentHash(), entity.getPublishedBy(), entity.getPublishedAt(), entity.getUpdateBy(), entity.getUpdateTime());
     }
 }

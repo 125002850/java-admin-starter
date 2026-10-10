@@ -16,6 +16,9 @@ public record WorkCalendarVersionSummaryRspDTO(
         String contentHash,
         Long publishedBy,
         String publishedByName,
-        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime publishedAt
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime publishedAt,
+        @Schema(description = "最后更新人 ID") Long updatedBy,
+        @Schema(description = "最后更新人名称") String updatedByName,
+        @Schema(description = "最后更新时间") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime updatedAt
 ) {
 }

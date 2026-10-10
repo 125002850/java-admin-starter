@@ -1,5 +1,6 @@
 package com.oigit.admin.workcalendar.domain.model;
-public record CalendarVersion(Long id, Integer calendarYear, Integer versionNo, com.oigit.admin.workcalendar.enums.WorkCalendarVersionStatus status, Integer version, String contentHash, Long publishedBy, java.time.LocalDateTime publishedAt) {
+public record CalendarVersion(Long id, Integer calendarYear, Integer versionNo, com.oigit.admin.workcalendar.enums.WorkCalendarVersionStatus status, Integer version, String contentHash, Long publishedBy, java.time.LocalDateTime publishedAt, Long updatedBy, java.time.LocalDateTime updatedAt) {
+public CalendarVersion(Long id, Integer calendarYear, Integer versionNo, com.oigit.admin.workcalendar.enums.WorkCalendarVersionStatus status, Integer version, String contentHash, Long publishedBy, java.time.LocalDateTime publishedAt) { this(id, calendarYear, versionNo, status, version, contentHash, publishedBy, publishedAt, null, null); }
 public Long getId() { return id; }
 public Integer getCalendarYear() { return calendarYear; }
 public Integer getVersionNo() { return versionNo; }

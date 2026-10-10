@@ -51,6 +51,20 @@ public class WorkCalendarController {
         return R.ok(appService.fetchYearDetail(reqDTO.year(), reqDTO.view()));
     }
 
+    @Operation(summary = "列出年度工作日历版本", operationId = "listWorkCalendarVersions")
+    @PostMapping("/version/list")
+    public R<java.util.List<com.oigit.admin.workcalendar.dto.rsp.WorkCalendarVersionSummaryRspDTO>> listVersions(
+            @Valid @RequestBody com.oigit.admin.workcalendar.dto.req.WorkCalendarVersionListReqDTO request) {
+        return R.ok(appService.listVersions(request.year()));
+    }
+
+    @Operation(summary = "查询工作日历历史版本", operationId = "fetchWorkCalendarVersionDetail")
+    @PostMapping("/version/detail")
+    public R<WorkCalendarYearDetailRspDTO> fetchVersionDetail(
+            @Valid @RequestBody com.oigit.admin.workcalendar.dto.req.WorkCalendarVersionDetailReqDTO request) {
+        return R.ok(appService.fetchVersionDetail(request.year(), request.versionId()));
+    }
+
     @Operation(summary = "保存工作日历草稿", operationId = "saveWorkCalendarDraft")
     @com.oigit.admin.core.audit.OperationAudit(action = com.oigit.admin.core.audit.OperationAuditAction.UPDATE)
     @PostMapping("/draft/save")

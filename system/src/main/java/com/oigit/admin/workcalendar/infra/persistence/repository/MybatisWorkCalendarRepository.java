@@ -65,6 +65,34 @@ public class MybatisWorkCalendarRepository implements com.oigit.admin.workcalend
         this.publicationPolicy = new WorkCalendarPublicationPolicy(ruleService, jsonCodec);
     }
 
+    public List<com.oigit.admin.workcalendar.domain.model.CalendarVersion> listVersions(int year) {
+        ruleService.validateYear(year);
+        return versionMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers.<WorkCalendarVersionEntity>lambdaQuery()
+                .eq(WorkCalendarVersionEntity::getCalendarYear, year)
+                .orderByDesc(WorkCalendarVersionEntity::getVersionNo))
+                .stream().map(WorkCalendarSnapshotStore::toVersion).toList();
+    }
+
+    public CalendarVersionSnapshot getVersion(int year, Long versionId) {
+        ruleService.validateYear(year);
+        WorkCalendarVersionEntity version = versionMapper.selectById(versionId);
+        if (version == null || !Objects.equals(version.getCalendarYear(), year)) {
+            throw new BizException(com.oigit.admin.core.exception.CommonErrorCode.NOT_FOUND);
+        }
+        return snapshotStore.loadSnapshot(version);
+    }
+
+    public CalendarYearDetails getVersionDetails(int year, Long versionId) {
+        CalendarVersionSnapshot display = getVersion(year, versionId);
+        CalendarYearDetails current = getYearDetails(year);
+        boolean published = display.version().getStatus() == WorkCalendarVersionStatus.PUBLISHED;
+        return new CalendarYearDetails(year,
+                published ? ClassificationBasis.PUBLISHED_SNAPSHOT : ClassificationBasis.SAVED_DRAFT,
+                published && current.activeVersion() != null && Objects.equals(current.activeVersion().version().getId(), versionId),
+                current.activeVersion(), current.draftVersion(), display.standardPeriods(), display.dateOverrides(),
+                ruleService.resolveYear(year, display.standardPeriods(), display.dateOverrides()));
+    }
+
     public CalendarYearDetails getYearDetails(int year) {
         return getYearDetails(year, null);
     }

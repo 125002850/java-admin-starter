@@ -20,6 +20,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 public interface WorkCalendarRepository {
+    List<com.oigit.admin.workcalendar.domain.model.CalendarVersion> listVersions(int year);
+    CalendarVersionSnapshot getVersion(int year, Long versionId);
+    CalendarYearDetails getVersionDetails(int year, Long versionId);
     CalendarYearDetails getYearDetails(int year);
     CalendarYearDetails getYearDetails(int year, WorkCalendarYearView view);
     CalendarYearDetails saveDraft(
