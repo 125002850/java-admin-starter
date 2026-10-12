@@ -50,6 +50,12 @@ public class GlobalDictItemSceneQueryDefinition implements SceneQueryDefinition<
     }
 
     @Override
+    public Map<String, String> fieldLabels() {
+        return Map.of("dictTypeCode", "字典类型编码", "dictItemCode", "字典项编码",
+                "dictItemName", "字典项名称", "createTime", "创建时间");
+    }
+
+    @Override
     public Set<QueryOperator> allowedOperators(String fieldKey) {
         return switch (fieldKey) {
             case "dictTypeCode", "dictItemCode", "dictItemName" -> Set.of(

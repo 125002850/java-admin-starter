@@ -200,3 +200,14 @@ new DynamicQuerySceneSchema(
 - 场景按需注册 booleanFields()/numberFields()，通过现有 DTO → AST → Guard → Executor 链路绑定参数。新增场景的多态映射和 OpenAPI 注册须同步包含使用的条件类型；现有 HTTP 请求不自动新增字段。
 - 普通场景支持 createTime/id 排序时默认采用 createTime DESC, id DESC；显式排序或业务默认排序缺少 id 时追加 id DESC，已有 id 方向保留。字典项 sortOrder ASC, id ASC 等业务顺序保持不变。
 - 前端不重复指定通用默认排序；确有业务含义时使用 defaultRequestSort。
+
+## 查询场景元数据与个人方案
+
+- `POST /api/system/query-scene/metadata` 无请求体，使用网关认证身份，返回全部 `sceneCode` 对应的 `fields` 和 `limits`。metadata 描述查询能力，业务查询的数据权限仍由原接口执行。
+- 字段从现有 `SceneQueryDefinition` 的 text/dateTime/enum/boolean/number/customFieldTypes 注册中生成，纯排序字段不返回；类型和操作符复用 `fieldType()`、`allowedOperators()`，标签使用 `fieldLabels()`、`valueLabels()`。新增场景需维护可读标签和枚举码值说明，避免前端重复配置。
+- metadata 的 `limits` 包含 `maxDepth`、`maxNodes`、`maxInSize`、`maxComplexityScore`。后端 guard 仍是执行时的最终校验，前端依照这些限制提前反馈。
+- `/api/system/query-scheme/list` 仅返回当前用户在指定场景的个人方案。create/update/delete/default/update 支持保存、重命名、覆盖、删除、设置或取消默认方案。个人方案按 `OperatorContext` 中的已认证用户隔离，不接受请求中的用户身份。
+- 方案 JSON 版本为 1，只保存 `quickConditions` 与可选 `advancedCondition`，不能保存页面业务范围、分页和排序。保存时验证场景白名单、字段类型、操作符、条件形状及 DSL 限制。
+- 每用户每场景最多 20 个未删除方案，名称在该范围内唯一；更新和删除携带 `version`，用户/场景锁串行化数量及默认方案变更。新增 Flyway 表 `sys_user_query_scheme`、`sys_user_query_scheme_lock`。
+- `queryscene`、`queryscheme` 使用模板的能力包结构；应用通过 `QuerySchemeRepository` 端口调用持久化实现。方案错误码使用未占用的 3012001–3012007，不与定时任务错误码混用。
+- 验证入口：`QuerySceneMetadataTests`、`QuerySchemeOpenApiTests`、`QuerySchemeContentValidatorTests`、`QuerySchemeIntegrationTests`，迁移同时执行独立 MySQL 8 的 `FlywaySmokeTests`。

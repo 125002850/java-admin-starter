@@ -72,6 +72,30 @@ public class OperationAuditLogSceneQueryDefinition implements SceneQueryDefiniti
     }
 
     @Override
+    public Map<String, String> fieldLabels() {
+        return Map.ofEntries(
+                Map.entry("moduleCode", "模块编码"), Map.entry("moduleName", "模块名称"),
+                Map.entry("description", "操作描述"), Map.entry("operatorName", "操作人"),
+                Map.entry("clientIp", "客户端 IP"), Map.entry("traceId", "追踪 ID"),
+                Map.entry("requestPath", "请求路径"), Map.entry("operationTime", "操作时间"),
+                Map.entry("action", "操作类型"), Map.entry("resultStatus", "操作结果"),
+                Map.entry("logId", "日志 ID"), Map.entry("operatorId", "操作人 ID"),
+                Map.entry("durationMs", "耗时（毫秒）"), Map.entry("httpStatus", "HTTP 状态码"),
+                Map.entry("resultCode", "业务状态码"));
+    }
+
+    @Override
+    public Map<String, Map<String, String>> valueLabels() {
+        return Map.of(
+                "action", java.util.Arrays.stream(com.oigit.admin.core.audit.OperationAuditAction.values())
+                        .collect(java.util.stream.Collectors.toMap(com.oigit.admin.core.audit.OperationAuditAction::getCode,
+                                com.oigit.admin.core.audit.OperationAuditAction::getDesc)),
+                "resultStatus", java.util.Arrays.stream(com.oigit.admin.core.audit.OperationAuditResultStatus.values())
+                        .collect(java.util.stream.Collectors.toMap(com.oigit.admin.core.audit.OperationAuditResultStatus::getCode,
+                                com.oigit.admin.core.audit.OperationAuditResultStatus::getDesc)));
+    }
+
+    @Override
     public Set<QueryOperator> allowedOperators(String fieldKey) {
         return SceneQueryDefinition.super.allowedOperators(fieldKey);
     }
