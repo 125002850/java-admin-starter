@@ -11,7 +11,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
     "com.oigit.admin.export.infra.persistence.mapper",
     "com.oigit.admin.operationaudit.infra.persistence.mapper",
     "com.oigit.admin.schedule.infra.persistence.mapper",
-    "com.oigit.admin.workcalendar.infra.persistence.mapper"
+    "com.oigit.admin.workcalendar.infra.persistence.mapper",
+    "com.oigit.admin.queryscheme.infra.persistence.mapper"
 })
 public class AdminBootApplication {
 
