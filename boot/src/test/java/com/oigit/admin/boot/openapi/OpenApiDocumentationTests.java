@@ -48,6 +48,8 @@ class OpenApiDocumentationTests {
             .andExpect(content().string(containsString("/api/file/storage/object/upload")))
             .andExpect(content().string(containsString("/api/file/storage/object/temp-url/batch-fetch")))
             .andExpect(content().string(containsString("/api/staff/list-all")))
+            .andExpect(content().string(containsString("/api/system/operation-audit/page")))
+            .andExpect(content().string(containsString("/api/system/schedule/job/page")))
             .andExpect(content().string(not(containsString("postloan"))))
             .andExpect(content().string(not(containsString("tb_track_"))));
     }
@@ -194,6 +196,8 @@ class OpenApiDocumentationTests {
                 .andExpect(content().string(not(containsString("/api/system/auth"))))
                 .andExpect(content().string(not(containsString("/api/system/tenant"))))
                 .andExpect(content().string(not(containsString("/api/system/user"))))
+                .andExpect(content().string(not(containsString("/api/system/work-calendar/"))))
+                .andExpect(content().string(not(containsString("WorkCalendar"))))
                 .andExpect(content().string(not(containsString("/api/framework/qiniu/"))))
                 .andExpect(content().string(not(containsString("/api/postloan/"))));
     }

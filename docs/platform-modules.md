@@ -1,10 +1,10 @@
 # 通用平台模块
 
-业务项目回灌的能力位于 `system` 的 `operationaudit`、`schedule`、`workcalendar` 包，沿用 Controller → App → Domain Repository → Infra 的调用边界。Flyway 增量迁移创建所需表和字典，不包含业务任务或业务数据。
+业务项目回灌的能力位于 `system` 的 `operationaudit`、`schedule` 包，沿用 Controller → App → Domain Repository → Infra 的调用边界。Flyway 增量迁移创建所需表和字典，不包含业务任务或业务数据。
 
 ## 操作审计
 
-在 Controller 上声明 `@OperationAuditModule(code = "...")` 与 `@Tag(name = "...")`，在变更接口上声明 `@OperationAudit(action = ...)` 与 `@Operation(summary = "...")` 即可接入。当前覆盖字典变更、调度任务变更及日历保存、导入、发布。
+在 Controller 上声明 `@OperationAuditModule(code = "...")` 与 `@Tag(name = "...")`，在变更接口上声明 `@OperationAudit(action = ...)` 与 `@Operation(summary = "...")` 即可接入。当前覆盖字典变更和调度任务变更。
 
 审计保存认证后的操作人快照、请求路径、耗时、状态及脱敏参数。复用 HTTP 日志脱敏规则，正文最多采集 8 KiB，不保存上传文件正文；审计使用独立事务记录业务失败，不影响主请求结果。身份与权限由可信 SSO 网关校验；应用保存网关操作人快照。默认记录网关对端 IP，可通过 ClientIpResolver 接入可信代理解析。
 
@@ -28,13 +28,11 @@ platform:
 - 当前调度器适用于单实例部署，没有分布式锁、集群一致性或补跑能力；多副本环境需先接入统一调度平台。源项目未实现的锁租约参数未暴露为模板功能。
 - 网关应配置管理权限 `system:schedule:manage`，菜单键为 `schedule-center`。
 
-## 工作日历
+## SSO 模板范围与历史兼容
 
-支持年度工作时段、特殊日期、调休、JSON 导入、草稿试算、发布差异预检及生效快照查询。时间语义固定为 `Asia/Shanghai`，年份范围为 2000–2099。JSON 导入最大 1 MiB，页面提供导入模板。
+SSO 模板不包含工作日历业务能力，不注册 `workcalendar` 能力包、Mapper 或 `/api/system/work-calendar/**` 接口，也不要求配置 `work-calendar` 菜单及 `system:calendar:manage` 权限。后续同步业务项目能力时应保持此边界。
 
-发布必须同时匹配草稿版本、乐观锁版本和预检内容 hash，防止覆盖他人的修改。已发布快照只读；修改另存草稿并重新发布。模板不预置任何年度法定节假日，需要维护者导入并发布。
-
-网关应配置管理权限 `system:calendar:manage`，菜单键为 `work-calendar`。
+历史迁移 `V20260915160820__add_platform_audit_schedule_calendar.sql` 曾同时引入审计、调度和工作日历。为保持 Flyway 校验与既有数据兼容，保留其原文以及 `sys_work_calendar_*` 表、`WORK_CALENDAR_*` 字典；新数据库执行历史迁移时仍会创建这些遗留对象，应用不再使用它们。已有部署升级后，原工作日历接口不再可用，应同步撤销前端入口和网关授权。
 
 ## 接入与裁剪
 

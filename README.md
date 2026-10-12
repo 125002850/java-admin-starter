@@ -205,7 +205,7 @@ python3 scripts/init_template_project.py \
 
 ## 通用平台模块
 
-操作审计、调度中心和工作日历的接入、权限及运行边界见 [模块说明](docs/platform-modules.md)。
+操作审计和调度中心的接入、权限及运行边界见 [模块说明](docs/platform-modules.md)。SSO 模板不包含工作日历业务能力；历史迁移中的日历表和字典保留以兼容既有数据库。
 
 ## 工程规范
 

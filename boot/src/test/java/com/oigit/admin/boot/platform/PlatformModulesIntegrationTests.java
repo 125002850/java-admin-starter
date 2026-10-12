@@ -3,7 +3,6 @@ package com.oigit.admin.boot.platform;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -12,7 +11,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import java.util.Map;
-import java.util.List;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -51,29 +49,6 @@ class PlatformModulesIntegrationTests {
             assertThat(log.get("result_status")).isEqualTo("success");
             assertThat(log.get("operator_id")).isNotNull();
         }).anySatisfy(log -> assertThat(log.get("result_status")).isEqualTo("failed"));
-    }
-
-    @Test void calendarPublishesOnlyThePrecheckedUnchangedDraft() throws Exception {
-        int year = 2098;
-        // The dedicated test year is not shared with other platform fixtures.
-        jdbc.update("delete from sys_work_calendar_date_override where calendar_version_id in (select id from sys_work_calendar_version where calendar_year = ?)", year);
-        jdbc.update("delete from sys_work_calendar_version where calendar_year = ?", year);
-        jdbc.update("delete from sys_work_calendar_year where calendar_year = ?", year);
-        var request = Map.of("year", year, "standardPeriods", List.of(Map.of("start", "09:00", "end", "18:00")),
-                "dateOverrides", List.of(Map.of("date", "2098-01-01", "type", "public_holiday", "name", "测试假日")));
-        var saved = ok("/api/system/work-calendar/draft/save", request);
-        var draft = saved.path("draftVersion");
-        long id = draft.path("versionId").asLong();
-        int version = draft.path("lockVersion").asInt();
-        assertThat(id).isPositive();
-        var prepared = ok("/api/system/work-calendar/publish/prepare", Map.of("draftVersionId", id, "expectedLockVersion", version));
-        assertThat(prepared.path("publishable").asBoolean()).isTrue();
-        assertThat(call("/api/system/work-calendar/publish", Map.of("draftVersionId", id, "expectedLockVersion", version + 1, "contentHash", prepared.path("contentHash").asText())).path("code").asInt()).isNotEqualTo(200);
-        ok("/api/system/work-calendar/publish", Map.of("draftVersionId", id, "expectedLockVersion", version, "contentHash", prepared.path("contentHash").asText()));
-        var classified = ok("/api/system/work-calendar/classify", Map.of("localDateTime", "2098-01-01 10:00:00"));
-        assertThat(classified.path("effectiveDayKind").asText()).isEqualTo("public_holiday");
-        assertThat(classified.path("basis").asText()).isEqualTo("published_snapshot");
-        assertThat(classified.path("working").asBoolean()).isFalse();
     }
 
     @Test void listAllDictionaryItemsDoesNotApplyPageLimit() throws Exception {
