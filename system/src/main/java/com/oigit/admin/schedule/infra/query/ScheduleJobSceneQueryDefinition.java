@@ -70,6 +70,13 @@ public class ScheduleJobSceneQueryDefinition implements SceneQueryDefinition<Sch
     }
 
     @Override
+    public Map<String, Map<String, String>> valueLabels() {
+        return Map.of("status", java.util.Arrays.stream(com.oigit.admin.core.enums.EnableStatusEnum.values())
+                .collect(java.util.stream.Collectors.toMap(com.oigit.admin.core.enums.EnableStatusEnum::getCode,
+                        com.oigit.admin.core.enums.EnableStatusEnum::getDesc)));
+    }
+
+    @Override
     public Set<QueryOperator> allowedOperators(String fieldKey) {
         return switch (fieldKey) {
             case "jobName", "jobCode", "invokeRoute", "groupName" -> Set.of(
