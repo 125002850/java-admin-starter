@@ -116,6 +116,21 @@ class DynamicQueryDtoValidationTests {
         assertThat(violations).isNotEmpty();
     }
 
+    @Test
+    void ordinaryAndDynamicPagesShareTheSameBoundary() {
+        for (var request : List.of(new com.oigit.admin.core.web.PageReqDTO(), new SamplePagedReqDTO())) {
+            request.setPageSize(2000);
+            assertThat(VALIDATOR.validate(request)).isEmpty();
+            for (long size : new long[] {0, 2001}) {
+                request.setPageSize(size);
+                assertThat(VALIDATOR.validate(request)).isNotEmpty();
+                assertThat(org.assertj.core.api.Assertions.catchThrowable(() ->
+                        com.oigit.admin.core.query.support.DynamicQueryGuard.validatePage(1, size)))
+                        .isInstanceOf(com.oigit.admin.core.exception.BizException.class);
+            }
+        }
+    }
+
     private SampleSortItem sort(SortField field) {
         SampleSortItem sortItem = new SampleSortItem();
         sortItem.setField(field);

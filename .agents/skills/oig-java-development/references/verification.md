@@ -51,6 +51,7 @@ mvn -pl boot -am install -DskipTests
 
 - 涉及迁移资源、基线或结构契约时，确认当前 SQL 能从空库初始化，并执行 `FlywaySmokeTests`。
 - 至少在一套独立 MySQL 8 数据库验证，默认 H2 测试不能替代真实方言和初始化检查。
+- 优先运行 `scripts/testing/verify-flyway-mysql8.sh`：在临时源码副本、新建容器和空库中运行 `FlywaySmokeTests,ScheduleExecutionIntegrationTests`，核对成功迁移版本与源码一致。支持 `--ref <提交>`，可用 `FLYWAY_VERIFY_MYSQL_IMAGE` 指定 MySQL 8 镜像；日志保留在 `target/flyway-mysql-verify/`。脚本回归入口为 `python3 scripts/tests/test_verify_flyway_mysql8.py`。
 - 使用测试配置已有的 `JAVA_ADMIN_STARTER_DATASOURCE_URL`、`JAVA_ADMIN_STARTER_DATASOURCE_USERNAME`、`JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD` 连接该独立库，然后运行：
 
 ```bash

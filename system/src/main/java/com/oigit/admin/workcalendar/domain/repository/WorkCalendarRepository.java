@@ -43,6 +43,7 @@ public interface WorkCalendarRepository {
             Integer expectedLockVersion,
             LocalDateTime localDateTime
     );
+    TimeClassificationResult evaluateVersion(Long versionId, Integer expectedLockVersion, LocalDateTime localDateTime);
     TimeClassificationResult classify(LocalDateTime localDateTime);
     TimeClassificationResult classifyPublished(LocalDateTime localDateTime);
     Optional<PublishedCalendarYearDetails> findPublishedYearDetails(int year);

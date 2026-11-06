@@ -24,8 +24,8 @@ public class DynamicQueryGuard {
 
     public void validate(QueryAst queryAst, int maxComplexityScore) {
         Objects.requireNonNull(queryAst, "queryAst");
-        if (queryAst.getPageSize() != null && queryAst.getPageSize() > DynamicQueryLimits.MAX_PAGE_SIZE) {
-            throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_PAGE_SIZE_TOO_LARGE);
+        if (queryAst.getPageSize() != null) {
+            validatePage(queryAst.getPageNo() == null ? 1 : queryAst.getPageNo(), queryAst.getPageSize());
         }
         if (depth(queryAst.getRoot()) > DynamicQueryLimits.MAX_DEPTH) {
             throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_TREE_DEPTH_EXCEEDED);
@@ -36,6 +36,12 @@ public class DynamicQueryGuard {
         validateLeafPayload(queryAst.getRoot());
         if (scorer.score(queryAst.getRoot()) > maxComplexityScore) {
             throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_COMPLEXITY_EXCEEDED);
+        }
+    }
+
+    public static void validatePage(long pageNo, long pageSize) {
+        if (pageNo < 1 || pageSize < 1 || pageSize > DynamicQueryLimits.MAX_PAGE_SIZE) {
+            throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_PAGE_SIZE_TOO_LARGE);
         }
     }
 

@@ -30,7 +30,7 @@
 - 参数错误、未登录、无权限、资源不存在、限流使用公共 HTTP 语义码：`400 / 401 / 403 / 404 / 429`。
 - 模块私有业务码使用独立号段，例如当前 `system` 的字典与导出能力使用 `3001xxx`。
 - 业务异常统一使用 `BizException(ErrorCode)`。
-- `BizException` 只接受 `ErrorCode`，禁止业务代码散落裸错误码、裸失败文案。
+- 新业务调用 `BizException(ErrorCode)`，参数化文案在所属模块的命名错误工厂中用 `ErrorCodeDetail` 包装；异常保留基础错误码身份。历史 `(ErrorCode, String)` 构造器只为源代码兼容保留，禁止新增业务调用。
 
 ## 命名规范
 

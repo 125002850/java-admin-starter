@@ -139,6 +139,12 @@ public class WorkCalendarAppService {
     }
 
     @Transactional(readOnly = true)
+    public TimeClassificationRspDTO evaluateVersion(com.oigit.admin.workcalendar.dto.req.EvaluateWorkCalendarVersionReqDTO reqDTO) {
+        return toTimeClassificationRsp(workCalendarService.evaluateVersion(
+                reqDTO.versionId(), reqDTO.expectedLockVersion(), reqDTO.localDateTime()));
+    }
+
+    @Transactional(readOnly = true)
     public PrepareWorkCalendarPublicationRspDTO preparePublication(
             PrepareWorkCalendarPublicationReqDTO reqDTO
     ) {

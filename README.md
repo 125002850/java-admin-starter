@@ -372,3 +372,11 @@ bash scripts/tests/test_check_migrations.sh
 ```
 
 CI 配置位于 [.github/workflows/verify.yml](.github/workflows/verify.yml)，规则与测试对应关系见 [验证与完成标准](.agents/skills/oig-java-development/references/verification.md)。
+
+### 基础能力回灌（2026-11-06）
+
+- 普通和动态分页统一限制 `pageSize` 为 1–2000，默认条数不变。参数化业务提示通过模块命名工厂和 `ErrorCodeDetail` 保留基础错误码身份。
+- 调度任务执行前独立提交 `running` 记录，结束后更新同一行；分页批量返回 `latestExecution` 和耗时。进程异常终止时记录可能停留在 `running`，当前不自动判定或重跑。
+- 工作日历保留草稿试算接口，新增 `/api/system/work-calendar/version/evaluate`，校验版本 ID、锁版本与年份；只有当前生效发布版本返回权威结果。
+- 升级时先执行新增 Flyway 迁移并部署后端，再部署前端的调度展示和版本试算。
+- 隔离迁移验收：`scripts/testing/verify-flyway-mysql8.sh`，可用 `--ref <提交>` 验证指定 Git 版本。默认 `mysql:8.0`，可用 `FLYWAY_VERIFY_MYSQL_IMAGE` 覆盖；始终新建临时容器和空库，随机本机端口，退出只清理本次资源，日志保存在 `target/flyway-mysql-verify/`。

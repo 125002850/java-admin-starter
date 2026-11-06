@@ -153,7 +153,7 @@ class DynamicQueryContractIntegrationTests {
     }
 
     @Test
-    void oversizedPageSizeShouldReturnBizError() throws Exception {
+    void oversizedPageSizeShouldFailRequestValidation() throws Exception {
         mockMvc.perform(post("/api/mdm/export/my/page")
                         .header("Authorization", authorizationHeader())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,9 +163,9 @@ class DynamicQueryContractIntegrationTests {
                                    "pageSize": 2001
                                 }
                                 """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(3000010))
-                .andExpect(jsonPath("$.msg").value("动态查询分页大小超限"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("pageSize")));
     }
 
     @Test

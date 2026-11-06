@@ -65,6 +65,7 @@ class FlywaySmokeTests {
 
     @Test
     void flywayMigrationMatchesPlatformSchemaContract() throws IOException {
+        assertThat(tableIndexes("sys_schedule_job_execution_log")).contains("idx_sche_job_exec_log_latest");
         assertThat(tableExists("flyway_schema_history")).isTrue();
         var resources = new PathMatchingResourcePatternResolver()
                 .getResources("classpath*:db/migration/V*__*.sql");

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobExecutionLogMapper">
+    <select id="selectLatestByJobIds"
+            resultType="com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobExecutionLogEntity">
+        SELECT execution.*
+        FROM sys_schedule_job job
+        JOIN sys_schedule_job_execution_log execution ON execution.id = (
+            SELECT latest.id
+            FROM sys_schedule_job_execution_log latest
+            WHERE latest.job_id = job.id
+            ORDER BY latest.start_time DESC, latest.id DESC
+            LIMIT 1
+        )
+        WHERE job.deleted = 0
+          AND job.id IN
+        <foreach collection="jobIds" item="jobId" open="(" separator="," close=")">
+            #{jobId}
+        </foreach>
+    </select>
+</mapper>

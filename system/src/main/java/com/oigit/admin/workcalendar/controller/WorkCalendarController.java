@@ -103,6 +103,13 @@ public class WorkCalendarController {
         return R.ok(appService.evaluateDraft(reqDTO));
     }
 
+    @Operation(summary = "试算指定工作日历版本", operationId = "evaluateWorkCalendarVersion")
+    @PostMapping("/version/evaluate")
+    public R<TimeClassificationRspDTO> evaluateVersion(
+            @Valid @RequestBody com.oigit.admin.workcalendar.dto.req.EvaluateWorkCalendarVersionReqDTO reqDTO) {
+        return R.ok(appService.evaluateVersion(reqDTO));
+    }
+
     @Operation(summary = "预检工作日历发布", operationId = "prepareWorkCalendarPublication")
     @PostMapping("/publish/prepare")
     public R<PrepareWorkCalendarPublicationRspDTO> preparePublication(

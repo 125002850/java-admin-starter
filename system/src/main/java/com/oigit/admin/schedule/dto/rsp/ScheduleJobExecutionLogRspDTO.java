@@ -25,7 +25,7 @@ public class ScheduleJobExecutionLogRspDTO {
     @Schema(description = "结束时间")
     private LocalDateTime endTime;
 
-    @Schema(description = "执行状态：success-成功，failed-失败", example = "success")
+    @Schema(description = "执行状态：running-执行中，success-成功，failed-失败", allowableValues = {"running", "success", "failed"}, example = "success")
     private String status;
 
     @Schema(description = "错误信息")
@@ -33,6 +33,11 @@ public class ScheduleJobExecutionLogRspDTO {
 
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "执行耗时（毫秒），运行中为截至本次查询的时长")
+    private Long durationMillis;
+    public Long getDurationMillis() { return durationMillis; }
+    public void setDurationMillis(Long value) { durationMillis = value; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

@@ -16,6 +16,7 @@ final class IamQueryMapper {
 
     static StaffQuery toQuery(StaffPageReqDTO dto) {
         StaffQuery query = new StaffQuery();
+        com.oigit.admin.core.query.support.DynamicQueryGuard.validatePage(dto.getPageNo(), dto.getPageSize());
         query.pageNo = dto.getPageNo();
         query.pageSize = dto.getPageSize();
         query.keyword = dto.getKeyword();
@@ -33,6 +34,7 @@ final class IamQueryMapper {
 
     static RoleQuery toQuery(RolePageReqDTO dto) {
         RoleQuery query = new RoleQuery();
+        com.oigit.admin.core.query.support.DynamicQueryGuard.validatePage(dto.getPageNo(), dto.getPageSize());
         query.pageNo = dto.getPageNo();
         query.pageSize = dto.getPageSize();
         query.keyword = dto.keyword;
@@ -42,6 +44,7 @@ final class IamQueryMapper {
 
     static LoginLogQuery toQuery(LoginLogPageReqDTO dto) {
         LoginLogQuery query = new LoginLogQuery();
+        com.oigit.admin.core.query.support.DynamicQueryGuard.validatePage(dto.getPageNo(), dto.getPageSize());
         query.pageNo = dto.getPageNo();
         query.pageSize = dto.getPageSize();
         query.username = dto.username;
@@ -54,6 +57,7 @@ final class IamQueryMapper {
 
     static OperationLogQuery toQuery(OperationLogPageReqDTO dto) {
         OperationLogQuery query = new OperationLogQuery();
+        com.oigit.admin.core.query.support.DynamicQueryGuard.validatePage(dto.getPageNo(), dto.getPageSize());
         query.pageNo = dto.getPageNo();
         query.pageSize = dto.getPageSize();
         query.operatorId = dto.operatorId;

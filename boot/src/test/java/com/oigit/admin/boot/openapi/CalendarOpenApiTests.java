@@ -33,6 +33,10 @@ class CalendarOpenApiTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/system/work-calendar/version/list'].post.operationId").value("listWorkCalendarVersions"))
                 .andExpect(jsonPath("$.paths['/api/system/work-calendar/version/detail'].post.operationId").value("fetchWorkCalendarVersionDetail"))
+                .andExpect(jsonPath("$.paths['/api/system/work-calendar/version/evaluate'].post.operationId").value("evaluateWorkCalendarVersion"))
+                .andExpect(jsonPath("$.components.schemas.ScheduleJobRspDTO.properties.latestExecution.$ref").exists())
+                .andExpect(jsonPath("$.components.schemas.ScheduleJobExecutionLogRspDTO.properties.durationMillis").exists())
+                .andExpect(jsonPath("$.components.schemas.ScheduleJobExecutionLogRspDTO.properties.status.enum").value(hasItems("running", "success", "failed")))
                 .andExpect(jsonPath("$.components.schemas.WorkCalendarVersionSummaryRspDTO.properties.updatedByName").exists())
                 .andExpect(jsonPath("$.components.schemas.WorkCalendarVersionSummaryRspDTO.properties.updatedAt").exists())
                 .andReturn().getResponse().getContentAsByteArray();

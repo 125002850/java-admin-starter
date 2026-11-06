@@ -227,19 +227,46 @@ public class MybatisWorkCalendarRepository implements com.oigit.admin.workcalend
             LocalDateTime localDateTime
     ) {
         WorkCalendarVersionEntity draft = requireDraft(draftVersionId, expectedLockVersion);
-        if (localDateTime == null || localDateTime.getYear() != draft.getCalendarYear()) {
+        return evaluateSnapshot(draft, localDateTime, false);
+    }
+
+    public TimeClassificationResult evaluateVersion(
+            Long versionId,
+            Integer expectedLockVersion,
+            LocalDateTime localDateTime
+    ) {
+        WorkCalendarVersionEntity version = versionId == null ? null : versionMapper.selectById(versionId);
+        if (version == null) {
+            throw new BizException(com.oigit.admin.core.exception.CommonErrorCode.NOT_FOUND);
+        }
+        if (expectedLockVersion == null || !Objects.equals(version.getVersion(), expectedLockVersion)) {
+            throw new BizException(WorkCalendarErrorCode.WORK_CALENDAR_VERSION_CONFLICT);
+        }
+        WorkCalendarYearEntity year = snapshotStore.findYear(version.getCalendarYear());
+        boolean authoritative = version.getStatus() == WorkCalendarVersionStatus.PUBLISHED
+                && year != null && Objects.equals(year.getActiveVersionId(), versionId);
+        return evaluateSnapshot(version, localDateTime, authoritative);
+    }
+
+    private TimeClassificationResult evaluateSnapshot(
+            WorkCalendarVersionEntity version,
+            LocalDateTime localDateTime,
+            boolean authoritative
+    ) {
+        if (localDateTime == null || localDateTime.getYear() != version.getCalendarYear()) {
             throw new BizException(WorkCalendarErrorCode.WORK_CALENDAR_DATE_OVERRIDE_INVALID);
         }
-        CalendarVersionSnapshot snapshot = snapshotStore.loadSnapshot(draft);
+        CalendarVersionSnapshot snapshot = snapshotStore.loadSnapshot(version);
+        boolean draft = version.getStatus() == WorkCalendarVersionStatus.DRAFT;
         return ruleService.evaluate(
                 localDateTime,
                 snapshot.standardPeriods(),
                 snapshot.dateOverrides(),
-                false,
-                ClassificationBasis.SAVED_DRAFT,
-                HolidayStatus.CANDIDATE,
-                draft.getId(),
-                draft.getVersionNo()
+                authoritative,
+                draft ? ClassificationBasis.SAVED_DRAFT : ClassificationBasis.PUBLISHED_SNAPSHOT,
+                draft ? HolidayStatus.CANDIDATE : HolidayStatus.CONFIRMED,
+                version.getId(),
+                version.getVersionNo()
         );
     }
 

@@ -152,6 +152,8 @@ new DynamicQuerySceneSchema(
 - 禁止使用 `UPPER_SNAKE_CASE`。
 - `SceneQueryDefinition` map key、`allowedOperators` switch case、`defaultSorts` 的 `SortSpec` 必须同步保持一致。
 
+普通与动态分页共享 `PageReqDTO` 的 1–2000 条限制和默认值；内部分页入口复用 `DynamicQueryGuard.validatePage`。Web 参数越界沿用 HTTP 422 / 业务 code 400，内部调用越界抛动态查询业务错误。
+
 ## 防护限制
 
 | 限制项 | 值 | 错误码 |

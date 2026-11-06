@@ -68,8 +68,15 @@ public class ScheduleJobAppService {
         QueryAst queryAst = scheduleJobSceneQueryMapper.map(reqDTO);
         dynamicQueryGuard.validate(queryAst, scheduleJobService.maxQueryComplexityScore());
         ScheduleJobRepository.JobPage page = scheduleJobService.page(queryAst);
+        Map<Long, ScheduleJobExecutionLog> latest = scheduleJobService.latestExecutions(
+                page.records().stream().map(ScheduleJob::getId).toList());
         List<ScheduleJobRspDTO> records = page.records().stream()
-                .map(this::toRsp)
+                .map(entity -> {
+                    ScheduleJobRspDTO dto = toRsp(entity);
+                    ScheduleJobExecutionLog execution = latest.get(entity.getId());
+                    if (execution != null) dto.setLatestExecution(toExecutionLogRsp(execution));
+                    return dto;
+                })
                 .collect(Collectors.toList());
         return new PageResult<>(records, page.total());
     }
@@ -228,6 +235,10 @@ public class ScheduleJobAppService {
         dto.setJobName(entity.getJobName());
         dto.setStartTime(entity.getStartTime());
         dto.setEndTime(entity.getEndTime());
+        if (entity.getStartTime() != null) {
+            var until = entity.getEndTime() == null ? java.time.LocalDateTime.now() : entity.getEndTime();
+            dto.setDurationMillis(Math.max(0L, java.time.Duration.between(entity.getStartTime(), until).toMillis()));
+        }
         dto.setStatus(entity.getStatus());
         dto.setErrorMessage(entity.getErrorMessage());
         dto.setCreateTime(entity.getCreateTime());
@@ -242,13 +253,13 @@ public class ScheduleJobAppService {
     public List<String> previewNextExecutions(ScheduleJobCronPreviewReqDTO reqDTO) {
         String cron = reqDTO.getCronExpression();
         if (!StringUtils.hasText(cron)) {
-            throw new BizException(ScheduleErrorCode.JOB_CRON_INVALID, "Cron 表达式不能为空");
+            throw new BizException(ScheduleErrorCode.cronRequired());
         }
         CronExpression cronExpression;
         try {
             cronExpression = CronExpression.parse(cron.trim());
         } catch (IllegalArgumentException e) {
-            throw new BizException(ScheduleErrorCode.JOB_CRON_INVALID, "Cron 表达式格式无效: " + e.getMessage());
+            throw new BizException(ScheduleErrorCode.invalidCron(e.getMessage()));
         }
         int count = reqDTO.getCount() == null ? DEFAULT_PREVIEW_COUNT : reqDTO.getCount();
         if (count < 1) {

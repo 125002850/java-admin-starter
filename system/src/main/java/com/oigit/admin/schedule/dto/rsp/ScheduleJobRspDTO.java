@@ -40,6 +40,11 @@ public class ScheduleJobRspDTO extends com.oigit.admin.core.web.AuditRspDTO {
 
 
 
+    @io.swagger.v3.oas.annotations.media.Schema(description = "最近一次执行，未执行时为空")
+    private ScheduleJobExecutionLogRspDTO latestExecution;
+    public ScheduleJobExecutionLogRspDTO getLatestExecution() { return latestExecution; }
+    public void setLatestExecution(ScheduleJobExecutionLogRspDTO value) { latestExecution = value; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getJobName() { return jobName; }
