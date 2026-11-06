@@ -3,8 +3,7 @@ package com.oigit.admin.schedule.infra.scheduling;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oigit.admin.core.enums.EnableStatusEnum;
 import com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobEntity;
-import com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobExecutionLogEntity;
-import com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobExecutionLogMapper;
+import com.oigit.admin.schedule.infra.persistence.service.ScheduleJobLogService;
 import com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobMapper;
 import com.oigit.admin.schedule.infra.provider.JobRunner;
 import org.slf4j.Logger;
@@ -18,7 +17,6 @@ import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -33,19 +31,19 @@ public class ScheduleJobManager implements com.oigit.admin.schedule.domain.gatew
 
     private final ThreadPoolTaskScheduler taskScheduler;
     private final ScheduleJobMapper scheduleJobMapper;
-    private final ScheduleJobExecutionLogMapper executionLogMapper;
+    private final ScheduleJobLogService jobLogService;
     private final List<JobRunner> runners;
     private final Map<String, ScheduledFuture<?>> futures = new ConcurrentHashMap<>();
 
     public ScheduleJobManager(
             ThreadPoolTaskScheduler taskScheduler,
             ScheduleJobMapper scheduleJobMapper,
-            ScheduleJobExecutionLogMapper executionLogMapper,
+            ScheduleJobLogService jobLogService,
             List<JobRunner> runners,
             @org.springframework.beans.factory.annotation.Value("${platform.schedule.time-zone:Asia/Shanghai}") String timeZone) {
         this.taskScheduler = taskScheduler;
         this.scheduleJobMapper = scheduleJobMapper;
-        this.executionLogMapper = executionLogMapper;
+        this.jobLogService = jobLogService;
         this.runners = runners;
         this.zone = TimeZone.getTimeZone(java.time.ZoneId.of(timeZone));
     }
@@ -98,40 +96,36 @@ public class ScheduleJobManager implements com.oigit.admin.schedule.domain.gatew
     }
 
     private void executeJob(ScheduleJobEntity job) {
-        JobRunner runner = runners.stream()
-                .filter(r -> r.supports(job.getInvokeRoute()))
-                .findFirst()
-                .orElse(null);
-
-        ScheduleJobExecutionLogEntity logEntity = new ScheduleJobExecutionLogEntity();
-        logEntity.setJobId(job.getId());
-        logEntity.setJobCode(job.getJobCode());
-        logEntity.setJobName(job.getJobName());
-        logEntity.setStartTime(LocalDateTime.now());
-
-        if (runner == null) {
-            logEntity.setEndTime(LocalDateTime.now());
-            logEntity.setStatus("failed");
-            logEntity.setErrorMessage("不支持的调用路由: " + job.getInvokeRoute());
-            executionLogMapper.insert(logEntity);
-            log.error("ScheduleJobManager job [{}] no runner for route: {}",
-                    job.getJobCode(), job.getInvokeRoute());
+        Long executionId;
+        try {
+            executionId = jobLogService.startExecution(job);
+        } catch (RuntimeException exception) {
+            log.error("Failed to start execution log for [{}]", job.getJobCode(), exception);
             return;
         }
-
+        String failure = null;
         try {
-            runner.execute(job);
-            logEntity.setEndTime(LocalDateTime.now());
-            logEntity.setStatus("success");
-        } catch (Exception e) {
-            logEntity.setEndTime(LocalDateTime.now());
-            logEntity.setStatus("failed");
-            String errorMsg = e.getMessage();
-            logEntity.setErrorMessage(errorMsg != null && errorMsg.length() > 2000
-                    ? errorMsg.substring(0, 2000) : errorMsg);
-            log.error("ScheduleJobManager job [{}] execution failed", job.getJobCode(), e);
+            JobRunner runner = runners.stream()
+                    .filter(r -> r.supports(job.getInvokeRoute())).findFirst().orElse(null);
+            if (runner == null) {
+                failure = "不支持的调用路由: " + job.getInvokeRoute();
+            } else {
+                runner.execute(job);
+            }
+        } catch (Exception exception) {
+            failure = org.springframework.util.StringUtils.hasText(exception.getMessage())
+                    ? exception.getMessage() : exception.getClass().getSimpleName();
+            log.error("Job [{}] execution failed", job.getJobCode(), exception);
         }
-        executionLogMapper.insert(logEntity);
+        if (failure != null && failure.length() > 2000) {
+            failure = failure.substring(0, 2000);
+        }
+        try {
+            jobLogService.finishExecution(executionId, failure);
+        } catch (RuntimeException exception) {
+            // 完成日志落库失败不重新执行已完成的业务。
+            log.error("Failed to finish execution log [{}] for [{}]", executionId, job.getJobCode(), exception);
+        }
     }
 
     private String resolveCron(ScheduleJobEntity job) {

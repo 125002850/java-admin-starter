@@ -52,6 +52,7 @@ class FlywaySmokeTests {
 
     @Test
     void flywayMigrationMatchesPlatformSchemaContract() {
+        assertThat(tableIndexes("sys_schedule_job_execution_log")).contains("idx_sche_job_exec_log_latest");
         assertThat(tableExists("flyway_schema_history")).isTrue();
         assertThat(hasSuccessfulMigration("1")).isTrue();
         assertThat(hasSuccessfulMigration("2")).isTrue();

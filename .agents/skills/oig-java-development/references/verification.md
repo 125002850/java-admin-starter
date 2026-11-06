@@ -85,3 +85,7 @@ mvn compile
 ## 生产配置来源门禁
 
 prod/production 启动时，EnvironmentPostProcessor 在创建数据源之前验证 datasource url/username/password 有非空外部来源；禁止同时启用 dev/development。classpath 默认值与镜像内 /app/application.yml 不视为外部覆盖，环境占位符必须显式赋值。报错只输出配置键，不输出原始值；开发/测试不受此门禁影响。规则测试位于 core 的 ProductionConfigurationGuardTests，并验证 spring.factories 启动注册。
+
+## 隔离 MySQL 验收
+
+运行 `scripts/testing/verify-flyway-mysql8.sh`，在临时源码副本、新建 MySQL 容器和空库中验证全部迁移、运行态与事务隔离。可用 `--ref <提交>` 验证指定版本，`FLYWAY_VERIFY_MYSQL_IMAGE` 覆盖镜像；日志保留在 `target/flyway-mysql-verify/`。脚本回归入口为 `python3 scripts/tests/test_verify_flyway_mysql8.py`。

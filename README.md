@@ -486,3 +486,9 @@ lefthook run pre-commit
 - 禁止引入 `VO`、`BO`、`DO`、`Command` 等额外对象层，除非文档明确更新。
 - 禁止使用动态依赖版本。
 - 禁止提前创建空模块、空包、空接口。
+
+### 基础能力回灌（2026-11-06）
+
+- 普通与动态分页统一上限 2000；命名错误工厂通过 `ErrorCodeDetail` 保留基础错误码身份与参数化提示。
+- 调度增加独立提交的运行态、同条记录的结束更新、最近执行结果与耗时；升级顺序见 [平台模块](docs/platform-modules.md)。
+- 独立 MySQL 迁移验收入口：`scripts/testing/verify-flyway-mysql8.sh`。默认 `mysql:8.0`，支持 `FLYWAY_VERIFY_MYSQL_IMAGE` 和 `--ref <提交>`；使用新建容器与空库，日志位于 `target/flyway-mysql-verify/`。

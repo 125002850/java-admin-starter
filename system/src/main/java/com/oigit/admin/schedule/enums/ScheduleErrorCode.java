@@ -13,6 +13,14 @@ public enum ScheduleErrorCode implements ErrorCode {
     JOB_ENABLED_DELETE_DENIED(3005007, "请先禁用任务后再删除"),
     JOB_VERSION_CONFLICT(3005008, "任务已被其他操作修改，请刷新后重试");
 
+    public static ErrorCode cronRequired() {
+        return new com.oigit.admin.core.exception.ErrorCodeDetail(JOB_CRON_INVALID, "Cron 表达式不能为空");
+    }
+
+    public static ErrorCode invalidCron(String reason) {
+        return new com.oigit.admin.core.exception.ErrorCodeDetail(JOB_CRON_INVALID, "Cron 表达式格式无效: " + reason);
+    }
+
     private final int code;
     private final String msg;
 

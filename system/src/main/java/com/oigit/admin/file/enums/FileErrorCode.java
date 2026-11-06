@@ -16,6 +16,10 @@ public enum FileErrorCode implements ErrorCode {
     DIRECT_UPLOAD_CREDENTIAL_GENERATE_FAILED(3002010, "直传凭证生成失败"),
     FILE_DOWNLOAD_FAILED(3002011, "文件下载失败");
 
+    public static ErrorCode unknownQiniuRegion(String region) {
+        return new com.oigit.admin.core.exception.ErrorCodeDetail(INVALID_STORAGE_CONFIG, "未知七牛区域: " + region);
+    }
+
     private final int code;
     private final String msg;
 

@@ -6,4 +6,6 @@ import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface ScheduleJobExecutionLogMapper extends BaseMapper<ScheduleJobExecutionLogEntity> {
+    java.util.List<ScheduleJobExecutionLogEntity> selectLatestByJobIds(
+            @org.apache.ibatis.annotations.Param("jobIds") java.util.List<Long> jobIds);
 }

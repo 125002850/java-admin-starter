@@ -23,6 +23,10 @@ public class MybatisScheduleJobRepository implements ScheduleJobRepository {
  public void delete(Long id) { jobs.delete(id); }
  public ScheduleJob enable(Long id) { return ScheduleModelMapper.toModel(jobs.enable(id)); }
  public ScheduleJob disable(Long id) { return ScheduleModelMapper.toModel(jobs.disable(id)); }
+ public Map<Long, ScheduleJobExecutionLog> latestExecutions(List<Long> jobIds) {
+ return logs.latestExecutions(jobIds).entrySet().stream().collect(java.util.stream.Collectors.toMap(
+     Map.Entry::getKey, entry -> ScheduleModelMapper.toModel(entry.getValue())));
+ }
  public List<ScheduleJobExecutionLog> listExecutionLogs(Long id) { return logs.listExecutionLogs(id).stream().map(ScheduleModelMapper::toModel).toList(); }
  public List<ScheduleJobOperationLog> listOperationLogs(Long id) { return logs.listOperationLogs(id).stream().map(ScheduleModelMapper::toModel).toList(); }
  public void recordOperationLog(ScheduleJob job, ScheduleJobOperationType type, Map<String,Object> content) { logs.recordOperationLog(ScheduleModelMapper.toEntity(job),type,content); }

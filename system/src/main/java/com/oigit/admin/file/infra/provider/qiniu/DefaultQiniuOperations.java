@@ -76,7 +76,7 @@ public class DefaultQiniuOperations implements QiniuOperations {
             case "huanan" -> Region.huanan();
             case "beimei" -> Region.beimei();
             case "xinjiapo" -> Region.xinjiapo();
-            default -> throw new BizException(FileErrorCode.INVALID_STORAGE_CONFIG, "未知七牛区域: " + region);
+            default -> throw new BizException(FileErrorCode.unknownQiniuRegion(region));
         };
     }
 }

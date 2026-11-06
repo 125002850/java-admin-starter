@@ -639,8 +639,8 @@ class ExportCenterSmokeTests {
                                    "pageSize": 2001
                                 }
                                 """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(3000010));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     @Test
