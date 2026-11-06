@@ -81,7 +81,7 @@ else
 fi
 for verify_sql in "$verify_source"/boot/src/main/resources/db/migration/V*__*.sql; do
     basename "$verify_sql" | sed -E 's/^V([0-9]+)__.*$/\1/'
-done | LC_ALL=C sort > "$verify_logs/expected-versions.txt"
+done | LC_ALL=C sort -n > "$verify_logs/expected-versions.txt"
 
 echo "启动临时 MySQL：$verify_mysql_image"
 MYSQL_ROOT_PASSWORD="$verify_password" docker run -d \

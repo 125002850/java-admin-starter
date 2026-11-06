@@ -8,7 +8,7 @@ import unittest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "testing/verify-flyway-mysql8.sh"
-VERSIONS = ["20260901105646", "20261028171959"]
+VERSIONS = ["1", "8", "20260901105646", "20261028171959"]
 CONTAINER = "c" * 64
 
 
