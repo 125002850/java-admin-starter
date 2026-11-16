@@ -1,203 +1,216 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -eu
+MIGRATION_DIR='boot/src/main/resources/db/migration'
+JAVA_MIGRATION_DIR='boot/src/main/java/db/migration'
+mode=staged
+base_ref=HEAD
+head_ref=HEAD
+base_supplied=false
+head_supplied=false
 
-MIGRATION_DIR="boot/src/main/resources/db/migration"
-JAVA_MIGRATION_DIR="boot/src/main/java/db/migration"
-LEGACY_JAVA_MIGRATION="$JAVA_MIGRATION_DIR/V11__fix_sys_user_cache_columns.java"
-
-is_versioned_migration() {
-  case "$1" in
-    "$MIGRATION_DIR"/V*.sql) return 0 ;;
-    *) return 1 ;;
-  esac
+usage() {
+  printf '%s\n' 'Usage: check-migrations.sh [--all | --base <commit> [--head <commit>]]' >&2
 }
 
-is_valid_new_migration_name() {
+while [ "$#" -gt 0 ]; do
   case "$1" in
-    "$MIGRATION_DIR"/V*__*.sql) return 0 ;;
-    *) return 1 ;;
+    --all)
+      [ "$mode" = staged ] && [ "$base_supplied" = false ] && [ "$head_supplied" = false ] || { usage; exit 2; }
+      mode=all
+      shift
+      ;;
+    --base|--head)
+      [ "$#" -ge 2 ] && [ "$mode" != all ] || { usage; exit 2; }
+      if [ "$1" = --base ]; then
+        [ "$base_supplied" = false ] || { usage; exit 2; }
+        base_ref="$2"
+        base_supplied=true
+      else
+        [ "$head_supplied" = false ] || { usage; exit 2; }
+        head_ref="$2"
+        head_supplied=true
+      fi
+      mode=range
+      shift 2
+      ;;
+    *) usage; exit 2 ;;
   esac
+done
+
+if [ "$mode" = range ] && [ "$base_supplied" = false ]; then
+  usage
+  exit 2
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd -- "$repo_root"
+scratch="$(mktemp "${TMPDIR:-/tmp}/java-admin-starter-migration-check.XXXXXX")"
+trap 'rm -f -- "$scratch"' EXIT
+violations=0
+
+report_error() {
+  printf '%s\n' "$*" >&2
+  violations=1
+}
+
+is_sql_migration() {
+  [[ "$1" == "$MIGRATION_DIR/"* && "$1" == *.sql ]]
 }
 
 is_java_migration() {
-  case "$1" in
-    "$JAVA_MIGRATION_DIR"/V*.java) return 0 ;;
-    *) return 1 ;;
-  esac
+  [[ "$1" == "$JAVA_MIGRATION_DIR/"* && "$1" == *.java ]]
 }
 
 migration_version() {
-  file_name="${1##*/}"
-  version="${file_name#V}"
-  version="${version%%__*}"
-  printf '%s\n' "$version"
+  local name="${1##*/}"
+  name="${name#V}"
+  printf '%s\n' "${name%%__*}"
 }
 
-contains_line() {
-  value="$1"
-  lines="$2"
-  case "
-$lines" in
-    *"
-$value
-"*) return 0 ;;
+is_timestamp_version() {
+  printf '%s\n' "$1" | awk '
+    {
+      value = $0
+      if (length(value) != 14 || value !~ /^[0-9]+$/) exit 1
+      year = substr(value, 1, 4) + 0
+      month = substr(value, 5, 2) + 0
+      day = substr(value, 7, 2) + 0
+      hour = substr(value, 9, 2) + 0
+      minute = substr(value, 11, 2) + 0
+      second = substr(value, 13, 2) + 0
+      days[1]=31; days[2]=28; days[3]=31; days[4]=30; days[5]=31; days[6]=30
+      days[7]=31; days[8]=31; days[9]=30; days[10]=31; days[11]=30; days[12]=31
+      if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) days[2]=29
+      if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month] ||
+          hour > 23 || minute > 59 || second > 59) exit 1
+    }
+  '
+}
+
+is_valid_migration_name() {
+  local name="${1#"$MIGRATION_DIR"/}"
+  [[ "$name" =~ ^V[0-9]{14}__[^/[:space:]]+\.sql$ ]] && is_timestamp_version "$(migration_version "$1")"
+}
+
+contains_version() {
+  [[ $'\n'"$2"$'\n' == *$'\n'"$1"$'\n'* ]]
+}
+
+check_git_entries() {
+  local entry metadata entry_mode path
+  while IFS= read -r -d '' entry; do
+    metadata="${entry%%$'\t'*}"
+    entry_mode="${metadata%% *}"
+    path="${entry#*$'\t'}"
+    case "$entry_mode" in
+      100644|100755) ;;
+      *) report_error "迁移资源必须是普通文件，禁止符号链接或子模块：$path (Git mode $entry_mode)" ;;
+    esac
+  done < "$scratch"
+}
+
+# SSO keeps the exact historical V1–V8 files; new migrations require timestamps.
+is_known_legacy_migration() {
+  local path="$1" expected actual
+  case "$path" in
+    boot/src/main/resources/db/migration/V1__init_platform_tables.sql) expected=d7bd8454aafd1e29e3999b75c6dc646708af1329 ;;
+    boot/src/main/resources/db/migration/V2__add_global_dict_tables.sql) expected=948bfe8f62c8645e91121afc0cf12b78761c4298 ;;
+    boot/src/main/resources/db/migration/V3__add_tenant_dict_tables.sql) expected=b6a7fc3977452e405db22d8b1a6d8f1456e38106 ;;
+    boot/src/main/resources/db/migration/V4__auto_maintain_audit_timestamps.sql) expected=43d979976a63f73ed7d303b16af27be61c31e16a ;;
+    boot/src/main/resources/db/migration/V5__add_tenant_user_management.sql) expected=9dd3c69e3495cfd77480f8e46fa17b16da0d22d3 ;;
+    boot/src/main/resources/db/migration/V6__remove_tenant_auth_tables.sql) expected=813c85a7251c341518693f85165785a93115c2dc ;;
+    boot/src/main/resources/db/migration/V7__add_export_record_table.sql) expected=a54006e44dea231d96b93d27c7adf0031f2eae53 ;;
+    boot/src/main/resources/db/migration/V8__backport_track_bench_foundation.sql) expected=d01ca40a06dc2fe9672cf86377031f1d0556c9a5 ;;
     *) return 1 ;;
   esac
+  if [ "$mode" = all ]; then
+    actual="$(git hash-object --no-filters -- "$path")" || return 1
+  elif [ "$mode" = range ]; then
+    actual="$(git rev-parse --verify --end-of-options "$head_commit:$path")" || return 1
+  else
+    actual="$(git rev-parse --verify --end-of-options ":$path")" || return 1
+  fi
+  [ "$actual" = "$expected" ]
 }
 
-check_tree() {
-  JAVA_MIGRATION_VIOLATIONS=""
-  ALL_JAVA_MIGRATIONS="$(git ls-files -- "$JAVA_MIGRATION_DIR" 2>/dev/null || true)"
-
-  while IFS= read -r PATH; do
-    [ -n "$PATH" ] || continue
-    if is_java_migration "$PATH" && [ "$PATH" != "$LEGACY_JAVA_MIGRATION" ]; then
-      JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}${PATH}\n"
+check_listing() {
+  local path version seen=''
+  while IFS= read -r -d '' path; do
+    if [ "$mode" = all ] && [ -L "$path" ]; then
+      report_error "迁移资源不能是工作区符号链接：$path"
     fi
-  done <<EOF
-$ALL_JAVA_MIGRATIONS
-EOF
-
-  if [ -n "$JAVA_MIGRATION_VIOLATIONS" ]; then
-    printf '%b' "禁止新增 Java Flyway migration，请统一使用 $MIGRATION_DIR/V*__*.sql：\n$JAVA_MIGRATION_VIOLATIONS\n"
-    printf '%s\n' "历史 Java migration $LEGACY_JAVA_MIGRATION 仅作为兼容保留，不得继续复制该模式。"
-    exit 1
-  fi
+    if is_java_migration "$path"; then
+      report_error "禁止 Java Flyway migration：$path"
+    elif is_sql_migration "$path"; then
+      if is_known_legacy_migration "$path"; then continue; fi
+      if ! is_valid_migration_name "$path"; then
+        report_error "migration 命名不合法，须使用有效时间戳及非空描述 VyyyyMMddHHmmss__description.sql：$path"
+        continue
+      fi
+      version="$(migration_version "$path")"
+      if contains_version "$version" "$seen"; then
+        report_error "migration 版本号重复：$path ($version)"
+      fi
+      seen+="$version"$'\n'
+    fi
+  done < "$scratch"
 }
 
-if [ "${1:-}" = "--all" ]; then
-  check_tree
-  exit 0
+if [ "$mode" = all ]; then
+  git ls-files --cached --stage -z -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+  check_git_entries
+  git ls-files --cached --others --exclude-standard -z -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+  check_listing
+  exit "$violations"
 fi
 
-STAGED_CHANGES="$(git diff --cached --name-status --find-renames -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" || true)"
+if [ "$mode" = range ]; then
+  base_commit="$(git rev-parse --verify --end-of-options "$base_ref^{commit}")"
+  head_commit="$(git rev-parse --verify --end-of-options "$head_ref^{commit}")"
+  git ls-tree -r -z "$head_commit" -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+  check_git_entries
+  git ls-tree -r --name-only -z "$head_commit" -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+else
+  if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    base_commit="$(git rev-parse HEAD)"
+  else
+    base_commit="$(git hash-object -w -t tree --stdin < /dev/null)"
+  fi
+  git ls-files --cached --stage -z -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+  check_git_entries
+  git ls-files --cached -z -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+fi
+check_listing
 
-if [ -z "$STAGED_CHANGES" ]; then
-  exit 0
+baseline_max=''
+git ls-tree -r --name-only -z "$base_commit" -- "$MIGRATION_DIR" > "$scratch"
+while IFS= read -r -d '' path; do
+  if is_sql_migration "$path" && is_valid_migration_name "$path"; then
+    version="$(migration_version "$path")"
+    if [[ "$version" > "$baseline_max" ]]; then baseline_max="$version"; fi
+  fi
+done < "$scratch"
+
+if [ "$mode" = range ]; then
+  git diff --no-renames --name-status -z "$base_commit" "$head_commit" -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
+else
+  git diff --cached --no-renames --name-status -z -- "$MIGRATION_DIR" "$JAVA_MIGRATION_DIR" > "$scratch"
 fi
 
-VIOLATIONS=""
-JAVA_MIGRATION_VIOLATIONS=""
-TAB="$(printf '\t')"
-
-while IFS="$TAB" read -r STATUS PATH1 PATH2; do
-  [ -n "$STATUS" ] || continue
-
-  case "$STATUS" in
-    A)
-      if is_versioned_migration "$PATH1"; then
-        :
-      elif is_java_migration "$PATH1"; then
-        JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}${STATUS} ${PATH1}\n"
+while IFS= read -r -d '' status && IFS= read -r -d '' path; do
+  if is_java_migration "$path"; then
+    report_error "禁止新增、修改或删除 Java Flyway migration：$status $path"
+  elif is_sql_migration "$path"; then
+    if [ "$status" != A ]; then
+      report_error "禁止修改、删除或重命名历史 migration（包括整体 squash）：$status $path"
+    elif is_valid_migration_name "$path"; then
+      version="$(migration_version "$path")"
+      if [[ -n "$baseline_max" && ! "$version" > "$baseline_max" ]]; then
+        report_error "新增 migration 版本必须大于历史最大版本 $baseline_max：$path"
       fi
-      ;;
-    M|D|T|U)
-      if is_versioned_migration "$PATH1"; then
-        VIOLATIONS="${VIOLATIONS}${STATUS} ${PATH1}\n"
-      elif is_java_migration "$PATH1"; then
-        JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}${STATUS} ${PATH1}\n"
-      fi
-      ;;
-    R*|C*)
-      if is_versioned_migration "$PATH1" || is_versioned_migration "$PATH2"; then
-        VIOLATIONS="${VIOLATIONS}${STATUS} ${PATH1}"
-        if [ -n "${PATH2:-}" ]; then
-          VIOLATIONS="${VIOLATIONS} -> ${PATH2}"
-        fi
-        VIOLATIONS="${VIOLATIONS}\n"
-      elif is_java_migration "$PATH1" || is_java_migration "$PATH2"; then
-        JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}${STATUS} ${PATH1}"
-        if [ -n "${PATH2:-}" ]; then
-          JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS} -> ${PATH2}"
-        fi
-        JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}\n"
-      fi
-      ;;
-    *)
-      if is_versioned_migration "$PATH1" || is_versioned_migration "$PATH2"; then
-        VIOLATIONS="${VIOLATIONS}${STATUS} ${PATH1}"
-        if [ -n "${PATH2:-}" ]; then
-          VIOLATIONS="${VIOLATIONS} -> ${PATH2}"
-        fi
-        VIOLATIONS="${VIOLATIONS}\n"
-      elif is_java_migration "$PATH1" || is_java_migration "$PATH2"; then
-        JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}${STATUS} ${PATH1}"
-        if [ -n "${PATH2:-}" ]; then
-          JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS} -> ${PATH2}"
-        fi
-        JAVA_MIGRATION_VIOLATIONS="${JAVA_MIGRATION_VIOLATIONS}\n"
-      fi
-      ;;
-  esac
-done <<EOF
-$STAGED_CHANGES
-EOF
-
-INVALID_NEW_MIGRATIONS=""
-DUPLICATE_MIGRATION_VERSIONS=""
-EXISTING_VERSIONS=""
-NEW_VERSIONS=""
-
-HEAD_MIGRATIONS="$(git ls-tree -r --name-only --full-tree HEAD -- "$MIGRATION_DIR" 2>/dev/null || true)"
-
-while IFS= read -r PATH; do
-  [ -n "$PATH" ] || continue
-  if is_valid_new_migration_name "$PATH"; then
-    EXISTING_VERSIONS="${EXISTING_VERSIONS}$(migration_version "$PATH")
-"
+    fi
   fi
-done <<EOF
-$HEAD_MIGRATIONS
-EOF
+done < "$scratch"
 
-while IFS="$TAB" read -r STATUS PATH1 PATH2; do
-  [ -n "$STATUS" ] || continue
-
-  case "$STATUS" in
-    A)
-      if is_versioned_migration "$PATH1"; then
-        if ! is_valid_new_migration_name "$PATH1"; then
-          INVALID_NEW_MIGRATIONS="${INVALID_NEW_MIGRATIONS}${PATH1}\n"
-          continue
-        fi
-
-        version="$(migration_version "$PATH1")"
-
-        if contains_line "$version" "$EXISTING_VERSIONS" || contains_line "$version" "$NEW_VERSIONS"; then
-          DUPLICATE_MIGRATION_VERSIONS="${DUPLICATE_MIGRATION_VERSIONS}${PATH1} (version: ${version})\n"
-          continue
-        fi
-
-        NEW_VERSIONS="${NEW_VERSIONS}${version}
-"
-      fi
-      ;;
-  esac
-done <<EOF
-$STAGED_CHANGES
-EOF
-
-if [ -n "$VIOLATIONS" ] || [ -n "$JAVA_MIGRATION_VIOLATIONS" ] || [ -n "$INVALID_NEW_MIGRATIONS" ] || [ -n "$DUPLICATE_MIGRATION_VERSIONS" ]; then
-  if [ -n "$VIOLATIONS" ]; then
-    printf '%b' "禁止修改、删除或重命名已存在的版本化迁移文件：\n$VIOLATIONS\n"
-  fi
-
-  if [ -n "$JAVA_MIGRATION_VIOLATIONS" ]; then
-    printf '%b' "禁止新增、修改、删除或重命名 Java Flyway migration：\n$JAVA_MIGRATION_VIOLATIONS\n"
-    printf '%s\n' "新增数据库迁移必须使用 $MIGRATION_DIR/V*__*.sql；历史 Java migration 仅作为兼容保留。"
-  fi
-
-  if [ -n "$INVALID_NEW_MIGRATIONS" ]; then
-    printf '%b' "新增 migration 命名不合法：\n$INVALID_NEW_MIGRATIONS\n"
-    printf '%s\n' "新增版本化迁移必须匹配 $MIGRATION_DIR/V*__*.sql，例如 V2__add_user_table.sql。"
-  fi
-
-  if [ -n "$DUPLICATE_MIGRATION_VERSIONS" ]; then
-    printf '%b' "新增 migration 复用了已有版本号：\n$DUPLICATE_MIGRATION_VERSIONS\n"
-    printf '%s\n' "新增版本化迁移必须使用新的唯一版本号，例如在已有 V1 后新增 V2__*.sql。"
-  fi
-
-  printf '%s\n' "如需调整历史迁移，请新增下一版本脚本，不要回改已有 V*.sql。"
-  exit 1
-fi
+exit "$violations"

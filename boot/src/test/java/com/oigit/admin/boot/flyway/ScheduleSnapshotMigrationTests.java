@@ -13,7 +13,7 @@ class ScheduleSnapshotMigrationTests {
                 ? "jdbc:h2:mem:schedule-upgrade;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false" : configured;
         String user = configured == null ? "sa" : System.getenv("JAVA_ADMIN_STARTER_DATASOURCE_USERNAME");
         String password = configured == null ? "" : System.getenv("JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD");
-        var previous = Flyway.configure().dataSource(url, user, password).target("20261106110919").load();
+        var previous = Flyway.configure().dataSource(url, user, password).target("20261106114741").load();
         previous.migrate();
         var jdbc = new JdbcTemplate(previous.getConfiguration().getDataSource());
         jdbc.update("INSERT INTO sys_schedule_job (job_code, job_name, status) VALUES ('upgrade-probe', 'migration probe', 'disable')");

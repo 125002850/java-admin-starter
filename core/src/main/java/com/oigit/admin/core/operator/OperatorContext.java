@@ -4,6 +4,7 @@ public final class OperatorContext {
 
     public static final String REQUEST_ATTRIBUTE_OPERATOR_ID = "platform.operatorId";
 
+    private static final ThreadLocal<String> OPERATOR_USER_CODE_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<Long> OPERATOR_ID_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<String> OPERATOR_NAME_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<String> OPERATOR_PHONE_HOLDER = new ThreadLocal<>();
@@ -17,6 +18,12 @@ public final class OperatorContext {
     }
 
     public static void set(Long operatorId, String operatorName, String operatorPhone, String operatorRealName) {
+        set(operatorId, operatorName, operatorPhone, operatorRealName, null);
+    }
+
+    public static void set(Long operatorId, String operatorName, String operatorPhone, String operatorRealName, String userCode) {
+        OPERATOR_USER_CODE_HOLDER.remove();
+        if (userCode != null) OPERATOR_USER_CODE_HOLDER.set(userCode);
         OPERATOR_ID_HOLDER.set(operatorId);
         if (operatorName != null) {
             OPERATOR_NAME_HOLDER.set(operatorName);
@@ -45,7 +52,10 @@ public final class OperatorContext {
         return OPERATOR_REAL_NAME_HOLDER.get();
     }
 
+    public static String getOperatorUserCode() { return OPERATOR_USER_CODE_HOLDER.get(); }
+
     public static void clear() {
+        OPERATOR_USER_CODE_HOLDER.remove();
         OPERATOR_ID_HOLDER.remove();
         OPERATOR_NAME_HOLDER.remove();
         OPERATOR_PHONE_HOLDER.remove();

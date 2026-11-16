@@ -80,3 +80,7 @@ GatewayOperatorFilter → OperatorContext.set(userId, userName, userPhone, realN
 - dev profile 不启动网关模拟 filter
 - 缺失 `X-User-Id` 时，所有写操作的 `create_by` / `update_by` = `0L`
 - 如需模拟操作人，在请求中手动添加 header `X-User-Id: 1`
+
+## 自助改密账号定位
+
+改密入口要求已由可信网关建立的操作人 ID 与用户编码，后者只用于定位当前 SSO 账号；不允许请求指定账号，不代表应用自行完成身份认证。网关必须覆盖并清理客户端伪造的用户头。`OperatorContext` 请求结束时清理用户编码；无编码时拒绝改密，不回退到展示名称。

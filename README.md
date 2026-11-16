@@ -300,7 +300,7 @@ Domain Model 与 Entity 必须在 Infra Repository 中转换。不得为了搬�
 ### 网关-SSO 边界摘要
 
 - 网关到应用的可信链路负责完成登录、Token/JWT 校验、权限判断；本仓库只消费透传 header，不实现本地登录态。
-- 生产环境写操作的操作人 ID 来自 `X-User-Id`；`X-User-Name`、`X-User-Phone`、`X-Real-Name` 和 `X-User-Code` 只用于展示、缓存或排障，不参与鉴权。
+- 生产环境写操作的操作人 ID 来自 `X-User-Id`；`X-User-Name`、`X-User-Phone`、`X-Real-Name` 和 `X-User-Code` 用于展示、缓存、排障及已登录用户自助改密的账号定位，不作为鉴权凭据。
 - 本仓库不接收 `X-Tenant-Id`、`X-User-Roles`、`X-User-Permissions`、`Authorization`、`Cookie`。
 - 开发/测试环境无网关时允许缺失 `X-User-Id`，审计字段 `create_by` / `update_by` 回退为 `0L`；如需模拟操作人，可手工加 `X-User-Id: 1`。
 
@@ -440,7 +440,7 @@ docker compose down -v
 - 迁移脚本一旦进入历史，应通过新增下一版本脚本演进，例如 `V2__add_xxx.sql`，不要回改 `V1__*.sql`。
 - Flyway migration 的 SQL 方言必须以真实目标库 **MySQL 8** 为准，不能只以 H2 可执行为准；H2 通过不代表 MySQL 8 兼容。
 - 涉及列默认值、时间字段、`alter table` 之类 DDL 时，必须优先使用 MySQL 8 语法。例如修改默认值应写成 `alter table ... modify column ... default ...`，不要写 H2 可过但 MySQL 8 会失败的 `alter column ... set default ...`。
-- 一旦 migration 在本地或测试库执行失败，Flyway 会在 `flyway_schema_history` 留下 `success = false` 记录，后续启动会被 `validate` 阶段直接拦截；修复 SQL 后需要先 `repair` 或清理失败记录，再重新执行迁移。
+- migration 失败后，先核对实际 DDL 状态和 `flyway_schema_history`；MySQL 的部分 DDL 可能已经生效。诊断日志只提供脱敏线索，不自动 repair、删除历史记录或重试迁移。已发布的迁移保持不变，通过评审后的恢复步骤和新迁移修正。
 - 对逻辑删除表新增唯一约束时，必须先明确约束作用范围；如果唯一索引列中不包含 `deleted`，那它约束的是整张表，包含已逻辑删除行，迁移前查重也必须按同样语义检查，不能只筛 `deleted = 0`。
 - 当前分支历史迁移已演进到 `V6__remove_tenant_auth_tables.sql`，租户/用户/本地鉴权表已从应用侧移除；后续只追加更高版本 migration，例如 `V8__backport_track_bench_foundation.sql`。
 - `V8` 只补齐基础能力：字典状态/备注/排序/版本字段、导出记录版本字段、`sys_user_cache` 和通用字典数据；不迁入 `track-bench-postloan`、`tb_track_*`、客户工作台、订单、库存、贷后跟踪或 `/api/postloan/**`。
@@ -496,3 +496,9 @@ lefthook run pre-commit
 ### 通用能力回灌（2026-11-16）
 
 新增调度请求快照、显式启用的执行记录清理、XLSX 多工作表及分批导出、统一出站 HTTP、TraceId/日志防护和 Flyway 诊断。接口与接入边界见 [模块说明](docs/platform-modules.md#2026-11-16-通用能力回灌)。部署前追加执行新迁移；历史迁移保持原样。MySQL 验收默认固定为 8.0.24，并覆盖旧调度版本升级。
+
+### SSO 自助改密
+
+`POST /api/staff/password/change`（`changeCurrentStaffPassword`）只接收 oldPassword/newPassword/repeatPassword。账号由网关建立的 `OperatorContext` 中的 X-User-Code 确定，同时要求 X-User-Id；请求不能指定其他账号。网关继续负责认证和权限，SSO 校验旧密码与密码强度。缺少身份拒绝改密，HTTP 严格超时、不重试，日志不记录密码和原始异常。需配套发布前端修改密码入口。
+
+迁移检查同步严格的时间戳、重复版本、暂存区与提交范围验证。SSO 历史 V1–V8 仅按原路径和精确内容保留，不能新增顺序版本、修改历史或换用 main 基线；回归用例见 `scripts/tests/test_check_migrations.sh`。

@@ -38,6 +38,7 @@ class OpenApiDocumentationTests {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.openapi").exists())
+            .andExpect(jsonPath("$.paths['/api/staff/password/change'].post.operationId").value("changeCurrentStaffPassword"))
             .andExpect(jsonPath("$.paths['/api/system/schedule/job/request-logs'].post.operationId").value("scheduleJobRequestLogs"))
             .andExpect(jsonPath("$.info.title").value("java-admin-starter API 文档"))
             .andExpect(content().string(containsString("/api/system/dict/global/types/list")))

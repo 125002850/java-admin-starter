@@ -44,6 +44,7 @@ class GatewayOperatorFilterTests {
             assertThat(OperatorContext.getOperatorName()).isEqualTo("test user");
             assertThat(OperatorContext.getOperatorPhone()).isEqualTo("13800138000");
             assertThat(OperatorContext.getOperatorRealName()).isEqualTo("张三");
+            assertThat(OperatorContext.getOperatorUserCode()).isEqualTo("U100");
         };
         GatewayOperatorFilter filter = newFilter(() -> 1_000L);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -61,6 +62,7 @@ class GatewayOperatorFilterTests {
         assertThat(OperatorContext.getOperatorId()).isNull();
         assertThat(OperatorContext.getOperatorName()).isNull();
         assertThat(OperatorContext.getOperatorRealName()).isNull();
+        assertThat(OperatorContext.getOperatorUserCode()).isNull();
     }
 
     @Test
@@ -137,6 +139,13 @@ class GatewayOperatorFilterTests {
         filter.doFilter(request, new MockHttpServletResponse(), filterChain);
 
         verifyNoInteractions(operatorUserCacheWriter);
+    }
+
+    @Test
+    void legacy_context_set_should_clear_previous_user_code() {
+        OperatorContext.set(100L, "first", null, null, "U100");
+        OperatorContext.set(200L, "second", null, null);
+        assertThat(OperatorContext.getOperatorUserCode()).isNull();
     }
 
     private GatewayOperatorFilter newFilter(java.util.function.LongSupplier currentTimeMillisSupplier) {

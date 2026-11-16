@@ -87,7 +87,7 @@ public class GatewayOperatorFilter extends OncePerRequestFilter {
                 writeErrorResponse(response, "X-User-Id 值非法: " + userIdHeader);
                 return;
             }
-            OperatorContext.set(userId, userNameHeader, userPhoneHeader, realNameHeader);
+            OperatorContext.set(userId, userNameHeader, userPhoneHeader, realNameHeader, userCodeHeader);
             request.setAttribute(OperatorContext.REQUEST_ATTRIBUTE_OPERATOR_ID, userId);
             submitCacheUserUpdate(userId, userNameHeader, userPhoneHeader, realNameHeader, userCodeHeader);
         }
