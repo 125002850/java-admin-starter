@@ -14,9 +14,9 @@ class ScheduleRunnerTests {
     @Test void httpOriginsDefaultToDenyAndCannotContainCredentials() {
         var job = new ScheduleJobEntity();
         job.setInvokeRoute("http://127.0.0.1:1/internal");
-        assertThatThrownBy(() -> new HttpJobRunner("").execute(job)).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> new HttpJobRunner("", org.mockito.Mockito.mock(com.oigit.admin.core.http.OutboundHttpExecutor.class)).execute(job)).isInstanceOf(BizException.class);
         job.setInvokeRoute("http://user:password@127.0.0.1:1/internal");
-        assertThatThrownBy(() -> new HttpJobRunner("http://user:password@127.0.0.1:1").execute(job)).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> new HttpJobRunner("http://user:password@127.0.0.1:1", org.mockito.Mockito.mock(com.oigit.admin.core.http.OutboundHttpExecutor.class)).execute(job)).isInstanceOf(BizException.class);
     }
     @Test void beanRunnerInvokesOnlyExplicitlyAllowedMethods() throws Exception {
         try (var context = new StaticApplicationContext()) {

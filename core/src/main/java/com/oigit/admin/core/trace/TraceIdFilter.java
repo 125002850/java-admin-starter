@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -23,12 +24,16 @@ public class TraceIdFilter extends OncePerRequestFilter {
     public static final String TRACE_ID_HEADER = "X-Trace-Id";
     public static final String TRACE_ID_MDC_KEY = "traceId";
 
+    private static final Pattern SAFE_TRACE_ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}");
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         String traceId = Optional.ofNullable(request.getHeader(TRACE_ID_HEADER))
+                .map(String::trim)
                 .filter(StringUtils::hasText)
+                .filter(value -> SAFE_TRACE_ID.matcher(value).matches())
                 .orElseGet(() -> UUID.randomUUID().toString());
 
         MDC.put(TRACE_ID_MDC_KEY, traceId);

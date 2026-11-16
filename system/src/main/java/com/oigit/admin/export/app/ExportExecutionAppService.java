@@ -16,6 +16,8 @@ import com.oigit.admin.core.export.model.ExportStoredFile;
 import com.oigit.admin.core.export.model.RenderedExportFile;
 import com.oigit.admin.core.export.spi.ExportFileSink;
 import com.oigit.admin.core.export.spi.ExportHandler;
+import com.oigit.admin.core.export.spi.ChunkedExportHandler;
+import com.oigit.admin.core.export.spi.WorkbookExportHandler;
 import com.oigit.admin.core.export.spi.ExportRenderer;
 import com.oigit.admin.core.export.spi.ExportRendererRegistry;
 import com.oigit.admin.core.export.spi.ExportSceneRegistry;
@@ -150,18 +152,9 @@ public class ExportExecutionAppService {
     ) {
         ExportStoredFile storedFile = null;
         try {
-            List<ExportColumn> columns = defaultIfNull(handler.columns(query));
-            List<?> rows = defaultIfNull(handler.queryRows(query));
-            translationEngine.translate(rows, TranslationScene.EXPORT);
-            ExportRenderer renderer = resolveRenderer(record.getFileType());
-            ExportRenderRequest renderRequest = new ExportRenderRequest();
-            renderRequest.setFileName(record.getFileName());
-            renderRequest.setColumns(columns);
-            renderRequest.setRows(rows);
-
             ExportStoreRequest storeRequest = new ExportStoreRequest();
             storeRequest.setBizPath(resolveBizPath(handler.sceneCode()));
-            try (RenderedExportFile renderedExportFile = renderer.render(renderRequest)) {
+            try (RenderedExportFile renderedExportFile = renderStandardFile(handler, query, record)) {
                 storedFile = exportFileSink.store(renderedExportFile, storeRequest);
             }
 
@@ -177,6 +170,55 @@ public class ExportExecutionAppService {
         } catch (Exception ex) {
             handleTaskFailure(recordId, storedFile, "EXPORT_EXECUTION_FAILED", ex.getMessage(), ex);
         }
+    }
+
+    private <Q> RenderedExportFile renderStandardFile(ExportHandler<Q> handler, Q query, ExportRecord record)
+            throws IOException {
+        ExportRenderer renderer = resolveRenderer(record.getFileType());
+        ExportRenderRequest request = new ExportRenderRequest();
+        request.setFileName(record.getFileName());
+        if (handler instanceof WorkbookExportHandler<?> workbook) {
+            @SuppressWarnings("unchecked")
+            WorkbookExportHandler<Q> typed = (WorkbookExportHandler<Q>) workbook;
+            return typed.renderWorkbook(query, sheets -> {
+                request.setSheets(sheets);
+                return renderer.render(request);
+            });
+        }
+        request.setColumns(defaultIfNull(handler.columns(query)));
+        if (handler instanceof ChunkedExportHandler<?> chunked) {
+            @SuppressWarnings("unchecked")
+            ChunkedExportHandler<Q> typed = (ChunkedExportHandler<Q>) chunked;
+            request.setRowSource(chunkedRows(typed, query));
+        } else {
+            List<?> rows = defaultIfNull(handler.queryRows(query));
+            translationEngine.translate(rows, TranslationScene.EXPORT);
+            request.setRows(rows);
+        }
+        return renderer.render(request);
+    }
+
+    private <Q> Iterable<?> chunkedRows(ChunkedExportHandler<Q> handler, Q query) {
+        return () -> new java.util.Iterator<Object>() {
+            private java.util.Iterator<?> rows = List.of().iterator();
+            private long page = 1;
+            private boolean finished;
+
+            public boolean hasNext() {
+                if (!rows.hasNext() && !finished) {
+                    List<?> batch = defaultIfNull(handler.queryPage(query, page++, DEFAULT_PACKAGE_CHUNK_SIZE));
+                    finished = batch.size() < DEFAULT_PACKAGE_CHUNK_SIZE;
+                    translationEngine.translate(batch, TranslationScene.EXPORT);
+                    rows = batch.iterator();
+                }
+                return rows.hasNext();
+            }
+
+            public Object next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                return rows.next();
+            }
+        };
     }
 
     private <Q> void executePackageTask(

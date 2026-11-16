@@ -16,6 +16,7 @@ public interface ScheduleJobRepository {
     ScheduleJob disable(Long id);
     Map<Long, ScheduleJobExecutionLog> latestExecutions(List<Long> jobIds);
     List<ScheduleJobExecutionLog> listExecutionLogs(Long jobId);
+    ScheduleRequestSnapshot requestSnapshot(Long jobId, Long executionId);
     List<ScheduleJobOperationLog> listOperationLogs(Long jobId);
     void recordOperationLog(ScheduleJob job, ScheduleJobOperationType type, Map<String,Object> content);
 }

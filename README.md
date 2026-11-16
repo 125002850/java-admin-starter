@@ -492,3 +492,7 @@ lefthook run pre-commit
 - 普通与动态分页统一上限 2000；命名错误工厂通过 `ErrorCodeDetail` 保留基础错误码身份与参数化提示。
 - 调度增加独立提交的运行态、同条记录的结束更新、最近执行结果与耗时；升级顺序见 [平台模块](docs/platform-modules.md)。
 - 独立 MySQL 迁移验收入口：`scripts/testing/verify-flyway-mysql8.sh`。默认 `mysql:8.0`，支持 `FLYWAY_VERIFY_MYSQL_IMAGE` 和 `--ref <提交>`；使用新建容器与空库，日志位于 `target/flyway-mysql-verify/`。
+
+### 通用能力回灌（2026-11-16）
+
+新增调度请求快照、显式启用的执行记录清理、XLSX 多工作表及分批导出、统一出站 HTTP、TraceId/日志防护和 Flyway 诊断。接口与接入边界见 [模块说明](docs/platform-modules.md#2026-11-16-通用能力回灌)。部署前追加执行新迁移；历史迁移保持原样。MySQL 验收默认固定为 8.0.24，并覆盖旧调度版本升级。

@@ -54,3 +54,9 @@ lefthook run pre-commit
 cd boot
 mvn flyway:migrate
 ```
+
+## 最低版本和约束验收
+
+- 兼容验收覆盖 MySQL 8.0.24；隔离脚本默认固定该镜像，Apple Silicon 使用 linux/amd64，部署环境可显式覆盖镜像。
+- 新增 UNIQUE、FOREIGN KEY、CHECK 约束使用明确语义名称；MySQL 主键物理名称固定为 PRIMARY。升级脚本按真实约束名操作，不猜测自动生成名。
+- 结构变更同时验证空库初始化及旧版本升级；升级验证须保留旧数据。H2 不能替代真实 MySQL 验收。

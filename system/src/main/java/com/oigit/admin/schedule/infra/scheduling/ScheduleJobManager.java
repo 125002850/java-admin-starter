@@ -33,6 +33,7 @@ public class ScheduleJobManager implements com.oigit.admin.schedule.domain.gatew
     private final ScheduleJobMapper scheduleJobMapper;
     private final ScheduleJobLogService jobLogService;
     private final List<JobRunner> runners;
+    private final ScheduleRequestLogCollector requestLogs;
     private final Map<String, ScheduledFuture<?>> futures = new ConcurrentHashMap<>();
 
     public ScheduleJobManager(
@@ -40,11 +41,13 @@ public class ScheduleJobManager implements com.oigit.admin.schedule.domain.gatew
             ScheduleJobMapper scheduleJobMapper,
             ScheduleJobLogService jobLogService,
             List<JobRunner> runners,
+            ScheduleRequestLogCollector requestLogs,
             @org.springframework.beans.factory.annotation.Value("${platform.schedule.time-zone:Asia/Shanghai}") String timeZone) {
         this.taskScheduler = taskScheduler;
         this.scheduleJobMapper = scheduleJobMapper;
         this.jobLogService = jobLogService;
         this.runners = runners;
+        this.requestLogs = requestLogs;
         this.zone = TimeZone.getTimeZone(java.time.ZoneId.of(timeZone));
     }
 
@@ -104,7 +107,8 @@ public class ScheduleJobManager implements com.oigit.admin.schedule.domain.gatew
             return;
         }
         String failure = null;
-        try {
+        var requestScope = requestLogs.open(job.getJobCode(), executionId);
+        try (requestScope) {
             JobRunner runner = runners.stream()
                     .filter(r -> r.supports(job.getInvokeRoute())).findFirst().orElse(null);
             if (runner == null) {
@@ -121,7 +125,7 @@ public class ScheduleJobManager implements com.oigit.admin.schedule.domain.gatew
             failure = failure.substring(0, 2000);
         }
         try {
-            jobLogService.finishExecution(executionId, failure);
+            jobLogService.finishExecution(executionId, failure, requestScope.snapshot());
         } catch (RuntimeException exception) {
             // 完成日志落库失败不重新执行已完成的业务。
             log.error("Failed to finish execution log [{}] for [{}]", executionId, job.getJobCode(), exception);

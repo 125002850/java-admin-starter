@@ -41,7 +41,7 @@ public class CsvExportRenderer implements ExportRenderer {
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
         writer.write(UTF8_BOM);
         writeCsvLine(writer, orderedColumns.stream().map(ExportColumn::getTitle).toList());
-        for (Object row : request.getRows()) {
+        for (Object row : request.getRowSource()) {
             List<String> values = new ArrayList<>(orderedColumns.size());
             for (ExportColumn column : orderedColumns) {
                 values.add(stringify(resolveValue(row, column.getField())));

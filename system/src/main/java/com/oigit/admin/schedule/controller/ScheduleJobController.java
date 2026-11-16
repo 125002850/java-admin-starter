@@ -104,6 +104,13 @@ public class ScheduleJobController {
         return R.ok(scheduleJobAppService.listOperationLogs(reqDTO));
     }
 
+    @Operation(summary = "查询执行请求报文", operationId = "scheduleJobRequestLogs", description = "仅读取最近一次执行的有界脱敏快照")
+    @PostMapping("/request-logs")
+    public R<com.oigit.admin.schedule.dto.rsp.ScheduleJobRequestLogsRspDTO> requestLogs(
+            @Valid @RequestBody com.oigit.admin.schedule.dto.req.ScheduleJobRequestLogsQueryReqDTO request) {
+        return R.ok(scheduleJobAppService.requestLogs(request));
+    }
+
     @Operation(summary = "预演接下来执行时间", description = "根据 Cron 表达式预演计算接下来的执行时间列表")
     @PostMapping("/next-executions")
     public R<List<String>> previewNextExecutions(
