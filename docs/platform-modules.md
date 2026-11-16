@@ -41,3 +41,13 @@ platform:
 前端页面位于对应 feature 目录，路由集中于 `dashboard/system-management`；新增用户需授予对应菜单权限。后端接口的枚举返回 code，由字典批量接口提供显示名称。
 
 无需某模块时，可先撤销菜单授权。创建新业务项目前若要删除模块，应同时移除对应前端 feature/route、后端能力包、MapperScan 和 OpenAPI 场景注册，再重新生成客户端；已执行的历史迁移仍应保留。
+
+## 2026-11-16 通用能力回灌
+
+- 调度请求快照：`POST /api/system/schedule/job/request-logs`，operationId 为 `scheduleJobRequestLogs`，继承原调度管理权限。每任务只保留最新执行，最多 200 条请求、1 MiB，正文最多 64 KiB；不记录认证头，正文、参数和 URL 先脱敏。超限内容明确省略，不依赖 Elastic。
+- 调度 HTTP runner 复用 `core/http` 的严格超时、禁止重定向、禁止自动重试配置，保留部署方 origin 白名单。反射任务内其他 HTTP 客户端需显式接入采集器，平台不拦截任意第三方 SDK。
+- 执行记录清理默认关闭。部署方设置 `platform.schedule.execution-log-cleanup-enabled=true` 后，默认每天 03:00 分批清理 7 天前的成功/失败记录；可用 `execution-log-retention-days` 和 `execution-log-cleanup-cron` 配置，执行中记录保留。
+- 导出新增 XLSX renderer、`ExportSheet`、`WorkbookExportHandler` 和 `ChunkedExportHandler`。多 Sheet handler 可在自己的只读快照内完成查询和本地渲染；上传与记录状态仍由模板的异步执行服务负责。分批 handler 按固定 5000 条读取并批量翻译，须提供稳定排序。原 CSV、ZIP、文件临时路径和异步契约保持兼容。
+- `core/http` 的代理配置为 `platform.http.proxy.http-url/https-url/no-proxy`；默认沿用系统 ProxySelector，loopback 始终直连，配置 URL 不允许内联凭据。
+- 错误码可以覆盖 `getHttpStatus()`；默认仍为 200，`ErrorCodeDetail` 保留基础错误码的 HTTP 语义。
+- Flyway 失败诊断只记录文件、行号、SQLState、错误码和有界脱敏原因，不自动 repair 或重试。

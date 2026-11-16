@@ -28,6 +28,7 @@ public class MybatisScheduleJobRepository implements ScheduleJobRepository {
      Map.Entry::getKey, entry -> ScheduleModelMapper.toModel(entry.getValue())));
  }
  public List<ScheduleJobExecutionLog> listExecutionLogs(Long id) { return logs.listExecutionLogs(id).stream().map(ScheduleModelMapper::toModel).toList(); }
+ public ScheduleRequestSnapshot requestSnapshot(Long jobId, Long executionId) { return logs.requestSnapshot(jobId, executionId); }
  public List<ScheduleJobOperationLog> listOperationLogs(Long id) { return logs.listOperationLogs(id).stream().map(ScheduleModelMapper::toModel).toList(); }
  public void recordOperationLog(ScheduleJob job, ScheduleJobOperationType type, Map<String,Object> content) { logs.recordOperationLog(ScheduleModelMapper.toEntity(job),type,content); }
 }

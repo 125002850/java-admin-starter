@@ -23,4 +23,8 @@ public record ErrorCodeDetail(ErrorCode errorCode, String message) implements Er
         return message;
     }
 
+    @Override
+    public int getHttpStatus() {
+        return errorCode.getHttpStatus();
+    }
 }

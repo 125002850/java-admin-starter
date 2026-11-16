@@ -13,7 +13,7 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             echo '用法：scripts/testing/verify-flyway-mysql8.sh [--ref <标签或提交>]'
             echo '默认验证当前工作区；始终使用新建的临时 MySQL 容器，退出时清理容器和数据卷。'
-            echo '默认镜像 mysql:8.0；FLYWAY_VERIFY_MYSQL_IMAGE 可覆盖镜像，DOCKER_DEFAULT_PLATFORM 可覆盖平台。'
+            echo '默认镜像 mysql:8.0.24（linux/amd64）；FLYWAY_VERIFY_MYSQL_IMAGE 可覆盖镜像，DOCKER_DEFAULT_PLATFORM 可覆盖平台。'
             echo '日志保留在 target/flyway-mysql-verify/。'
             exit 0
             ;;
@@ -21,8 +21,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-verify_mysql_image="${FLYWAY_VERIFY_MYSQL_IMAGE:-mysql:8.0}"
+verify_mysql_image="${FLYWAY_VERIFY_MYSQL_IMAGE:-mysql:8.0.24}"
 [[ "$verify_mysql_image" =~ ^[a-zA-Z0-9][a-zA-Z0-9./:@_-]*$ ]] || { echo '无效的 MySQL 镜像引用。' >&2; exit 2; }
+if [[ "$verify_mysql_image" == mysql:8.0.24 ]]; then
+    export DOCKER_DEFAULT_PLATFORM="${DOCKER_DEFAULT_PLATFORM:-linux/amd64}"
+fi
 command -v docker >/dev/null || { echo '请先安装 Docker。' >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo 'Docker 未就绪，请先启动 Docker。' >&2; exit 1; }
 
@@ -105,6 +108,7 @@ done
 [[ "$(verify_mysql 'SELECT VERSION()')" == 8.* ]] || { echo '必须使用 MySQL 8。' >&2; exit 1; }
 [[ "$(verify_mysql 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()')" == 0 ]] \
     || { echo '验证库必须为空。' >&2; exit 1; }
+verify_mysql 'CREATE DATABASE oig_schedule_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci'
 verify_mapping="$(docker port "$verify_container" 3306/tcp)"
 [[ "$verify_mapping" =~ ^127\.0\.0\.1:[0-9]+$ ]] || { echo '无法识别临时 MySQL 的本机端口。' >&2; exit 1; }
 verify_port="${verify_mapping##*:}"
@@ -112,6 +116,7 @@ verify_jdbc="jdbc:mysql://127.0.0.1:$verify_port/$verify_database?useSSL=false&a
 
 # 不接受调用环境的数据源或外部 Spring 配置，测试库属于本次新建容器。
 unset SPRING_APPLICATION_JSON SPRING_CONFIG_LOCATION SPRING_CONFIG_ADDITIONAL_LOCATION SPRING_PROFILES_ACTIVE
+export SCHEDULE_MIGRATION_TEST_URL="${verify_jdbc/$verify_database/oig_schedule_upgrade}"
 export JAVA_ADMIN_STARTER_DATASOURCE_URL="$verify_jdbc"
 export JAVA_ADMIN_STARTER_DATASOURCE_USERNAME=root
 export JAVA_ADMIN_STARTER_DATASOURCE_PASSWORD="$verify_password"
@@ -122,7 +127,7 @@ echo "MySQL 已就绪（127.0.0.1:${verify_port}），执行全量迁移及结�
 echo "Maven 日志：$verify_logs/maven.log"
 if (
     cd "$verify_source"
-    mvn -B -pl boot -am -Dtest=FlywaySmokeTests,ScheduleExecutionIntegrationTests \
+    mvn -B -pl boot -am -Dtest=FlywaySmokeTests,ScheduleExecutionIntegrationTests,ScheduleSnapshotMigrationTests \
         "-Dspring.datasource.url=$verify_jdbc" "-Dspring.datasource.hikari.jdbc-url=$verify_jdbc" -Dspring.datasource.username=root \
         "-Dspring.datasource.password=$verify_password" -Dspring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver \
         "-Dspring.flyway.url=$verify_jdbc" -Dspring.flyway.user=root "-Dspring.flyway.password=$verify_password" \

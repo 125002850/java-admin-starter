@@ -158,6 +158,21 @@ public class ScheduleJobAppService {
                 .collect(Collectors.toList());
     }
 
+    public com.oigit.admin.schedule.dto.rsp.ScheduleJobRequestLogsRspDTO requestLogs(
+            com.oigit.admin.schedule.dto.req.ScheduleJobRequestLogsQueryReqDTO request) {
+        if (scheduleJobService.getById(request.getJobId()) == null) {
+            throw new com.oigit.admin.core.exception.BizException(com.oigit.admin.schedule.enums.ScheduleErrorCode.JOB_NOT_FOUND);
+        }
+        var snapshot = scheduleJobService.requestSnapshot(request.getJobId(), request.getExecutionId());
+        if (snapshot == null) return new com.oigit.admin.schedule.dto.rsp.ScheduleJobRequestLogsRspDTO(
+                request.getExecutionId(), false, false, 0, 0, List.of());
+        return new com.oigit.admin.schedule.dto.rsp.ScheduleJobRequestLogsRspDTO(request.getExecutionId(), true,
+                snapshot.completed(), snapshot.totalRequests(), snapshot.totalRequests() - snapshot.requests().size(),
+                snapshot.requests().stream().map(entry -> new com.oigit.admin.schedule.dto.rsp.ScheduleJobRequestLogsRspDTO.RequestRspDTO(
+                        entry.sequence(), entry.startTime(), entry.method(), entry.url(), entry.requestParams(),
+                        entry.requestBody(), entry.statusCode(), entry.responseBody(), entry.durationMillis(), entry.errorType())).toList());
+    }
+
     @Transactional(readOnly = true)
     public List<ScheduleJobOperationLogRspDTO> listOperationLogs(ScheduleJobOperationLogQueryReqDTO reqDTO) {
         return scheduleJobService.listOperationLogs(reqDTO.getJobId()).stream()

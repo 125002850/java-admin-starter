@@ -59,6 +59,7 @@ class ScheduleExecutionIntegrationTests {
     @AfterEach
     void cleanup() {
         for (Long id : jobIds) {
+            jdbc.update("DELETE FROM sys_schedule_job_request_snapshot WHERE job_id = ?", id);
             jdbc.update("DELETE FROM sys_schedule_job_execution_log WHERE job_id = ?", id);
             jdbc.update("DELETE FROM sys_schedule_job WHERE id = ?", id);
         }
@@ -134,6 +135,41 @@ class ScheduleExecutionIntegrationTests {
         assertThat(logs.latestExecutions(List.of())).isEmpty();
         jdbc.update("UPDATE sys_schedule_job SET deleted = 1 WHERE id = ?", job.getId());
         assertThat(logs.latestExecutions(List.of(job.getId()))).isEmpty();
+    }
+
+    @Test
+    void keepsOnlyTheLatestRequestSnapshotWhenOlderExecutionFinishesLater() {
+        var job = job();
+        Long older = logs.startExecution(job);
+        Long latest = logs.startExecution(job);
+        var complete = new com.oigit.admin.schedule.domain.model.ScheduleRequestSnapshot(true, 0, List.of());
+        logs.finishExecution(older, null, complete);
+        assertThat(logs.requestSnapshot(job.getId(), older)).isNull();
+        assertThat(logs.requestSnapshot(job.getId(), latest).completed()).isFalse();
+        logs.finishExecution(latest, null, complete);
+        assertThat(logs.requestSnapshot(job.getId(), latest).completed()).isTrue();
+        var query = new com.oigit.admin.schedule.dto.req.ScheduleJobRequestLogsQueryReqDTO();
+        query.setJobId(job.getId()); query.setExecutionId(latest);
+        assertThat(app.requestLogs(query).available()).isTrue();
+        query.setExecutionId(older);
+        assertThat(app.requestLogs(query).available()).isFalse();
+    }
+
+    @Test
+    void cleanupRetainsRunningAndRecentExecutions() {
+        var job = job();
+        Long success = logs.startExecution(job);
+        Long failure = logs.startExecution(job);
+        Long running = logs.startExecution(job);
+        Long recent = logs.startExecution(job);
+        logs.finishExecution(success, null);
+        logs.finishExecution(failure, "failed");
+        logs.finishExecution(recent, null);
+        jdbc.update("UPDATE sys_schedule_job_execution_log SET end_time=? WHERE id IN (?,?)",
+                LocalDateTime.now().minusDays(10), success, failure);
+        assertThat(logs.deleteExpiredExecutions(LocalDateTime.now().minusDays(7))).isEqualTo(2);
+        assertThat(executionMapper.selectById(running)).isNotNull();
+        assertThat(executionMapper.selectById(recent)).isNotNull();
     }
 
     private ScheduleJobEntity job() {

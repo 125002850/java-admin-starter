@@ -22,22 +22,22 @@ class ScheduleCommitTests {
         doAnswer(invocation -> { invocation.<Runnable>getArgument(0).run(); return null; })
                 .when(scheduler).execute(any(Runnable.class));
         doThrow(new IllegalStateException("业务失败")).when(runner).execute(any());
-        var manager = new ScheduleJobManager(scheduler, mock(ScheduleJobMapper.class), logs, List.of(runner), "Asia/Shanghai");
+        var manager = new ScheduleJobManager(scheduler, mock(ScheduleJobMapper.class), logs, List.of(runner), new com.oigit.admin.schedule.infra.scheduling.ScheduleRequestLogCollector(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules()), "Asia/Shanghai");
         manager.triggerJob(new ScheduleJob());
         var order = inOrder(logs, runner);
         order.verify(logs).startExecution(any());
         order.verify(runner).execute(any());
-        order.verify(logs).finishExecution(7L, "业务失败");
+        order.verify(logs).finishExecution(eq(7L), eq("业务失败"), any());
         reset(logs, runner);
         when(logs.startExecution(any())).thenThrow(new IllegalStateException("日志写入失败"));
         manager.triggerJob(new ScheduleJob());
         verifyNoInteractions(runner);
-        verify(logs, never()).finishExecution(any(), any());
+        verify(logs, never()).finishExecution(any(), any(), any());
     }
 
     @Test void rollsBackWithoutRegisteringOrCancellingTasks() {
         var scheduler = mock(ThreadPoolTaskScheduler.class);
-        var manager = new ScheduleJobManager(scheduler, mock(ScheduleJobMapper.class), mock(ScheduleJobLogService.class), List.of(), "Asia/Shanghai");
+        var manager = new ScheduleJobManager(scheduler, mock(ScheduleJobMapper.class), mock(ScheduleJobLogService.class), List.of(), new com.oigit.admin.schedule.infra.scheduling.ScheduleRequestLogCollector(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules()), "Asia/Shanghai");
         var job = new ScheduleJob(); job.setJobCode("commit-test"); job.setDefaultCron("0 0 9 * * *");
         TransactionSynchronizationManager.initSynchronization();
         try {

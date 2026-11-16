@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface ScheduleJobExecutionLogMapper extends BaseMapper<ScheduleJobExecutionLogEntity> {
+    int deleteExpired(@org.apache.ibatis.annotations.Param("threshold") java.time.LocalDateTime threshold);
     java.util.List<ScheduleJobExecutionLogEntity> selectLatestByJobIds(
             @org.apache.ibatis.annotations.Param("jobIds") java.util.List<Long> jobIds);
 }

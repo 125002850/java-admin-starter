@@ -27,7 +27,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BizException.class)
     public ResponseEntity<R<Void>> handleBizException(BizException ex) {
-        return ResponseEntity.ok(R.fail(ex.getErrorCode(), ex.getMessage()));
+        return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
+                .body(R.fail(ex.getErrorCode(), ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

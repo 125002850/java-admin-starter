@@ -53,13 +53,23 @@ public final class HttpLogSanitizer {
     }
 
     public String sanitizeBody(byte[] body,
-                        String contentType,
-                        String characterEncoding,
-                        boolean enabled,
-                        boolean truncated,
-                        int maxBytes) {
+            String contentType,
+            String characterEncoding,
+            boolean enabled,
+            boolean truncated,
+            int maxBytes) {
         if (!enabled) {
             return "<disabled>";
+        }
+        MediaType mediaType = parseMediaType(contentType);
+        if (mediaType == null) {
+            if (body.length == 0) {
+                return "-";
+            }
+            return "<omitted: unknown content-type>";
+        }
+        if (MediaType.MULTIPART_FORM_DATA.includes(mediaType)) {
+            return "<omitted: multipart>";
         }
         if (body.length == 0) {
             return "-";
@@ -67,19 +77,12 @@ public final class HttpLogSanitizer {
         if (truncated) {
             return "<omitted: body exceeds " + maxBytes + " bytes>";
         }
-        MediaType mediaType = parseMediaType(contentType);
-        if (mediaType == null) {
-            return "<omitted: unknown content-type>";
-        }
         Charset bodyCharset = bodyCharset(mediaType, characterEncoding);
         if (isJson(mediaType)) {
             return sanitizeJson(body, bodyCharset);
         }
         if (MediaType.APPLICATION_FORM_URLENCODED.includes(mediaType)) {
             return sanitizeQuery(new String(body, bodyCharset));
-        }
-        if (MediaType.MULTIPART_FORM_DATA.includes(mediaType)) {
-            return "<omitted: multipart>";
         }
         return "<omitted: content-type=" + singleLine(mediaType.toString()) + ">";
     }
@@ -132,7 +135,9 @@ public final class HttpLogSanitizer {
                 || normalized.endsWith("mobile")
                 || normalized.endsWith("idcard")
                 || normalized.endsWith("bankcard")
-                || normalized.endsWith("cardno");
+                || normalized.endsWith("cardno")
+                || normalized.endsWith("accountno")
+                || normalized.endsWith("certificateno");
     }
 
     private String normalizeFieldName(String value) {

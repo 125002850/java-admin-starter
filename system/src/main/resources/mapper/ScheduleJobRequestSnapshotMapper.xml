@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobRequestSnapshotMapper">
+    <!-- 同任务并发开始时，较旧执行即使晚提交也不能清空较新执行的快照。 -->
+    <insert id="replaceLatest">
+        INSERT INTO sys_schedule_job_request_snapshot (job_id, execution_id, start_time, snapshot_json)
+        SELECT execution.job_id, execution.id, execution.start_time, #{snapshotJson}
+        FROM sys_schedule_job_execution_log execution
+        WHERE execution.job_id = #{jobId} AND execution.id = #{executionId}
+        ON DUPLICATE KEY UPDATE
+            snapshot_json = CASE WHEN sys_schedule_job_request_snapshot.start_time &lt; VALUES(start_time)
+                OR (sys_schedule_job_request_snapshot.start_time = VALUES(start_time)
+                    AND sys_schedule_job_request_snapshot.execution_id &lt; VALUES(execution_id))
+                THEN VALUES(snapshot_json) ELSE sys_schedule_job_request_snapshot.snapshot_json END,
+            execution_id = CASE WHEN sys_schedule_job_request_snapshot.start_time &lt; VALUES(start_time)
+                OR (sys_schedule_job_request_snapshot.start_time = VALUES(start_time)
+                    AND sys_schedule_job_request_snapshot.execution_id &lt; VALUES(execution_id))
+                THEN VALUES(execution_id) ELSE sys_schedule_job_request_snapshot.execution_id END,
+            start_time = GREATEST(sys_schedule_job_request_snapshot.start_time, VALUES(start_time))
+    </insert>
+</mapper>

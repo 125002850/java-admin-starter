@@ -380,3 +380,7 @@ CI 配置位于 [.github/workflows/verify.yml](.github/workflows/verify.yml)，�
 - 工作日历保留草稿试算接口，新增 `/api/system/work-calendar/version/evaluate`，校验版本 ID、锁版本与年份；只有当前生效发布版本返回权威结果。
 - 升级时先执行新增 Flyway 迁移并部署后端，再部署前端的调度展示和版本试算。
 - 隔离迁移验收：`scripts/testing/verify-flyway-mysql8.sh`，可用 `--ref <提交>` 验证指定 Git 版本。默认 `mysql:8.0`，可用 `FLYWAY_VERIFY_MYSQL_IMAGE` 覆盖；始终新建临时容器和空库，随机本机端口，退出只清理本次资源，日志保存在 `target/flyway-mysql-verify/`。
+
+### 通用能力回灌（2026-11-16）
+
+新增调度请求快照、显式启用的执行记录清理、XLSX 多工作表及分批导出、统一出站 HTTP、TraceId/日志防护和 Flyway 诊断。接口与接入边界见 [模块说明](docs/platform-modules.md#2026-11-16-通用能力回灌)。部署前追加执行新迁移；历史迁移保持原样。MySQL 验收默认固定为 8.0.24，并覆盖旧调度版本升级。

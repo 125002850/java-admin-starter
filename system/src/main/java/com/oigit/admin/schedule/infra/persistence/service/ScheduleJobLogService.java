@@ -12,6 +12,8 @@ import com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobExecutionLog
 import com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobOperationLogEntity;
 import com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobExecutionLogMapper;
 import com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobOperationLogMapper;
+import com.oigit.admin.schedule.infra.persistence.mapper.ScheduleJobRequestSnapshotMapper;
+import com.oigit.admin.schedule.domain.model.ScheduleRequestSnapshot;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -31,14 +33,17 @@ public class ScheduleJobLogService {
     private final ScheduleJobExecutionLogMapper executionLogMapper;
     private final ScheduleJobOperationLogMapper operationLogMapper;
     private final ObjectMapper objectMapper;
+    private final ScheduleJobRequestSnapshotMapper requestSnapshotMapper;
 
     public ScheduleJobLogService(
             ScheduleJobExecutionLogMapper executionLogMapper,
             ScheduleJobOperationLogMapper operationLogMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ScheduleJobRequestSnapshotMapper requestSnapshotMapper) {
         this.executionLogMapper = executionLogMapper;
         this.operationLogMapper = operationLogMapper;
         this.objectMapper = objectMapper;
+        this.requestSnapshotMapper = requestSnapshotMapper;
     }
 
     @Transactional(readOnly = true)
@@ -69,11 +74,17 @@ public class ScheduleJobLogService {
         execution.setStartTime(LocalDateTime.now());
         execution.setStatus(ScheduleJobExecutionStatus.RUNNING.getCode());
         executionLogMapper.insert(execution);
+        requestSnapshotMapper.replaceLatest(job.getId(), execution.getId(), encodeSnapshot(ScheduleRequestSnapshot.empty()));
         return execution.getId();
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void finishExecution(Long executionId, String failure) {
+        finishExecution(executionId, failure, null);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void finishExecution(Long executionId, String failure, ScheduleRequestSnapshot snapshot) {
         int updated = executionLogMapper.update(null, new LambdaUpdateWrapper<ScheduleJobExecutionLogEntity>()
                 .eq(ScheduleJobExecutionLogEntity::getId, executionId)
                 .eq(ScheduleJobExecutionLogEntity::getStatus, ScheduleJobExecutionStatus.RUNNING.getCode())
@@ -84,6 +95,33 @@ public class ScheduleJobLogService {
         if (updated != 1) {
             throw new IllegalStateException("Execution log is missing or already finished: " + executionId);
         }
+        if (snapshot != null) {
+            var execution = executionLogMapper.selectById(executionId);
+            requestSnapshotMapper.update(null, new LambdaUpdateWrapper<com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobRequestSnapshotEntity>()
+                    .eq(com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobRequestSnapshotEntity::getJobId, execution.getJobId())
+                    .eq(com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobRequestSnapshotEntity::getExecutionId, executionId)
+                    .set(com.oigit.admin.schedule.infra.persistence.entity.ScheduleJobRequestSnapshotEntity::getSnapshotJson, encodeSnapshot(snapshot)));
+        }
+    }
+
+    public ScheduleRequestSnapshot requestSnapshot(Long jobId, Long executionId) {
+        var entity = requestSnapshotMapper.selectById(jobId);
+        if (entity == null || !executionId.equals(entity.getExecutionId())) return null;
+        try {
+            return objectMapper.readValue(entity.getSnapshotJson(), ScheduleRequestSnapshot.class);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Stored schedule request snapshot is unreadable", exception);
+        }
+    }
+
+    private String encodeSnapshot(ScheduleRequestSnapshot snapshot) {
+        try { return objectMapper.writeValueAsString(snapshot); }
+        catch (JsonProcessingException exception) { throw new IllegalStateException("Cannot encode schedule request snapshot", exception); }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int deleteExpiredExecutions(LocalDateTime threshold) {
+        return executionLogMapper.deleteExpired(threshold);
     }
 
     @Transactional(readOnly = true)
