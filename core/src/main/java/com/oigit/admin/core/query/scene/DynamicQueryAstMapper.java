@@ -102,7 +102,7 @@ public final class DynamicQueryAstMapper {
         leafAst.setFieldKey(textCondition.getField().name());
         leafAst.setOperator(toTextOperator(textCondition.getOp()));
         leafAst.setTypedValue(switch (textCondition.getOp()) {
-            case IN -> textCondition.getValues();
+            case IN, NOT_IN -> textCondition.getValues();
             case IS_NULL, IS_NOT_NULL -> null;
             default -> textCondition.getValue();
         });
@@ -126,7 +126,7 @@ public final class DynamicQueryAstMapper {
         leafAst.setFieldKey(enumCondition.getField().name());
         leafAst.setOperator(toEnumOperator(enumCondition.getOp()));
         leafAst.setTypedValue(switch (enumCondition.getOp()) {
-            case IN -> enumCondition.getValues();
+            case IN, NOT_IN -> enumCondition.getValues();
             case IS_NULL, IS_NOT_NULL -> null;
             default -> enumCondition.getValue();
         });
@@ -175,10 +175,13 @@ public final class DynamicQueryAstMapper {
     private static QueryOperator toTextOperator(TextConditionDTO.TextOperator operator) {
         return switch (operator) {
             case EQ -> QueryOperator.EQ;
+            case NE -> QueryOperator.NE;
             case CONTAINS -> QueryOperator.CONTAINS;
+            case NOT_CONTAINS -> QueryOperator.NOT_CONTAINS;
             case STARTS_WITH -> QueryOperator.STARTS_WITH;
             case ENDS_WITH -> QueryOperator.ENDS_WITH;
             case IN -> QueryOperator.IN;
+            case NOT_IN -> QueryOperator.NOT_IN;
             case IS_NULL -> QueryOperator.IS_NULL;
             case IS_NOT_NULL -> QueryOperator.IS_NOT_NULL;
         };
@@ -186,6 +189,8 @@ public final class DynamicQueryAstMapper {
 
     private static QueryOperator toDateTimeOperator(DateTimeConditionDTO.DateTimeOperator operator) {
         return switch (operator) {
+            case EQ -> QueryOperator.EQ;
+            case NE -> QueryOperator.NE;
             case GT -> QueryOperator.GT;
             case GTE -> QueryOperator.GTE;
             case LT -> QueryOperator.LT;
@@ -199,7 +204,9 @@ public final class DynamicQueryAstMapper {
     private static QueryOperator toEnumOperator(EnumConditionDTO.EnumOperator operator) {
         return switch (operator) {
             case EQ -> QueryOperator.EQ;
+            case NE -> QueryOperator.NE;
             case IN -> QueryOperator.IN;
+            case NOT_IN -> QueryOperator.NOT_IN;
             case IS_NULL -> QueryOperator.IS_NULL;
             case IS_NOT_NULL -> QueryOperator.IS_NOT_NULL;
         };
