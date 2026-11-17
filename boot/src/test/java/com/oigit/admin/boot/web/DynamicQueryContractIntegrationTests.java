@@ -269,6 +269,50 @@ class DynamicQueryContractIntegrationTests {
                 .andExpect(jsonPath("$.data.list[0].updateByName").value("超级管理员"));
     }
 
+    @Test
+    void negativeTextOperatorsFilterRowsAndKeepDeletedRowsHidden() throws Exception {
+        var created = LocalDateTime.of(2026, 6, 1, 8, 0);
+        insertGlobalDictType(1101L, "alpha", "正式", 0L, created);
+        insertGlobalDictType(1102L, "test_beta", "测试", 0L, created);
+        insertGlobalDictType(1103L, "deleted", "正式", 1L, created);
+        for (String operator : java.util.List.of("NE", "NOT_IN", "NOT_CONTAINS")) {
+            String operand = "NOT_IN".equals(operator) ? "\"values\":[\"测试\"]" : "\"value\":\"测试\"";
+            mockMvc.perform(post("/api/system/dict/global/types/list")
+                            .header("Authorization", authorizationHeader())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"pageNo":1,"pageSize":10,"condition":{
+                                      "nodeType":"text","field":"dictTypeName","op":"%s",%s}}
+                                    """.formatted(operator, operand)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(200))
+                    .andExpect(jsonPath("$.data.total").value(1))
+                    .andExpect(jsonPath("$.data.list[0].dictTypeCode").value("alpha"));
+        }
+    }
+
+    @Test
+    void negativeMembershipRejectsMissingAndOversizedValues() throws Exception {
+        String values = IntStream.range(0, com.oigit.admin.core.query.validation.DynamicQueryLimits.MAX_IN_SIZE + 1)
+                .mapToObj(index -> "\"value-" + index + "\"").collect(Collectors.joining(","));
+        mockMvc.perform(post("/api/system/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pageNo":1,"pageSize":10,"condition":{
+                                  "nodeType":"text","field":"dictTypeCode","op":"NOT_IN","values":[%s]}}
+                                """.formatted(values)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(3000009));
+        mockMvc.perform(post("/api/system/dict/global/types/list")
+                        .header("Authorization", authorizationHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pageNo":1,"pageSize":10,"condition":{
+                                  "nodeType":"text","field":"dictTypeCode","op":"NOT_IN","values":[]}}
+                                """))
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value(400));
+    }
+
     private void cleanTables() {
         jdbcTemplate.update("delete from sys_export_record_global");
         jdbcTemplate.update("delete from sys_dict_item_global");

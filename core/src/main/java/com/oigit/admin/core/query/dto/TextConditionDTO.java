@@ -12,10 +12,13 @@ public class TextConditionDTO<F extends Enum<F>> implements AbstractConditionNod
 
     public enum TextOperator {
         EQ,
+        NE,
         CONTAINS,
+        NOT_CONTAINS,
         STARTS_WITH,
         ENDS_WITH,
         IN,
+        NOT_IN,
         IS_NULL,
         IS_NOT_NULL
     }
@@ -31,7 +34,7 @@ public class TextConditionDTO<F extends Enum<F>> implements AbstractConditionNod
     @Schema(description = "单值操作符使用")
     private String value;
 
-    @Schema(description = "IN 操作符使用")
+    @Schema(description = "IN/NOT_IN 操作符使用")
     private List<String> values;
 
     @AssertTrue(message = "文本条件 value/values 不匹配操作符")
@@ -39,7 +42,7 @@ public class TextConditionDTO<F extends Enum<F>> implements AbstractConditionNod
         if (op == null) {
             return true;
         }
-        if (op == TextOperator.IN) {
+        if (op == TextOperator.IN || op == TextOperator.NOT_IN) {
             return values != null
                 && !values.isEmpty()
                 && values.stream().allMatch(StringUtils::hasText);

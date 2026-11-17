@@ -11,7 +11,9 @@ public class EnumConditionDTO<F extends Enum<F>, V> implements AbstractCondition
 
     public enum EnumOperator {
         EQ,
+        NE,
         IN,
+        NOT_IN,
         IS_NULL,
         IS_NOT_NULL
     }
@@ -27,7 +29,7 @@ public class EnumConditionDTO<F extends Enum<F>, V> implements AbstractCondition
     @Schema(description = "单值操作符使用")
     private V value;
 
-    @Schema(description = "IN 操作符使用")
+    @Schema(description = "IN/NOT_IN 操作符使用")
     private List<V> values;
 
     @AssertTrue(message = "枚举条件 value/values 不匹配操作符")
@@ -35,7 +37,7 @@ public class EnumConditionDTO<F extends Enum<F>, V> implements AbstractCondition
         if (op == null) {
             return true;
         }
-        if (op == EnumOperator.IN) {
+        if (op == EnumOperator.IN || op == EnumOperator.NOT_IN) {
             return values != null
                 && !values.isEmpty()
                 && values.stream().allMatch(item -> item != null);

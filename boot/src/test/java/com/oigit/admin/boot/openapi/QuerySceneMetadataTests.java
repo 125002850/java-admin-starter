@@ -105,6 +105,28 @@ class QuerySceneMetadataTests {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void publishesNegativeOperatorsAndKeepsTypedFieldEnums() throws Exception {
+        var response = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String output = System.getProperty("admin.openapi.output");
+        if (output != null) Files.writeString(Path.of(output), response);
+        var schemas = mapper.readTree(response).path("components").path("schemas");
+        var text = schemas.path("GlobalDictItemTextCondition");
+        var properties = text.path("properties");
+        for (var part : text.path("allOf")) {
+            if (part.has("properties")) properties = part.path("properties");
+        }
+        assertThat(strings(resolveSchema(properties.path("op"), schemas).path("enum")))
+                .contains("NE", "NOT_IN", "NOT_CONTAINS");
+        assertThat(strings(resolveSchema(properties.path("field"), schemas).path("enum")))
+                .containsExactlyInAnyOrder("dictTypeCode", "dictItemCode", "dictItemName");
+    }
+
+    private static JsonNode resolveSchema(JsonNode node, JsonNode schemas) {
+        return node.has("$ref") ? schemas.path(node.path("$ref").asText().replace("#/components/schemas/", "")) : node;
+    }
+
     private static List<String> strings(JsonNode node) {
         var values = new ArrayList<String>();
         node.forEach(value -> values.add(value.asText()));
