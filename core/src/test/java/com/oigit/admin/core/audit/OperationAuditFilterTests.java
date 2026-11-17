@@ -110,7 +110,7 @@ class OperationAuditFilterTests {
                 request.setAttribute(RESULT_CODE, 200));
         ArgumentCaptor<OperationAuditCommand> captor = ArgumentCaptor.forClass(OperationAuditCommand.class);
         verify(multipartWriter).write(captor.capture());
-        assertThat(captor.getValue().requestParams()).isEqualTo("-");
+        assertThat(captor.getValue().requestParams()).isEqualTo("<omitted: multipart>");
     }
 
     @Test
