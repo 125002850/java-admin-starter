@@ -502,3 +502,7 @@ lefthook run pre-commit
 `POST /api/staff/password/change`（`changeCurrentStaffPassword`）只接收 oldPassword/newPassword/repeatPassword。账号由网关建立的 `OperatorContext` 中的 X-User-Code 确定，同时要求 X-User-Id；请求不能指定其他账号。网关继续负责认证和权限，SSO 校验旧密码与密码强度。缺少身份拒绝改密，HTTP 严格超时、不重试，日志不记录密码和原始异常。需配套发布前端修改密码入口。
 
 迁移检查同步严格的时间戳、重复版本、暂存区与提交范围验证。SSO 历史 V1–V8 仅按原路径和精确内容保留，不能新增顺序版本、修改历史或换用 main 基线；回归用例见 `scripts/tests/test_check_migrations.sh`。
+
+### DSL 字段与否定筛选回灌（2026-11-17）
+
+从 track-bench 回灌 QueryFieldSpec，将字段映射、类型、名称、操作符与排序集中定义；补齐文本 NE／NOT_IN／NOT_CONTAINS、枚举 NE／NOT_IN 以及时间 EQ／NE 的请求入口。保留原有字段枚举、JSON、schema、operationId、查询限额与鉴权。详见 [回灌说明](docs/implementation/2026-11-17-dsl-backport.md)。
