@@ -16,16 +16,13 @@ import com.oigit.admin.core.query.ast.SortSpec;
 import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.exception.DynamicQueryErrorCode;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
-import com.oigit.admin.core.query.scene.SceneQuerySorts;
+import com.oigit.admin.core.query.scene.QueryFieldSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 @Component
@@ -86,7 +83,7 @@ public class MybatisPlusQueryExecutor {
 
     public <T> List<T> selectList(BaseMapper<T> mapper, QueryAst queryAst, SceneQueryDefinition<T> definition) {
         long startNano = System.nanoTime();
-        LambdaQueryWrapper<T> wrapper = buildWrapper(queryAst, definition);
+        LambdaQueryWrapper<T> wrapper = buildWrapper(queryAst, definition, null);
         List<T> records = mapper.selectList(wrapper);
         logSlowQueryIfNeeded(definition, queryAst, startNano);
         return records;
@@ -103,7 +100,7 @@ public class MybatisPlusQueryExecutor {
             preApply.accept(wrapper);
         }
         if (queryAst.getRoot() != null) {
-            applyNode(wrapper, queryAst.getRoot(), definition);
+            wrapper.and(nested -> applyNode(nested, queryAst.getRoot(), definition));
         }
         applySorts(wrapper, queryAst.getSorts(), definition);
         return wrapper;
@@ -119,7 +116,7 @@ public class MybatisPlusQueryExecutor {
             preApply.accept(wrapper);
         }
         if (queryAst.getRoot() != null) {
-            applyNode(wrapper, queryAst.getRoot(), definition);
+            wrapper.and(nested -> applyNode(nested, queryAst.getRoot(), definition));
         }
         return wrapper;
     }
@@ -166,37 +163,26 @@ public class MybatisPlusQueryExecutor {
     private <T> void applyLeaf(LambdaQueryWrapper<T> wrapper, ConditionLeafAst leaf, SceneQueryDefinition<T> definition) {
         String fieldKey = leaf.getFieldKey();
         QueryOperator operator = leaf.getOperator();
-        Set<QueryOperator> allowedOperators = definition.allowedOperators(fieldKey);
-        if (!allowedOperators.contains(operator)) {
+        QueryFieldSpec<T> field = definition.fields().get(fieldKey);
+        if (field == null || !field.filterable()) {
+            throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_NODE);
+        }
+        if (!field.allowedOperators().contains(operator)) {
             throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
         }
-        BiConsumer<LambdaQueryWrapper<T>, ConditionLeafAst> customLeafApplier =
-                definition.customLeafAppliers().get(fieldKey);
+        var customLeafApplier = field.customLeafApplier();
         if (customLeafApplier != null) {
             customLeafApplier.accept(wrapper, leaf);
             return;
         }
-        if (definition.textFields().containsKey(fieldKey)) {
-            applyTextLeaf(wrapper, definition.textFields().get(fieldKey), operator, leaf.getTypedValue());
-            return;
+        switch (field.kind()) {
+            case TEXT -> applyTextLeaf(wrapper, castTextField(field.column()), operator, leaf.getTypedValue());
+            case DATE_TIME -> applyDateTimeLeaf(wrapper, castDateTimeField(field.column()), operator, leaf.getTypedValue());
+            case NUMBER -> applyDateTimeLeaf(wrapper, field.column(), operator, leaf.getTypedValue());
+            case BOOLEAN -> applyEnumLeaf(wrapper, field.column(), operator, leaf.getTypedValue());
+            case ENUM -> applyEnumLeaf(wrapper, field.column(), operator, leaf.getTypedValue());
+            case SORT_ONLY -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_NODE);
         }
-        if (definition.dateTimeFields().containsKey(fieldKey)) {
-            applyDateTimeLeaf(wrapper, definition.dateTimeFields().get(fieldKey), operator, leaf.getTypedValue());
-            return;
-        }
-        if (definition.enumFields().containsKey(fieldKey)) {
-            applyEnumLeaf(wrapper, definition.enumFields().get(fieldKey), operator, leaf.getTypedValue());
-            return;
-        }
-        if (definition.booleanFields().containsKey(fieldKey)) {
-            applyBooleanLeaf(wrapper, definition.booleanFields().get(fieldKey), operator, leaf.getTypedValue());
-            return;
-        }
-        if (definition.numberFields().containsKey(fieldKey)) {
-            applyNumberLeaf(wrapper, definition.numberFields().get(fieldKey), operator, leaf.getTypedValue());
-            return;
-        }
-        throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_NODE);
     }
 
     private <T> void applyTextLeaf(
@@ -222,7 +208,7 @@ public class MybatisPlusQueryExecutor {
 
     private <T> void applyDateTimeLeaf(
         LambdaQueryWrapper<T> wrapper,
-        SFunction<T, LocalDateTime> field,
+        SFunction<T, ?> field,
         QueryOperator operator,
         Object typedValue
     ) {
@@ -260,44 +246,6 @@ public class MybatisPlusQueryExecutor {
         }
     }
 
-    private <T> void applyBooleanLeaf(
-        LambdaQueryWrapper<T> wrapper,
-        SFunction<T, Boolean> field,
-        QueryOperator operator,
-        Object typedValue
-    ) {
-        switch (operator) {
-            case EQ -> wrapper.eq(field, typedValue);
-            case NE -> wrapper.ne(field, typedValue);
-            case IS_NULL -> wrapper.isNull(field);
-            case IS_NOT_NULL -> wrapper.isNotNull(field);
-            default -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
-        }
-    }
-
-    private <T> void applyNumberLeaf(
-        LambdaQueryWrapper<T> wrapper,
-        SFunction<T, ? extends Number> field,
-        QueryOperator operator,
-        Object typedValue
-    ) {
-        switch (operator) {
-            case EQ -> wrapper.eq(field, typedValue);
-            case NE -> wrapper.ne(field, typedValue);
-            case GT -> wrapper.gt(field, typedValue);
-            case GTE -> wrapper.ge(field, typedValue);
-            case LT -> wrapper.lt(field, typedValue);
-            case LTE -> wrapper.le(field, typedValue);
-            case BETWEEN -> {
-                List<?> values = castList(typedValue);
-                wrapper.between(field, values.get(0), values.get(1));
-            }
-            case IS_NULL -> wrapper.isNull(field);
-            case IS_NOT_NULL -> wrapper.isNotNull(field);
-            default -> throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_UNSUPPORTED_OPERATOR);
-        }
-    }
-
     private <T> void applySorts(
         LambdaQueryWrapper<T> wrapper,
         List<SortSpec> explicitSorts,
@@ -306,22 +254,31 @@ public class MybatisPlusQueryExecutor {
         List<SortSpec> sorts = (explicitSorts == null || explicitSorts.isEmpty())
             ? definition.defaultSorts()
             : explicitSorts;
-        Map<String, SFunction<T, ?>> sortFields = definition.sortFields();
-        sorts = SceneQuerySorts.appendIdDescIfAbsent(sorts, sortFields.keySet());
-        if (sorts == null || sorts.isEmpty()) {
-            return;
-        }
+        sorts = com.oigit.admin.core.query.scene.SceneQuerySorts.appendIdDescIfAbsent(sorts,
+                definition.fields().entrySet().stream().filter(entry -> entry.getValue().isSortable())
+                        .map(java.util.Map.Entry::getKey).collect(java.util.stream.Collectors.toSet()));
+        if (sorts == null || sorts.isEmpty()) return;
         for (SortSpec sort : sorts) {
-            SFunction<T, ?> field = sortFields.get(sort.getFieldKey());
-            if (field == null) {
+            QueryFieldSpec<T> spec = definition.fields().get(sort.getFieldKey());
+            if (spec == null || !spec.isSortable()) {
                 throw new BizException(DynamicQueryErrorCode.DYNAMIC_QUERY_INVALID_SORT_FIELD);
             }
             wrapper.orderBy(
                 true,
                 sort.getDirection() == SortItemDTO.SortDirection.ASC,
-                field
+                spec.sortColumn()
             );
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> SFunction<T, String> castTextField(SFunction<T, ?> field) {
+        return (SFunction<T, String>) field;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> SFunction<T, LocalDateTime> castDateTimeField(SFunction<T, ?> field) {
+        return (SFunction<T, LocalDateTime>) field;
     }
 
     @SuppressWarnings("unchecked")

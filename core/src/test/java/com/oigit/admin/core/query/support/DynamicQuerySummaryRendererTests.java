@@ -1,18 +1,17 @@
 package com.oigit.admin.core.query.support;
 
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.oigit.admin.core.query.ast.ConditionGroupAst;
 import com.oigit.admin.core.query.ast.ConditionLeafAst;
 import com.oigit.admin.core.query.ast.QueryAst;
 import com.oigit.admin.core.query.ast.QueryLogicOperator;
 import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
+import com.oigit.admin.core.query.scene.QueryFieldSpec;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,52 +54,14 @@ class DynamicQuerySummaryRendererTests {
     }
 
     private static class TestSceneQueryDefinition implements SceneQueryDefinition<Object> {
-
-        @Override
-        public String sceneCode() {
-            return "test.scene";
-        }
-
-        @Override
-        public Map<String, SFunction<Object, String>> textFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, SFunction<Object, LocalDateTime>> dateTimeFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, SFunction<Object, ?>> enumFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, SFunction<Object, ?>> sortFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, String> fieldLabels() {
+        public String sceneCode() { return "test.scene"; }
+        public Map<String, QueryFieldSpec<Object>> fields() {
             return Map.of(
-                    "riskLevel", "风险等级",
-                    "isSafe", "是否安全",
-                    "createTime", "创建时间"
-            );
-        }
-
-        @Override
-        public Map<String, Map<String, String>> valueLabels() {
-            return Map.of(
-                    "riskLevel", Map.of("HIGH", "高风险", "MEDIUM", "中风险"),
-                    "isSafe", Map.of("1", "是", "0", "否")
-            );
-        }
-
-        @Override
-        public Set<QueryOperator> allowedOperators(String fieldKey) {
-            return Set.of(QueryOperator.values());
+                    "riskLevel", QueryFieldSpec.<Object>text(row -> "", "风险等级")
+                            .withValueLabels(Map.of("HIGH", "高风险", "MEDIUM", "中风险")),
+                    "isSafe", QueryFieldSpec.<Object>text(row -> "", "是否安全")
+                            .withValueLabels(Map.of("1", "是", "0", "否")),
+                    "createTime", QueryFieldSpec.dateTime(row -> null, "创建时间"));
         }
     }
 }

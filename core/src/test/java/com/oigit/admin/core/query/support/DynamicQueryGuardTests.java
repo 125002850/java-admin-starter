@@ -1,6 +1,5 @@
 package com.oigit.admin.core.query.support;
 
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.oigit.admin.core.exception.BizException;
 import com.oigit.admin.core.query.ast.ConditionGroupAst;
 import com.oigit.admin.core.query.ast.ConditionLeafAst;
@@ -10,7 +9,6 @@ import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -104,30 +102,7 @@ class DynamicQueryGuardTests {
     }
 
     private static class TestSceneQueryDefinition implements SceneQueryDefinition<Object> {
-
-        @Override
-        public String sceneCode() {
-            return "test.scene";
-        }
-
-        @Override
-        public Map<String, SFunction<Object, String>> textFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, SFunction<Object, LocalDateTime>> dateTimeFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, SFunction<Object, ?>> enumFields() {
-            return Map.of();
-        }
-
-        @Override
-        public Map<String, SFunction<Object, ?>> sortFields() {
-            return Map.of();
-        }
+        public String sceneCode() { return "test.scene"; }
+        public Map<String, com.oigit.admin.core.query.scene.QueryFieldSpec<Object>> fields() { return Map.of(); }
     }
 }

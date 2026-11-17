@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oigit.admin.core.exception.BizException;
 import com.oigit.admin.core.query.ast.QueryOperator;
-import com.oigit.admin.core.query.scene.QueryFieldType;
+import com.oigit.admin.core.query.scene.QueryFieldSpec.Kind;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
 import com.oigit.admin.core.query.validation.DynamicQueryLimits;
 import com.oigit.admin.queryscheme.enums.QuerySchemeErrorCode;
@@ -91,16 +91,16 @@ public class QuerySchemeContentValidator {
             return stats;
         }
 
-        QueryFieldType expectedType = switch (nodeType) {
-            case "text" -> QueryFieldType.TEXT;
-            case "enum" -> QueryFieldType.ENUM;
-            case "boolean" -> QueryFieldType.BOOLEAN;
-            case "dateTime" -> QueryFieldType.DATE_TIME;
-            case "number" -> QueryFieldType.NUMBER;
+        Kind expectedType = switch (nodeType) {
+            case "text" -> Kind.TEXT;
+            case "enum" -> Kind.ENUM;
+            case "boolean" -> Kind.BOOLEAN;
+            case "dateTime" -> Kind.DATE_TIME;
+            case "number" -> Kind.NUMBER;
             default -> throw invalidException();
         };
         String field = node.path("field").asText("");
-        if (field.isBlank() || definition.fieldType(field) != expectedType) invalid();
+        if (field.isBlank() || (!definition.fields().containsKey(field) || definition.fields().get(field).kind() != expectedType)) invalid();
 
         QueryOperator operator;
         try {
@@ -108,7 +108,7 @@ public class QuerySchemeContentValidator {
         } catch (IllegalArgumentException ex) {
             throw invalidException();
         }
-        if (!definition.allowedOperators(field).contains(operator)) invalid();
+        if (!definition.fields().get(field).allowedOperators().contains(operator)) invalid();
         validatePayload(node, expectedType, operator);
 
         int complexity = 1;
@@ -122,7 +122,7 @@ public class QuerySchemeContentValidator {
         return new ValidationStats(1, depth, complexity);
     }
 
-    private void validatePayload(JsonNode node, QueryFieldType type, QueryOperator operator) {
+    private void validatePayload(JsonNode node, Kind type, QueryOperator operator) {
         if (operator == QueryOperator.IS_NULL || operator == QueryOperator.IS_NOT_NULL) return;
         if (operator == QueryOperator.IN || operator == QueryOperator.NOT_IN) {
             JsonNode values = node.path("values");
@@ -133,14 +133,14 @@ public class QuerySchemeContentValidator {
         if (operator == QueryOperator.BETWEEN) {
             validateScalar(node.get("start"), type);
             validateScalar(node.get("end"), type);
-            if (type == QueryFieldType.NUMBER && node.get("start").decimalValue().compareTo(node.get("end").decimalValue()) > 0) invalid();
-            if (type == QueryFieldType.DATE_TIME && parseDate(node.get("start").asText()).isAfter(parseDate(node.get("end").asText()))) invalid();
+            if (type == Kind.NUMBER && node.get("start").decimalValue().compareTo(node.get("end").decimalValue()) > 0) invalid();
+            if (type == Kind.DATE_TIME && parseDate(node.get("start").asText()).isAfter(parseDate(node.get("end").asText()))) invalid();
             return;
         }
         validateScalar(node.get("value"), type);
     }
 
-    private void validateScalar(JsonNode value, QueryFieldType type) {
+    private void validateScalar(JsonNode value, Kind type) {
         if (value == null || value.isNull()) invalid();
         boolean valid = switch (type) {
             case TEXT -> value.isTextual() && !value.asText().isBlank();
@@ -148,6 +148,7 @@ public class QuerySchemeContentValidator {
             case ENUM -> value.isValueNode() && !value.isContainerNode();
             case BOOLEAN -> value.isBoolean();
             case NUMBER -> value.isNumber();
+            case SORT_ONLY -> false;
         };
         if (!valid) invalid();
     }

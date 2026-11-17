@@ -9,12 +9,12 @@ import static org.assertj.core.api.Assertions.*;
 class QuerySchemeContentValidatorTests {
  private final QuerySchemeContentValidator validator = new QuerySchemeContentValidator(new ObjectMapper(), List.of(new SceneQueryDefinition<Row>() {
   public String sceneCode() { return "test.scene"; }
-  public Map<String, com.baomidou.mybatisplus.core.toolkit.support.SFunction<Row, String>> textFields() { return Map.of("name", Row::name); }
-  public Map<String, com.baomidou.mybatisplus.core.toolkit.support.SFunction<Row, java.time.LocalDateTime>> dateTimeFields() { return Map.of("created", Row::created); }
-  public Map<String, com.baomidou.mybatisplus.core.toolkit.support.SFunction<Row, ?>> enumFields() { return Map.of(); }
-  public Map<String, com.baomidou.mybatisplus.core.toolkit.support.SFunction<Row, ? extends Number>> numberFields() { return Map.of("amount", Row::amount); }
-  public Map<String, com.baomidou.mybatisplus.core.toolkit.support.SFunction<Row, ?>> sortFields() { return Map.of("id", Row::amount); }
-  public Set<QueryOperator> allowedOperators(String key) { return "name".equals(key) ? Set.of(QueryOperator.EQ, QueryOperator.IN) : SceneQueryDefinition.super.allowedOperators(key); }
+  public Map<String, QueryFieldSpec<Row>> fields() {
+   return Map.of("name", QueryFieldSpec.text(Row::name, "名称", QueryOperator.EQ, QueryOperator.IN),
+    "created", QueryFieldSpec.dateTime(Row::created, "创建时间"),
+    "amount", QueryFieldSpec.number(Row::amount, "金额"),
+    "id", QueryFieldSpec.sortOnly(Row::amount, "ID"));
+  }
  }));
  record Row(String name, Integer amount, java.time.LocalDateTime created) { }
  private String content(String condition) { return "{\"schemaVersion\":1,\"quickConditions\":[],\"advancedCondition\":" + condition + "}"; }

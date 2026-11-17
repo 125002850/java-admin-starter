@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oigit.admin.core.exception.BizException;
 import com.oigit.admin.core.query.ast.ConditionGroupAst;
@@ -16,6 +15,7 @@ import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.ast.SortSpec;
 import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
+import com.oigit.admin.core.query.scene.QueryFieldSpec;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -23,7 +23,6 @@ import org.mockito.ArgumentCaptor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -173,65 +172,14 @@ class MybatisPlusQueryExecutorTests {
 
     private SceneQueryDefinition<SampleEntity> sceneDefinition() {
         return new SceneQueryDefinition<>() {
-            @Override
-            public String sceneCode() {
-                return "sample.scene";
-            }
-
-            @Override
-            public Map<String, SFunction<SampleEntity, String>> textFields() {
-                return Map.of("NAME", SampleEntity::getName);
-            }
-
-            @Override
-            public Map<String, SFunction<SampleEntity, LocalDateTime>> dateTimeFields() {
-                return Map.of("createTime", SampleEntity::getCreateTime);
-            }
-
-            @Override
-            public Map<String, SFunction<SampleEntity, ?>> enumFields() {
-                return Map.of("STATUS", SampleEntity::getStatus);
-            }
-
-            @Override
-            public Map<String, SFunction<SampleEntity, ?>> sortFields() {
+            public String sceneCode() { return "sample.scene"; }
+            public Map<String, QueryFieldSpec<SampleEntity>> fields() {
                 return Map.of(
-                    "id", SampleEntity::getId,
-                    "createTime", SampleEntity::getCreateTime
-                );
+                        "NAME", QueryFieldSpec.text(SampleEntity::getName, "名称"),
+                        "STATUS", QueryFieldSpec.enumeration(SampleEntity::getStatus, "状态"),
+                        "createTime", QueryFieldSpec.dateTime(SampleEntity::getCreateTime, "创建时间").sortable(),
+                        "id", QueryFieldSpec.sortOnly(SampleEntity::getId, "ID"));
             }
-
-            @Override
-            public Set<QueryOperator> allowedOperators(String fieldKey) {
-                return switch (fieldKey) {
-                    case "NAME" -> Set.of(
-                        QueryOperator.EQ,
-                        QueryOperator.CONTAINS,
-                        QueryOperator.STARTS_WITH,
-                        QueryOperator.ENDS_WITH,
-                        QueryOperator.IN,
-                        QueryOperator.IS_NULL,
-                        QueryOperator.IS_NOT_NULL
-                    );
-                    case "STATUS" -> Set.of(
-                        QueryOperator.EQ,
-                        QueryOperator.IN,
-                        QueryOperator.IS_NULL,
-                        QueryOperator.IS_NOT_NULL
-                    );
-                    case "createTime" -> Set.of(
-                        QueryOperator.GT,
-                        QueryOperator.GTE,
-                        QueryOperator.LT,
-                        QueryOperator.LTE,
-                        QueryOperator.BETWEEN,
-                        QueryOperator.IS_NULL,
-                        QueryOperator.IS_NOT_NULL
-                    );
-                    default -> Set.of();
-                };
-            }
-
         };
     }
 
