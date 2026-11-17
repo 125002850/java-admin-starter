@@ -1,17 +1,14 @@
 package com.oigit.admin.dict.infra.query;
 
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
-import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.ast.SortSpec;
 import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
+import com.oigit.admin.core.query.scene.QueryFieldSpec;
 import com.oigit.admin.dict.infra.persistence.entity.GlobalDictItemEntity;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Component
 public class GlobalDictItemSceneQueryDefinition implements SceneQueryDefinition<GlobalDictItemEntity> {
@@ -22,69 +19,22 @@ public class GlobalDictItemSceneQueryDefinition implements SceneQueryDefinition<
     }
 
     @Override
-    public Map<String, SFunction<GlobalDictItemEntity, String>> textFields() {
-        return Map.of(
-                "dictTypeCode", GlobalDictItemEntity::getDictTypeCode,
-                "dictItemCode", GlobalDictItemEntity::getDictItemCode,
-                "dictItemName", GlobalDictItemEntity::getDictItemName
-        );
-    }
-
-    @Override
-    public Map<String, SFunction<GlobalDictItemEntity, LocalDateTime>> dateTimeFields() {
-        return Map.of("createTime", GlobalDictItemEntity::getCreateTime);
-    }
-
-    @Override
-    public Map<String, SFunction<GlobalDictItemEntity, ?>> enumFields() {
-        return Map.of();
-    }
-
-    @Override
-    public Map<String, SFunction<GlobalDictItemEntity, ?>> sortFields() {
-        return Map.of(
-                "id", GlobalDictItemEntity::getId,
-                "sortOrder", GlobalDictItemEntity::getSortOrder,
-                "createTime", GlobalDictItemEntity::getCreateTime
-        );
-    }
-
-    @Override
-    public Map<String, String> fieldLabels() {
-        return Map.of("dictTypeCode", "字典类型编码", "dictItemCode", "字典项编码",
-                "dictItemName", "字典项名称", "createTime", "创建时间");
-    }
-
-    @Override
-    public Set<QueryOperator> allowedOperators(String fieldKey) {
-        return switch (fieldKey) {
-            case "dictTypeCode", "dictItemCode", "dictItemName" -> Set.of(
-                    QueryOperator.EQ,
-                    QueryOperator.CONTAINS,
-                    QueryOperator.STARTS_WITH,
-                    QueryOperator.ENDS_WITH,
-                    QueryOperator.IN,
-                    QueryOperator.IS_NULL,
-                    QueryOperator.IS_NOT_NULL
-            );
-            case "createTime" -> Set.of(
-                    QueryOperator.GT,
-                    QueryOperator.GTE,
-                    QueryOperator.LT,
-                    QueryOperator.LTE,
-                    QueryOperator.BETWEEN,
-                    QueryOperator.IS_NULL,
-                    QueryOperator.IS_NOT_NULL
-            );
-            default -> Set.of();
-        };
-    }
-
-    @Override
     public List<SortSpec> defaultSorts() {
         return List.of(
                 new SortSpec("sortOrder", SortItemDTO.SortDirection.ASC),
                 new SortSpec("id", SortItemDTO.SortDirection.ASC)
+        );
+    }
+
+    @Override
+    public Map<String, QueryFieldSpec<GlobalDictItemEntity>> fields() {
+        return Map.ofEntries(
+                Map.entry("dictTypeCode", QueryFieldSpec.text(GlobalDictItemEntity::getDictTypeCode, "字典类型编码")),
+                Map.entry("dictItemCode", QueryFieldSpec.text(GlobalDictItemEntity::getDictItemCode, "字典项编码")),
+                Map.entry("dictItemName", QueryFieldSpec.text(GlobalDictItemEntity::getDictItemName, "字典项名称")),
+                Map.entry("createTime", QueryFieldSpec.dateTime(GlobalDictItemEntity::getCreateTime, "创建时间").sortable()),
+                Map.entry("id", QueryFieldSpec.sortOnly(GlobalDictItemEntity::getId, "id")),
+                Map.entry("sortOrder", QueryFieldSpec.sortOnly(GlobalDictItemEntity::getSortOrder, "sortOrder"))
         );
     }
 }

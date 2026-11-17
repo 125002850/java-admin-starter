@@ -6,17 +6,24 @@ import com.oigit.admin.core.query.ast.ConditionLeafAst;
 import com.oigit.admin.core.query.ast.QueryAst;
 import com.oigit.admin.core.query.ast.QueryLogicOperator;
 import com.oigit.admin.core.query.ast.QueryOperator;
-import com.oigit.admin.core.query.ast.SortSpec;
+import com.oigit.admin.core.query.scene.SceneQueryDefinition;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DynamicQueryGuardTests {
 
     private final DynamicQueryGuard guard = new DynamicQueryGuard(new QueryComplexityScorer());
+
+    @Test
+    void default_scene_complexity_score_should_be_20() {
+        assertThat(new TestSceneQueryDefinition().maxComplexityScore()).isEqualTo(20);
+    }
 
     @Test
     void should_reject_depth_exceeded() {
@@ -47,7 +54,7 @@ class DynamicQueryGuardTests {
         queryAst.setRoot(leaf(
             "STATUS",
             QueryOperator.IN,
-            IntStream.range(0, 201).boxed().toList()
+            IntStream.range(0, 1001).boxed().toList()
         ));
 
         assertThatThrownBy(() -> guard.validate(queryAst, 50))
@@ -92,5 +99,10 @@ class DynamicQueryGuardTests {
         leaf.setOperator(operator);
         leaf.setTypedValue(typedValue);
         return leaf;
+    }
+
+    private static class TestSceneQueryDefinition implements SceneQueryDefinition<Object> {
+        public String sceneCode() { return "test.scene"; }
+        public Map<String, com.oigit.admin.core.query.scene.QueryFieldSpec<Object>> fields() { return Map.of(); }
     }
 }

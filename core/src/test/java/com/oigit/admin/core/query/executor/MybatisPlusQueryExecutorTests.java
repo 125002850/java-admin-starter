@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oigit.admin.core.exception.BizException;
 import com.oigit.admin.core.query.ast.ConditionGroupAst;
@@ -16,6 +15,7 @@ import com.oigit.admin.core.query.ast.QueryOperator;
 import com.oigit.admin.core.query.ast.SortSpec;
 import com.oigit.admin.core.query.dto.SortItemDTO;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
+import com.oigit.admin.core.query.scene.QueryFieldSpec;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -23,7 +23,6 @@ import org.mockito.ArgumentCaptor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,14 +39,14 @@ class MybatisPlusQueryExecutorTests {
     static void initTableInfo() {
         MybatisConfiguration configuration = new MybatisConfiguration();
         MybatisMapperBuilderAssistant assistant = new MybatisMapperBuilderAssistant(configuration, "admin-scene");
-        assistant.setCurrentNamespace(DemoEntity.class.getName());
-        TableInfoHelper.initTableInfo(assistant, DemoEntity.class);
+        assistant.setCurrentNamespace(SampleEntity.class.getName());
+        TableInfoHelper.initTableInfo(assistant, SampleEntity.class);
     }
 
     @Test
     void select_page_should_translate_filters_page_and_default_sort() {
         @SuppressWarnings("unchecked")
-        BaseMapper<DemoEntity> mapper = mock(BaseMapper.class);
+        BaseMapper<SampleEntity> mapper = mock(BaseMapper.class);
         when(mapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -63,10 +62,10 @@ class MybatisPlusQueryExecutorTests {
             ))
         ));
 
-        Page<DemoEntity> page = executor.selectPage(mapper, queryAst, sceneDefinition());
+        Page<SampleEntity> page = executor.selectPage(mapper, queryAst, sceneDefinition());
 
-        ArgumentCaptor<Page<DemoEntity>> pageCaptor = ArgumentCaptor.forClass(Page.class);
-        ArgumentCaptor<LambdaQueryWrapper<DemoEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<Page<SampleEntity>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        ArgumentCaptor<LambdaQueryWrapper<SampleEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(mapper).selectPage(pageCaptor.capture(), wrapperCaptor.capture());
 
         assertThat(page.getCurrent()).isEqualTo(2);
@@ -83,7 +82,7 @@ class MybatisPlusQueryExecutorTests {
     @Test
     void select_list_should_apply_explicit_sort() {
         @SuppressWarnings("unchecked")
-        BaseMapper<DemoEntity> mapper = mock(BaseMapper.class);
+        BaseMapper<SampleEntity> mapper = mock(BaseMapper.class);
         when(mapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
         QueryAst queryAst = new QueryAst();
@@ -92,7 +91,7 @@ class MybatisPlusQueryExecutorTests {
 
         executor.selectList(mapper, queryAst, sceneDefinition());
 
-        ArgumentCaptor<LambdaQueryWrapper<DemoEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper<SampleEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(mapper).selectList(wrapperCaptor.capture());
         assertThat(wrapperCaptor.getValue().getSqlSegment()).contains("ORDER BY create_time DESC,id DESC");
     }
@@ -100,7 +99,7 @@ class MybatisPlusQueryExecutorTests {
     @Test
     void select_list_should_apply_null_operators() {
         @SuppressWarnings("unchecked")
-        BaseMapper<DemoEntity> mapper = mock(BaseMapper.class);
+        BaseMapper<SampleEntity> mapper = mock(BaseMapper.class);
         when(mapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
         QueryAst queryAst = new QueryAst();
@@ -111,7 +110,7 @@ class MybatisPlusQueryExecutorTests {
 
         executor.selectList(mapper, queryAst, sceneDefinition());
 
-        ArgumentCaptor<LambdaQueryWrapper<DemoEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper<SampleEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(mapper).selectList(wrapperCaptor.capture());
         assertThat(wrapperCaptor.getValue().getSqlSegment())
             .contains("name IS NULL")
@@ -121,7 +120,7 @@ class MybatisPlusQueryExecutorTests {
     @Test
     void should_reject_operator_outside_scene_allowlist() {
         @SuppressWarnings("unchecked")
-        BaseMapper<DemoEntity> mapper = mock(BaseMapper.class);
+        BaseMapper<SampleEntity> mapper = mock(BaseMapper.class);
         QueryAst queryAst = new QueryAst();
         queryAst.setRoot(leaf("STATUS", QueryOperator.CONTAINS, "bad"));
 
@@ -132,7 +131,7 @@ class MybatisPlusQueryExecutorTests {
     @Test
     void nested_group_should_keep_parentheses_for_first_child() {
         @SuppressWarnings("unchecked")
-        BaseMapper<DemoEntity> mapper = mock(BaseMapper.class);
+        BaseMapper<SampleEntity> mapper = mock(BaseMapper.class);
         when(mapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
         ConditionGroupAst orGroup = new ConditionGroupAst();
@@ -147,7 +146,7 @@ class MybatisPlusQueryExecutorTests {
 
         executor.selectList(mapper, queryAst, sceneDefinition());
 
-        ArgumentCaptor<LambdaQueryWrapper<DemoEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper<SampleEntity>> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(mapper).selectList(wrapperCaptor.capture());
         assertThat(wrapperCaptor.getValue().getSqlSegment()).startsWith("(");
     }
@@ -171,71 +170,20 @@ class MybatisPlusQueryExecutorTests {
         return leaf;
     }
 
-    private SceneQueryDefinition<DemoEntity> sceneDefinition() {
+    private SceneQueryDefinition<SampleEntity> sceneDefinition() {
         return new SceneQueryDefinition<>() {
-            @Override
-            public String sceneCode() {
-                return "demo.scene";
-            }
-
-            @Override
-            public Map<String, SFunction<DemoEntity, String>> textFields() {
-                return Map.of("NAME", DemoEntity::getName);
-            }
-
-            @Override
-            public Map<String, SFunction<DemoEntity, LocalDateTime>> dateTimeFields() {
-                return Map.of("createTime", DemoEntity::getCreateTime);
-            }
-
-            @Override
-            public Map<String, SFunction<DemoEntity, ?>> enumFields() {
-                return Map.of("STATUS", DemoEntity::getStatus);
-            }
-
-            @Override
-            public Map<String, SFunction<DemoEntity, ?>> sortFields() {
+            public String sceneCode() { return "sample.scene"; }
+            public Map<String, QueryFieldSpec<SampleEntity>> fields() {
                 return Map.of(
-                    "id", DemoEntity::getId,
-                    "createTime", DemoEntity::getCreateTime
-                );
+                        "NAME", QueryFieldSpec.text(SampleEntity::getName, "名称"),
+                        "STATUS", QueryFieldSpec.enumeration(SampleEntity::getStatus, "状态"),
+                        "createTime", QueryFieldSpec.dateTime(SampleEntity::getCreateTime, "创建时间").sortable(),
+                        "id", QueryFieldSpec.sortOnly(SampleEntity::getId, "ID"));
             }
-
-            @Override
-            public Set<QueryOperator> allowedOperators(String fieldKey) {
-                return switch (fieldKey) {
-                    case "NAME" -> Set.of(
-                        QueryOperator.EQ,
-                        QueryOperator.CONTAINS,
-                        QueryOperator.STARTS_WITH,
-                        QueryOperator.ENDS_WITH,
-                        QueryOperator.IN,
-                        QueryOperator.IS_NULL,
-                        QueryOperator.IS_NOT_NULL
-                    );
-                    case "STATUS" -> Set.of(
-                        QueryOperator.EQ,
-                        QueryOperator.IN,
-                        QueryOperator.IS_NULL,
-                        QueryOperator.IS_NOT_NULL
-                    );
-                    case "createTime" -> Set.of(
-                        QueryOperator.GT,
-                        QueryOperator.GTE,
-                        QueryOperator.LT,
-                        QueryOperator.LTE,
-                        QueryOperator.BETWEEN,
-                        QueryOperator.IS_NULL,
-                        QueryOperator.IS_NOT_NULL
-                    );
-                    default -> Set.of();
-                };
-            }
-
         };
     }
 
-    static class DemoEntity {
+    static class SampleEntity {
         private Long id;
         private String name;
         private Integer status;

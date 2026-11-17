@@ -1,6 +1,6 @@
 package com.oigit.admin.queryscene.app;
 
-import com.oigit.admin.core.query.scene.QueryFieldType;
+import com.oigit.admin.core.query.scene.QueryFieldSpec.Kind;
 import com.oigit.admin.core.query.scene.SceneQueryDefinition;
 import com.oigit.admin.core.query.validation.DynamicQueryLimits;
 import com.oigit.admin.queryscene.dto.rsp.QuerySceneFieldRspDTO;
@@ -21,19 +21,12 @@ public class QuerySceneAppService {
         var result = new TreeMap<String, QuerySceneMetadataRspDTO>();
         for (var scene : scenes) {
             var fields = new TreeMap<String, QuerySceneFieldRspDTO>();
-            var keys = new java.util.TreeSet<String>();
-            keys.addAll(scene.textFields().keySet());
-            keys.addAll(scene.dateTimeFields().keySet());
-            keys.addAll(scene.enumFields().keySet());
-            keys.addAll(scene.booleanFields().keySet());
-            keys.addAll(scene.numberFields().keySet());
-            keys.addAll(scene.customFieldTypes().keySet());
-            for (String key : keys) {
-                fields.put(key, new QuerySceneFieldRspDTO(
-                        scene.fieldLabels().getOrDefault(key, key), conditionType(scene.fieldType(key)),
-                        scene.allowedOperators(key).stream().sorted().toList(),
-                        scene.valueLabels().getOrDefault(key, Map.of())));
-            }
+            scene.fields().forEach((key, spec) -> {
+                if (spec.filterable()) {
+                    fields.put(key, new QuerySceneFieldRspDTO(spec.label(), conditionType(spec.kind()),
+                            spec.allowedOperators().stream().sorted().toList(), spec.valueLabels()));
+                }
+            });
             var limits = new QuerySceneLimitsRspDTO(DynamicQueryLimits.MAX_DEPTH,
                     DynamicQueryLimits.MAX_NODE_COUNT, DynamicQueryLimits.MAX_IN_SIZE, scene.maxComplexityScore());
             if (result.putIfAbsent(scene.sceneCode(),
@@ -48,13 +41,14 @@ public class QuerySceneAppService {
         return metadata;
     }
 
-    private static String conditionType(QueryFieldType kind) {
+    private static String conditionType(Kind kind) {
         return switch (kind) {
             case TEXT -> "text";
             case DATE_TIME -> "dateTime";
             case ENUM -> "enum";
             case NUMBER -> "number";
             case BOOLEAN -> "boolean";
+            case SORT_ONLY -> throw new IllegalArgumentException("仅排序字段不能用于筛选");
         };
     }
 }

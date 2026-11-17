@@ -43,29 +43,25 @@ class QuerySceneMetadataTests {
             var metadata = data.path(scene.sceneCode());
             var fields = metadata.path("fields");
             var keys = new java.util.TreeSet<String>();
-            keys.addAll(scene.textFields().keySet());
-            keys.addAll(scene.dateTimeFields().keySet());
-            keys.addAll(scene.enumFields().keySet());
-            keys.addAll(scene.booleanFields().keySet());
-            keys.addAll(scene.numberFields().keySet());
-            keys.addAll(scene.customFieldTypes().keySet());
+            scene.fields().forEach((key, spec) -> { if (spec.filterable()) keys.add(key); });
             assertThat(fields.size()).isEqualTo(keys.size());
             for (String key : keys) {
                 var field = fields.path(key);
                 assertThat(field.size()).isEqualTo(4);
                 assertThat(field.path("label").asText()).isEqualTo(scene.fieldLabels().getOrDefault(key, key));
                 assertThat(strings(field.path("operators"))).containsExactlyInAnyOrderElementsOf(
-                        scene.allowedOperators(key).stream().map(Enum::name).toList());
+                        scene.fields().get(key).allowedOperators().stream().map(Enum::name).toList());
                 assertThat(field.path("valueLabels")).isEqualTo(mapper.valueToTree(scene.valueLabels().getOrDefault(key, java.util.Map.of())));
-                assertThat(field.path("conditionType").asText()).isEqualTo(switch (scene.fieldType(key)) {
+                assertThat(field.path("conditionType").asText()).isEqualTo(switch (scene.fields().get(key).kind()) {
                     case TEXT -> "text";
                     case DATE_TIME -> "dateTime";
                     case ENUM -> "enum";
                     case NUMBER -> "number";
                     case BOOLEAN -> "boolean";
+                    case SORT_ONLY -> throw new AssertionError("仅排序字段不应出现在筛选元数据中");
                 });
             }
-            for (String key : scene.sortFields().keySet()) {
+            for (String key : scene.fields().keySet()) {
                 if (!keys.contains(key)) assertThat(fields.has(key)).isFalse();
             }
             assertThat(metadata.path("limits").path("maxDepth").asInt()).isEqualTo(DynamicQueryLimits.MAX_DEPTH);
