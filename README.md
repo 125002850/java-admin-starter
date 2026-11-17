@@ -384,3 +384,7 @@ CI 配置位于 [.github/workflows/verify.yml](.github/workflows/verify.yml)，�
 ### 通用能力回灌（2026-11-16）
 
 新增调度请求快照、显式启用的执行记录清理、XLSX 多工作表及分批导出、统一出站 HTTP、TraceId/日志防护和 Flyway 诊断。接口与接入边界见 [模块说明](docs/platform-modules.md#2026-11-16-通用能力回灌)。部署前追加执行新迁移；历史迁移保持原样。MySQL 验收默认固定为 8.0.24，并覆盖旧调度版本升级。
+
+### DSL 字段与否定筛选回灌（2026-11-17）
+
+从 track-bench 回灌 QueryFieldSpec，将字段映射、类型、名称、操作符与排序集中定义；补齐文本 NE／NOT_IN／NOT_CONTAINS、枚举 NE／NOT_IN 以及时间 EQ／NE 的请求入口。保留原有字段枚举、JSON、schema、operationId、查询限额与鉴权。详见 [回灌说明](docs/implementation/2026-11-17-dsl-backport.md)。

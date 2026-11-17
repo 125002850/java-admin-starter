@@ -48,11 +48,11 @@ App/Domain 不得直接拼持久化查询条件。DSL 动态条件必须走 AST 
 | `dateTime` | 时间字段条件 | `field`、`op`、`value` 或 `start` + `end` |
 | `enum` | 枚举码值条件 | `field`、`op`、`value` 或 `values` |
 
-- 文本操作符：`EQ`、`CONTAINS`、`STARTS_WITH`、`ENDS_WITH`、`IN`、`IS_NULL`、`IS_NOT_NULL`。
-- 时间操作符：`GT`、`GTE`、`LT`、`LTE`、`BETWEEN`、`IS_NULL`、`IS_NOT_NULL`。
-- 枚举操作符：`EQ`、`IN`、`IS_NULL`、`IS_NOT_NULL`。
+- 文本操作符：`EQ`、`NE`、`CONTAINS`、`NOT_CONTAINS`、`STARTS_WITH`、`ENDS_WITH`、`IN`、`NOT_IN`、`IS_NULL`、`IS_NOT_NULL`。
+- 时间操作符：`EQ`、`NE`、`GT`、`GTE`、`LT`、`LTE`、`BETWEEN`、`IS_NULL`、`IS_NOT_NULL`。
+- 枚举操作符：`EQ`、`NE`、`IN`、`NOT_IN`、`IS_NULL`、`IS_NOT_NULL`。
 - 排序方向：`ASC`、`DESC`。
-- `op = IN` 时使用 `values` 数组，不使用 `value`。
+- `op = IN / NOT_IN` 时使用 `values` 数组，不使用 `value`。
 - `op = BETWEEN` 时使用 `start` + `end`，不使用 `value`。
 - `op = IS_NULL / IS_NOT_NULL` 时不传 `value`、`values`、`start`、`end`。
 - `nodeType` 鉴别器值使用 `compose`，不要使用 `group`。
@@ -124,9 +124,9 @@ new DynamicQuerySceneSchema(
 - 位置：对应能力的 `infra/query/` 包，因为定义包含 Entity 字段映射和 MyBatis-Plus lambda。
 - 实现 `SceneQueryDefinition<Entity>`。
 - 返回全局唯一 `sceneCode()`，建议格式 `{模块}.{领域}.{实体}.{动作}`。
-- 提供 `textFields()`、`dateTimeFields()`、`enumFields()`、`sortFields()` 四个 Map。
-- Map key 使用字段枚举值，value 使用 MyBatis-Plus `SFunction` lambda。
-- 必须覆写或明确限制 `allowedOperators(fieldKey)`，不能对所有字段全部开放。
+- 只实现 `fields()`，返回 `Map<String, QueryFieldSpec<Entity>>`；每个字段集中声明类型、列映射、显示名称、允许操作符、排序及可选值标签。
+- Map key 使用公开 JSON 字段名；`QueryFieldSpec.text/dateTime/enumeration/number/bool` 绑定 MyBatis-Plus lambda，`.sortable()` 声明排序，`sortOnly` 只开放排序。
+- 字段默认按类型限制操作符；需要收窄时在该 `QueryFieldSpec` 中显式传入允许的操作符，自定义处理器不得绕过白名单。
 - 按需覆写 `defaultSorts()`。
 
 5. 实现 `SceneQueryMapper`
@@ -134,7 +134,7 @@ new DynamicQuerySceneSchema(
 - 位置：对应能力的 `app/query/` 包，只负责把请求条件转换为内部 AST，不依赖 Entity、Mapper 或 Infra 查询定义。
 - 实现 `SceneQueryMapper<CriteriaReqDTO>`。
 - `toQueryAst(reqDTO)` 使用 `DynamicQueryAstMapper.toQueryAst(reqDTO.getCondition(), reqDTO.getSort())` 将 DTO 条件树转换为内部 AST。
-- `IN` 操作符的 `typedValue` 为 `List`。
+- `IN / NOT_IN` 操作符的 `typedValue` 为 `List`。
 - `BETWEEN` 操作符的 `typedValue` 为 `List.of(start, end)`。
 - `IS_NULL / IS_NOT_NULL` 操作符的 `typedValue` 为 `null`。
 - 如需服务端注入额外条件，在 mapper 中合并约束，例如 `mergeOwnerConstraint()`。
@@ -150,7 +150,7 @@ new DynamicQuerySceneSchema(
 - `TextField`、`DateTimeField`、`SortField` 的枚举名使用小写 camelCase。
 - 枚举名必须与目标实体 getter 对应的 JSON 字段名严格一致，例如 `dictTypeCode`、`createTime`、`id`。
 - 禁止使用 `UPPER_SNAKE_CASE`。
-- `SceneQueryDefinition` map key、`allowedOperators` switch case、`defaultSorts` 的 `SortSpec` 必须同步保持一致。
+- `fields()` 的字段 key、DTO 字段约束及 `defaultSorts` 的 `SortSpec` 必须保持一致；执行、元数据和个人方案校验均读取同一 `QueryFieldSpec`。
 
 普通与动态分页共享 `PageReqDTO` 的 1–2000 条限制和默认值；内部分页入口复用 `DynamicQueryGuard.validatePage`。Web 参数越界沿用 HTTP 422 / 业务 code 400，内部调用越界抛动态查询业务错误。
 
@@ -171,9 +171,9 @@ new DynamicQuerySceneSchema(
 | 因素 | 加分 |
 |---|---|
 | 每个叶节点 | +1 |
-| `CONTAINS` 或 `ENDS_WITH` | +2 |
+| `CONTAINS`、`NOT_CONTAINS` 或 `ENDS_WITH` | +2 |
 | `BETWEEN` | +1 |
-| `IN` N 个值 | +1 + floor(N / 20) |
+| `IN / NOT_IN` N 个值 | +1 + floor(N / 20) |
 | `OR` 组合 | +2 |
 | `AND` 组合 | +0 |
 
@@ -200,17 +200,21 @@ new DynamicQuerySceneSchema(
 ## 类型与稳定排序增量
 
 - 可组合条件新增 `BooleanConditionDTO`（EQ/NE/IS_NULL/IS_NOT_NULL）与 `NumberConditionDTO`（EQ/NE/GT/GTE/LT/LTE/BETWEEN/IS_NULL/IS_NOT_NULL）。数值使用 BigDecimal；BETWEEN 必须有完整且顺序合法的起止值，false 是合法布尔值。
-- 场景按需注册 booleanFields()/numberFields()，通过现有 DTO → AST → Guard → Executor 链路绑定参数。新增场景的多态映射和 OpenAPI 注册须同步包含使用的条件类型；现有 HTTP 请求不自动新增字段。
+- 场景按需使用 QueryFieldSpec.bool()/number() 注册字段，通过现有 DTO → AST → Guard → Executor 链路绑定参数。新增场景的多态映射和 OpenAPI 注册须同步包含使用的条件类型；现有 HTTP 请求不自动新增字段。
 - 普通场景支持 createTime/id 排序时默认采用 createTime DESC, id DESC；显式排序或业务默认排序缺少 id 时追加 id DESC，已有 id 方向保留。字典项 sortOrder ASC, id ASC 等业务顺序保持不变。
 - 前端不重复指定通用默认排序；确有业务含义时使用 defaultRequestSort。
 
 ## 查询场景元数据与个人方案
 
 - `POST /api/system/query-scene/metadata` 无请求体，要求 IAM 登录，返回全部 `sceneCode` 对应的 `fields` 和 `limits`。metadata 描述查询能力，业务查询的数据权限仍由原接口执行。
-- 字段从现有 `SceneQueryDefinition` 的 text/dateTime/enum/boolean/number/customFieldTypes 注册中生成，纯排序字段不返回；类型和操作符复用 `fieldType()`、`allowedOperators()`，标签使用 `fieldLabels()`、`valueLabels()`。新增场景需维护可读标签和枚举码值说明，避免前端重复配置。
+- 字段从 `SceneQueryDefinition.fields()` 生成，纯排序字段不返回；类型、操作符、名称和值标签直接读取每个 `QueryFieldSpec`。新增场景需维护可读标签和枚举码值说明，避免前端重复配置。
 - metadata 的 `limits` 包含 `maxDepth`、`maxNodes`、`maxInSize`、`maxComplexityScore`。后端 guard 仍是执行时的最终校验，前端依照这些限制提前反馈。
 - `/api/system/query-scheme/list` 仅返回当前用户在指定场景的个人方案。create/update/delete/default/update 支持保存、重命名、覆盖、删除、设置或取消默认方案。个人方案按 `OperatorContext` 中的已认证用户隔离，不接受请求中的用户身份。
 - 方案 JSON 版本为 1，只保存 `quickConditions` 与可选 `advancedCondition`，不能保存页面业务范围、分页和排序。保存时验证场景白名单、字段类型、操作符、条件形状及 DSL 限制。
 - 每用户每场景最多 20 个未删除方案，名称在该范围内唯一；更新和删除携带 `version`，用户/场景锁串行化数量及默认方案变更。新增 Flyway 表 `sys_user_query_scheme`、`sys_user_query_scheme_lock`。
 - `queryscene`、`queryscheme` 使用模板的能力包结构；应用通过 `QuerySchemeRepository` 端口调用持久化实现。方案错误码使用未占用的 3012001–3012007，不与定时任务错误码混用。
 - 验证入口：`QuerySceneMetadataTests`、`QuerySchemeOpenApiTests`、`QuerySchemeContentValidatorTests`、`QuerySchemeIntegrationTests`，迁移同时执行独立 MySQL 8 的 `FlywaySmokeTests`。
+
+## 字段集中定义回灌（2026-11-17）
+
+字段定义统一使用 QueryFieldSpec；保留场景 DTO 的字段枚举及既有 schema、operationId。新增否定操作符必须同时通过 DTO、字段白名单及 SQL 参数绑定验证。纯排序字段不能作为筛选字段，内部 ownerId 仍只允许 EQ。各分支原有复杂度与 IN 上限保持不变。
